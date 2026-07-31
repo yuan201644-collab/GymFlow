@@ -571,7 +571,7 @@ function filterExercises() {
     const parts = e.region.split('.');
     const ri = REGION_TREE[parts[0]];
     const fav = isFavorite(e.name);
-    h += `<div class="card ex-card"><div class="flex-between"><div style="flex:1;"><span style="font-size:12px;color:${ri?.color||'var(--accent)'};">${ri?.icon||''} ${e.region}</span><div class="card-title" style="font-size:14px;margin-top:2px;">${e.name}</div><div class="card-meta">${e.equipment} · ${e.mechanics} · ${e.difficulty} · ${e.type} · ${e.posture} · ${e.focus}</div></div><button class="fav-star-btn" onclick="event.stopPropagation();var el=this;toggleFavorite('${e.name.replace(/'/g,"\\\\'")}');el.textContent=isFavorite('${e.name.replace(/'/g,"\\\\'")}')?'⭐':'☆'">${fav?'⭐':'☆'}</button></div></div>`;
+    h += `<div class="card ex-card"><div class="flex-between"><div style="flex:1;"><span style="font-size:12px;color:${ri?.color||'var(--accent)'};">${ri?.icon||''} ${e.region}</span><div class="card-title" style="font-size:14px;margin-top:2px;">${e.name}</div><div class="card-meta">${e.equipment} · ${e.mechanics} · ${e.difficulty} · ${e.type} · ${e.posture} · ${e.focus}</div></div><button class="fav-star-btn" onclick="event.stopPropagation();var el=this;try{toggleFavorite('${e.name.replace(/'/g,"\\\\\\\\'")}');el.textContent=isFavorite('${e.name.replace(/'/g,"\\\\\\\\'")}')?'⭐':'☆';el.classList.add('pop');setTimeout(function(){el.classList.remove('pop')},500)}catch(e){}">${fav?'⭐':'☆'}</button></div></div>`;
   });
   list.innerHTML = h;
 }

@@ -780,7 +780,7 @@ function renderTrainingPage() {
         if(section.type==='main'&&ex.equipment){
           html += `<div class="weight-row" onclick="stopPropagation(event)"><span class="weight-label">🏋️</span><input type="number" class="weight-input-sm" value="${exWeight}" onchange="updateExerciseWeight('${groupId}','${escapeHtml(ex.name)}',this.value)" onfocus="this.select()" step="5" min="0" max="500"><span class="weight-unit">kg</span></div>`;
         }
-        html += `</div><button class="fav-star-btn" data-ex="${escapeHtml(ex.name)}" onclick="event.stopPropagation();var el=this;try{toggleFavorite(this.getAttribute('data-ex'));el.textContent=isFavorite(this.getAttribute('data-ex'))?'⭐':'☆';}catch(e){}">☆</button></div></div>`;
+        html += `</div><button class="fav-star-btn" data-ex="${escapeHtml(ex.name)}" onclick="event.stopPropagation();var el=this;try{toggleFavorite(this.getAttribute('data-ex'));el.textContent=isFavorite(this.getAttribute('data-ex'))?'⭐':'☆';el.classList.add('pop');setTimeout(function(){el.classList.remove('pop')},500)}catch(e){}">☆</button></div></div>`;
         if(ex.tip) html += `<div class="card-tip">💡 ${ex.tip}</div>`;
         html += `</div>`;
       });
