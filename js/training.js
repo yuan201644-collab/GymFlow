@@ -615,15 +615,17 @@ function getTrainingPlan(type) {
           label: day.label,
           subtitle: ap.name,
           emoji: '📋',
-          sections: [
+          sections: (() => {
+            const dayIdx = idx;
+            const sections = [
             {
               type: 'warmup', title: '热身（5-10分钟）', badge: '热身', badgeClass: 'warmup-badge',
               groups: [
-                { id: 'cust_warm_cardio', label: '有氧预热', pickHint: '2选1', region: '全身', exercises: [
+                { id: 'cust_w' + dayIdx + '_cardio', label: '有氧预热', pickHint: '2选1', region: '全身', exercises: [
                   { name: '跑步机快走', sets: '5分钟', equipment: '跑步机', tip: '心率提升至110-120，微微出汗即可', default: true },
                   { name: '跳绳', sets: '3分钟×2组', equipment: '跳绳', tip: '轻跳，不要过度消耗体力', default: false },
                 ]},
-                { id: 'cust_warm_mobility', label: '关节激活', pickHint: '2选1', region: '全身', exercises: [
+                { id: 'cust_w' + dayIdx + '_mobil', label: '关节激活', pickHint: '2选1', region: '全身', exercises: [
                   { name: '肩髋动态拉伸', sets: '5分钟', equipment: '', tip: '肩绕环+髋绕环+体转，全面激活', default: true },
                   { name: '泡沫轴滚动', sets: '3分钟', equipment: '泡沫轴', tip: '重点滚胸椎和髋部', default: false },
                 ]},
@@ -631,8 +633,8 @@ function getTrainingPlan(type) {
             },
             {
             type: 'main', title: day.label, badge: '正式', badgeClass: 'section-badge',
-            groups: (day.groups || []).map(g => ({
-              id: 'custom_' + idx + '_' + Math.random().toString(36).slice(2,6),
+            groups: (day.groups || []).map((g, gi) => ({
+              id: 'cust_m' + dayIdx + '_' + gi,
               label: g.label || '训练组',
               region: g.label || '',
               pickHint: g.pickHint || (g.exercises && g.exercises.length > 1 ? g.exercises.length + '选1-2' : '1选1'),
@@ -654,17 +656,19 @@ function getTrainingPlan(type) {
           {
             type: 'stretch', title: '收尾拉伸（5分钟）', badge: '拉伸', badgeClass: 'stretch-badge',
             groups: [
-              { id: 'cust_stretch_1', label: '上肢拉伸', pickHint: '2选1', region: '全身', exercises: [
+              { id: 'cust_s' + dayIdx + '_upper', label: '上肢拉伸', pickHint: '2选1', region: '全身', exercises: [
                 { name: '胸肌门框拉伸', sets: '每侧30秒', equipment: '', tip: '手肘90°放门框，身体前移感受拉伸', default: true },
                 { name: '背阔肌拉伸', sets: '每侧30秒', equipment: '', tip: '双手抓固定物，身体后坐', default: false },
               ]},
-              { id: 'cust_stretch_2', label: '下肢拉伸', pickHint: '2选1', region: '全身', exercises: [
+              { id: 'cust_s' + dayIdx + '_lower', label: '下肢拉伸', pickHint: '2选1', region: '全身', exercises: [
                 { name: '股四头肌拉伸', sets: '每侧30秒', equipment: '', tip: '单腿站，手抓脚踝后拉', default: true },
                 { name: '腘绳肌拉伸', sets: '每侧30秒', equipment: '', tip: '坐姿体前屈，够脚尖', default: false },
               ]},
             ]
           }
-        ]
+        ];
+        return sections;
+      })()
         };
       }
     }
@@ -1111,7 +1115,17 @@ function closePlanSwitcher() {
 function switchToPlan(id) {
   setActivePlan(id);
   closePlanSwitcher();
-  showToast(id === 'default' ? '已切换到默认三分化' : '已切换方案', 'success');
+  // 自动切换到该方案的第一个训练日
+  if (id !== 'default') {
+    const plans = getPlans();
+    const ap = plans.find(p => p.id === id);
+    if (ap && ap.days) {
+      switchTodayWorkoutType('custom_0');
+    }
+  } else {
+    switchTodayWorkoutType('push');
+  }
+  showToast(id === 'default' ? '已切换到默认三分化' : '已切换方案：' + (ap ? ap.name : ''), 'success');
   renderTrainingPage();
 }
 

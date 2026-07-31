@@ -533,9 +533,14 @@ async function coachGeneratePlan() {
   // 附上动作库参考
   const sampleEx = EXERCISE_DB.filter(e => e.type === '复合' || e.difficulty !== '高级').slice(0, 100).map(e => e.name).join('、');
   prompt += `\n\n## 动作库参考（请从中选用，确保动作名完全一致以便匹配详情）\n${sampleEx}`;
-  prompt += `\n\n生成纯JSON（每个肌群组提供2-3个可选动作，让用户自由选择）：`;
-  prompt += `\n{"name":"方案名","type":"3day或5day","description":"简介","days":[{"label":"训练日名","groups":[{"label":"肌群名","pickHint":"3选1-2","exercises":[{"name":"动作1","sets":"4组×10-12次"},{"name":"动作2","sets":"4组×10-12次"},{"name":"动作3","sets":"3组×12-15次"}]}]}]}`;
+  prompt += `\n\n生成纯JSON（训练日最后加1个休息日，不要重复）：`;
+  prompt += `\n{"name":"方案名","type":"3day或5day","days":[`;
+  prompt += `\n  {"label":"训练日1","groups":[...每组2-3动作]},`;
+  prompt += `\n  {"label":"训练日2","groups":[...]},`;
+  prompt += `\n  {"label":"休息日","groups":[{"label":"核心训练","pickHint":"2选1","exercises":[{"name":"平板支撑"},{"name":"死虫式"}]},{"label":"体态拉伸","pickHint":"2选1","exercises":[{"name":"胸肌门框拉伸"},{"name":"鸽子式"}]}]}`;
+  prompt += `\n]}`;
   prompt += `\n规则：每个肌群组exercises数组包含2-3个备选动作（必须从动作库中选），pickHint如"3选1-2"；动作名必须与动作库完全一致。`;
+  prompt += `\n重要：在训练日最后额外追加1个休息日（共仅1个），格式{"label":"休息日","groups":[{"label":"核心训练","pickHint":"2选1","exercises":[{"name":"平板支撑","sets":"3组×30秒"},{"name":"死虫式","sets":"3组×10次"}]},{"label":"体态拉伸","pickHint":"2选1","exercises":[{"name":"胸肌门框拉伸","sets":"每侧30秒"},{"name":"鸽子式","sets":"每侧30秒"}]}]}`;
 
   try {
     const resp = await fetch(getAIServer()+'/api/ask', {
