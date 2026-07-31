@@ -115,6 +115,8 @@ h1{font-size:22px;font-weight:700;letter-spacing:-.3px}h2{font-size:18px;font-we
 .group-expand-icon{font-size:12px;color:var(--muted);transition:transform .35s var(--ease-out);display:inline-block}
 .group-header.group-done .group-target-label{color:var(--accent)}
 .group-header.group-done .group-pick-hint{color:var(--accent);background:rgba(0,200,83,.1)}
+.group-header.just-done{animation:groupPop .6s var(--ease-out)}
+@keyframes groupPop{0%{transform:scale(1)}15%{transform:scale(1.03);background:rgba(0,200,83,.08);border-radius:8px}100%{transform:scale(1);background:transparent}}
 .group-exercises{overflow:hidden;max-height:2000px;transition:max-height .4s var(--ease-out),opacity .35s var(--ease-out),margin .4s var(--ease-out);opacity:1}
 .group-exercises.collapsed{max-height:0!important;opacity:0;margin-bottom:0!important}
 

@@ -894,10 +894,11 @@ function selectAndToggle(secIdx, grpIdx, exIdx, groupId, exName) {
     if (groupDone) {
       if (gh) gh.classList.add('group-done');
       if (label) label.textContent = (label.textContent || '').replace('🎯', '✅');
-      // 平滑折叠
+      // 平滑折叠 + 弹跳动画
       if (gx && !gx.classList.contains('collapsed')) {
         gx.style.maxHeight = gx.scrollHeight + 'px';
         const icon = document.getElementById('ge-' + secIdx + '-' + grpIdx);
+        if (gh) { gh.classList.add('just-done'); setTimeout(() => gh.classList.remove('just-done'), 600); }
         requestAnimationFrame(() => {
           gx.classList.add('collapsed');
           gx.style.maxHeight = '0px';
