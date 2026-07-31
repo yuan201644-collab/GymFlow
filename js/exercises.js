@@ -160,7 +160,34 @@ const EXERCISE_DB = [
   {name:"熊爬",region:"全身.功能",equipment:"自重",difficulty:"初级",type:"复合",posture:"俯身",mechanics:"等长",focus:"肌耐力",risk:"低"},
   {name:"手枪深蹲",region:"全身.功能",equipment:"自重",difficulty:"高级",type:"复合",posture:"站",mechanics:"蹲",focus:"肌肥大",risk:"中"},
   {name:"倒立撑",region:"全身.功能",equipment:"自重",difficulty:"高级",type:"复合",posture:"站",mechanics:"推",focus:"肌肥大",risk:"高"}
-];
+,
+  {name:"跑步机快走",region:"全身.有氧",equipment:"跑步机",difficulty:"初级",type:"复合",posture:"站",mechanics:"有氧",focus:"肌耐力",risk:"低"},
+  {name:"跑步机慢跑",region:"全身.有氧",equipment:"跑步机",difficulty:"初级",type:"复合",posture:"站",mechanics:"有氧",focus:"肌耐力",risk:"低"},
+  {name:"椭圆机",region:"全身.有氧",equipment:"椭圆机",difficulty:"初级",type:"复合",posture:"坐",mechanics:"有氧",focus:"肌耐力",risk:"低"},
+  {name:"动感单车",region:"全身.有氧",equipment:"动感单车",difficulty:"中级",type:"复合",posture:"坐",mechanics:"有氧",focus:"肌耐力",risk:"低"},
+  {name:"跳绳(热身)",region:"全身.有氧",equipment:"跳绳",difficulty:"初级",type:"复合",posture:"站",mechanics:"有氧",focus:"肌耐力",risk:"低"},
+  {name:"开合跳",region:"全身.有氧",equipment:"自重",difficulty:"初级",type:"复合",posture:"站",mechanics:"有氧",focus:"肌耐力",risk:"低"},
+  {name:"高抬腿",region:"全身.有氧",equipment:"自重",difficulty:"初级",type:"复合",posture:"站",mechanics:"有氧",focus:"肌耐力",risk:"低"},
+  {name:"划船机",region:"全身.有氧",equipment:"划船机",difficulty:"初级",type:"复合",posture:"坐",mechanics:"拉",focus:"肌耐力",risk:"低"},
+  {name:"肩关节绕环",region:"肩.前束",equipment:"自重",difficulty:"初级",type:"孤立",posture:"站",mechanics:"平举",focus:"肌耐力",risk:"低"},
+  {name:"髋关节绕环",region:"臀腿.臀",equipment:"自重",difficulty:"初级",type:"孤立",posture:"站",mechanics:"外展",focus:"肌耐力",risk:"低"},
+  {name:"泡沫轴滚动(胸椎)",region:"胸.中胸",equipment:"泡沫轴",difficulty:"初级",type:"孤立",posture:"卧",mechanics:"等长",focus:"肌耐力",risk:"低"},
+  {name:"泡沫轴滚动(背部)",region:"背.背阔",equipment:"泡沫轴",difficulty:"初级",type:"孤立",posture:"卧",mechanics:"等长",focus:"肌耐力",risk:"低"},
+  {name:"泡沫轴滚动(腿部)",region:"臀腿.股四头",equipment:"泡沫轴",difficulty:"初级",type:"孤立",posture:"卧",mechanics:"等长",focus:"肌耐力",risk:"低"},
+  {name:"弹力带肩环绕",region:"肩.中束",equipment:"弹力带",difficulty:"初级",type:"孤立",posture:"站",mechanics:"平举",focus:"肌耐力",risk:"低"},
+  {name:"胸肌门框拉伸",region:"胸.中胸",equipment:"自重",difficulty:"初级",type:"孤立",posture:"站",mechanics:"等长",focus:"肌耐力",risk:"低"},
+  {name:"背阔肌拉伸",region:"背.背阔",equipment:"自重",difficulty:"初级",type:"孤立",posture:"站",mechanics:"等长",focus:"肌耐力",risk:"低"},
+  {name:"股四头肌拉伸",region:"臀腿.股四头",equipment:"自重",difficulty:"初级",type:"孤立",posture:"站",mechanics:"等长",focus:"肌耐力",risk:"低"},
+  {name:"腘绳肌拉伸",region:"臀腿.腘绳",equipment:"自重",difficulty:"初级",type:"孤立",posture:"坐",mechanics:"等长",focus:"肌耐力",risk:"低"},
+  {name:"站姿小腿拉伸",region:"臀腿.小腿",equipment:"自重",difficulty:"初级",type:"孤立",posture:"站",mechanics:"等长",focus:"肌耐力",risk:"低"},
+  {name:"鸽子式",region:"臀腿.臀",equipment:"自重",difficulty:"初级",type:"孤立",posture:"坐",mechanics:"等长",focus:"肌耐力",risk:"低"},
+  {name:"婴儿式",region:"背.中背",equipment:"自重",difficulty:"初级",type:"孤立",posture:"跪",mechanics:"等长",focus:"肌耐力",risk:"低"},
+  {name:"上斜方肌拉伸",region:"肩.中束",equipment:"自重",difficulty:"初级",type:"孤立",posture:"坐",mechanics:"等长",focus:"肌耐力",risk:"低"},
+  {name:"肱二头肌拉伸",region:"手臂.二头",equipment:"自重",difficulty:"初级",type:"孤立",posture:"站",mechanics:"等长",focus:"肌耐力",risk:"低"},
+  {name:"肱三头肌拉伸",region:"手臂.三头",equipment:"自重",difficulty:"初级",type:"孤立",posture:"站",mechanics:"等长",focus:"肌耐力",risk:"低"},
+  {name:"腹部拉伸",region:"核心.腹直",equipment:"自重",difficulty:"初级",type:"孤立",posture:"卧",mechanics:"等长",focus:"肌耐力",risk:"低"},
+  {name:"弹力带腿部拉伸",region:"臀腿.腘绳",equipment:"弹力带",difficulty:"初级",type:"孤立",posture:"卧",mechanics:"屈伸",focus:"肌耐力",risk:"低"},
+  {name:"肩髋动态拉伸",region:"全身.功能",equipment:"自重",difficulty:"初级",type:"复合",posture:"站",mechanics:"等长",focus:"肌耐力",risk:"低"}];
 
 const REGION_TREE = {
   "胸": { icon: "🏋️", color: "#00c853", subs: ["中胸","上胸","下胸","中缝"] },
@@ -173,5 +200,5 @@ const REGION_TREE = {
 };
 
 const EQUIPMENT_LIST = ["杠铃","哑铃","壶铃","史密斯机","绳索龙门架","高位下拉机","坐姿划船机","推胸机","上斜推胸机","蝴蝶机","肩推机","侧平举机","弯举机","臀推机","腿举机","哈克深蹲机","腿屈伸机","腿弯举机","髋外展机","髋内收机","提踵机","卷腹机","辅助引体机","辅助臂屈伸机","T杆划船机","双杠","单杠","弹力带","药球","健腹轮","战绳","跳箱","平板凳","可调凳","深蹲架","踏板","自重"];
-
 const DIFFICULTY_ORDER = ["初级","中级","高级"];
+

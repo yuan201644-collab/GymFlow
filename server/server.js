@@ -47,7 +47,7 @@ function callAI(userContent) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      timeout: 60000,
+      timeout: 120000,
     }, (res) => {
       let data = '';
       res.on('data', c => data += c);

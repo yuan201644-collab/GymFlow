@@ -829,7 +829,7 @@ function renderTrainingPage() {
   }
   html += `</div>`;
 
-  html += `<div class="progress-section"><div class="progress-header"><div><div class="day-label" style="font-size:17px;">${plan.emoji} ${plan.label}</div><div class="day-subtitle" style="font-size:12px;color:var(--muted);">${plan.subtitle} · <span class="history-link" onclick="showHistory()">📋 历史</span> · <span class="history-link" onclick="generateWeeklyReport()">📊 周报</span></div></div><div class="progress-count"><span id="completed-count">${completedGroups}</span>/<span>${totalGroups}</span> 部位</div></div><div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:${totalGroups?(completedGroups/totalGroups*100):0}%"></div></div></div>`;
+  html += `<div class="progress-section"><div class="progress-header"><div><div class="day-label" style="font-size:17px;">${plan.emoji} ${plan.label}</div><div class="day-subtitle" style="font-size:12px;color:var(--muted);">${plan.subtitle} · <span class="history-link" onclick="showHistory()">📋 历史</span> · <span class="history-link" onclick="generateWeeklyReport()">📊 周报</span></div></div><div class="progress-count"><span class="history-link" onclick="resetTodayProgress()" style="color:var(--danger);margin-right:8px;font-size:12px;">🔄</span><span id="completed-count">${completedGroups}</span>/<span>${totalGroups}</span> 部位</div></div><div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:${totalGroups?(completedGroups/totalGroups*100):0}%"></div></div></div>`;
 
   plan.sections.forEach((section, secIdx) => {
     html += `<div class="mb-8"><span class="${section.badgeClass||'section-badge'}" style="opacity:0.7;">${section.badge}</span>`;
@@ -847,9 +847,10 @@ function renderTrainingPage() {
       html += `<span class="group-target-label">${groupDone?'✅':'🎯'} ${group.label}</span>`;
       html += `<div class="group-right"><span class="group-pick-hint">${pickHint}</span><span class="group-expand-icon" id="ge-${secIdx}-${grpIdx}">▼</span></div></div>`;
 
-      html += `<div class="group-exercises ${groupDone?'collapsed':''}" id="gx-${secIdx}-${grpIdx}">`;
+      html += `<div class="group-exercises" id="gx-${secIdx}-${grpIdx}">`;
 
-      group.exercises.forEach((ex, exIdx) => {
+      (group.exercises || []).forEach((ex, exIdx) => {
+        if (!ex || !ex.name) return;
         const exRec = record.exercises.find(e => e.name === ex.name && e.groupId === groupId);
         const exDone = exRec ? exRec.completed : false;
         const exWeight = exRec ? (exRec.weight || '') : '';
@@ -890,6 +891,17 @@ function renderTrainingPage() {
   html += `<div style="height:80px;"></div>`;
   container.innerHTML = html;
   renderBottomBar(completedGroups, totalGroups);
+  // 已完成组初始折叠未完成项
+  document.querySelectorAll('.group-done').forEach(gh => {
+    const gx = gh.nextElementSibling;
+    if (gx && gx.classList.contains('group-exercises')) {
+      gx.querySelectorAll('.group-exercise-card').forEach(c => {
+        if (!c.querySelector('.checkbox-custom.checked')) c.classList.add('collapse-hide');
+      });
+      const icon = gh.querySelector('.group-expand-icon');
+      if (icon) icon.textContent = '▶';
+    }
+  });
   // 初始化收藏星标状态
   if (typeof isFavorite === 'function') {
     setTimeout(() => {
@@ -919,24 +931,21 @@ function toggleGroup(uid) {
   const el = document.getElementById('gx-' + uid);
   const icon = document.getElementById('ge-' + uid);
   if (!el) return;
-  const isCollapsed = el.classList.contains('collapsed');
-  if (isCollapsed) {
-    // 展开：先设 max-height，去 collapsed，过渡完成后清除
-    el.style.maxHeight = el.scrollHeight + 'px';
-    el.classList.remove('collapsed');
-    if(icon) { icon.style.transform = 'rotate(0deg)'; }
-    el.addEventListener('transitionend', function h() {
-      el.style.maxHeight = '';
-      el.removeEventListener('transitionend', h);
-    });
+  const cards = el.querySelectorAll('.group-exercise-card');
+  const anyCollapsed = Array.from(cards).some(c => c.classList.contains('collapse-hide'));
+  if (anyCollapsed) {
+    // 展开全部
+    cards.forEach(c => c.classList.remove('collapse-hide'));
+    if(icon) icon.textContent = '▼';
   } else {
-    // 折叠：先锁 max-height，再加 collapsed
-    el.style.maxHeight = el.scrollHeight + 'px';
-    requestAnimationFrame(() => {
-      el.classList.add('collapsed');
-      el.style.maxHeight = '0px';
+    // 折叠未完成/未选中的动作
+    cards.forEach(c => {
+      const cb = c.querySelector('.checkbox-custom');
+      if (!cb || !cb.classList.contains('checked')) {
+        c.classList.add('collapse-hide');
+      }
     });
-    if(icon) { icon.style.transform = 'rotate(-90deg)'; }
+    if(icon) icon.textContent = '▶';
   }
 }
 
@@ -979,24 +988,38 @@ function selectAndToggle(secIdx, grpIdx, exIdx, groupId, exName) {
     if (groupDone) {
       if (gh) gh.classList.add('group-done');
       if (label) label.textContent = (label.textContent || '').replace('🎯', '✅');
-      // 平滑折叠 + 弹跳动画
-      if (gx && !gx.classList.contains('collapsed')) {
-        gx.style.maxHeight = gx.scrollHeight + 'px';
+      // 完成时折叠未完成的 + 弹跳；取消完成时全部展开
+      if (gx) {
         const icon = document.getElementById('ge-' + secIdx + '-' + grpIdx);
-        if (gh) { gh.classList.add('just-done'); setTimeout(() => gh.classList.remove('just-done'), 600); }
-        requestAnimationFrame(() => {
-          gx.classList.add('collapsed');
-          gx.style.maxHeight = '0px';
-        });
-        if (icon) icon.style.transform = 'rotate(-90deg)';
+        if (recEx.completed) {
+          // 完成了 → 折叠未完成项
+          if (gh) { gh.classList.add('just-done'); setTimeout(() => gh.classList.remove('just-done'), 600); }
+          setTimeout(() => {
+            gx.querySelectorAll('.group-exercise-card').forEach(c => {
+              const cb = c.querySelector('.checkbox-custom');
+              if (!cb || !cb.classList.contains('checked')) c.classList.add('collapse-hide');
+            });
+            if (icon) icon.textContent = '▶';
+          }, 400);
+        } else {
+          // 取消完成 → 全部展开
+          gx.querySelectorAll('.group-exercise-card').forEach(c => c.classList.remove('collapse-hide'));
+          if (icon) icon.textContent = '▼';
+        }
       }
     } else {
       if (gh) gh.classList.remove('group-done');
       if (label) label.textContent = (label.textContent || '').replace('✅', '🎯');
+      // 取消完成 → 全部展开
+      if (gx) {
+        gx.querySelectorAll('.group-exercise-card').forEach(c => c.classList.remove('collapse-hide'));
+        const icon = document.getElementById('ge-' + secIdx + '-' + grpIdx);
+        if (icon) icon.textContent = '▼';
+      }
     }
   }
 
-  // 3. 更新进度条
+  // 3. 更新进度条 + 清零按钮
   const allGroups = getAllGroups(plan);
   let completedGroups = 0;
   allGroups.forEach(g => { if (isGroupCompleted(g, record)) completedGroups++; });
@@ -1131,7 +1154,6 @@ function closePlanSwitcher() {
 function switchToPlan(id) {
   setActivePlan(id);
   closePlanSwitcher();
-  // 自动切换到该方案的第一个训练日
   if (id !== 'default') {
     const plans = getPlans();
     const ap = plans.find(p => p.id === id);
@@ -1141,7 +1163,22 @@ function switchToPlan(id) {
   } else {
     switchTodayWorkoutType('push');
   }
-  showToast(id === 'default' ? '已切换到默认三分化' : '已切换方案：' + (ap ? ap.name : ''), 'success');
+  // 确保显示训练页
+  if (typeof navigateTo === 'function') navigateTo('training');
+  showToast(id === 'default' ? '已切换到默认三分化' : '已切换方案：' + (getPlans().find(p=>p.id===id)?.name || ''), 'success');
+  renderTrainingPage();
+}
+
+function resetTodayProgress() {
+  if (!confirm('确定要清除今日所有完成记录吗？此操作不可恢复。')) return;
+  const record = getTodayRecord();
+  record.exercises.forEach(e => { e.completed = false; });
+  record.cardio = null;
+  record.aiRating = '';
+  record.aiSummary = '';
+  record.completed = false;
+  saveTodayRecord(record);
+  showToast('今日进度已清零', 'success');
   renderTrainingPage();
 }
 

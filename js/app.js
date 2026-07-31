@@ -91,51 +91,74 @@ function renderMePage() {
   c.innerHTML = h;
 }
 
-async function startInfoWizard() {
-  const s = getSettings();
-  const prompt = `请帮我完善个人健身资料。我是新用户，请用友好的方式依次问我以下问题（一次问一个，等我回答）：1. 性别？2. 年龄？3. 身高(cm)？4. 当前体重(kg)？5. 健身目标？问完后请总结并输出JSON格式：{"gender":"男/女","age":25,"height":175,"goal":"增肌减脂"}，不要markdown，只输出最后的JSON。`;
-  showToast('🤖 AI正在准备问题...', 'success');
+// AI 信息收集向导（交互式对话）
+let infoWizard = { step: 0, answers: {} };
+const INFO_STEPS = [
+  { key: 'gender', question: '你的性别是？', field: 'gender', hint: '男 / 女' },
+  { key: 'age', question: '你的年龄？', field: 'age', hint: '比如 20 岁' },
+  { key: 'height', question: '你的身高（cm）？', field: 'height', hint: '比如 175 cm' },
+  { key: 'goal', question: '你的健身目标是什么？', field: 'goal', hint: '比如：增肌、减脂、塑形、提升力量' },
+];
 
-  try {
-    const resp = await fetch(getAIServer()+'/api/ask', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({password:getAIPassword(),deviceId:getDeviceId(),content:prompt})
-    });
-    const data = await resp.json();
-    if (data.success) {
-      // 尝试从回复中提取信息
-      const raw = data.answer.replace(/```json|```/g,'').trim();
-      const jsonMatch = raw.match(/\{[\s\S]*"gender"[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          const info = JSON.parse(jsonMatch[0]);
-          s.userInfo.gender = info.gender || '';
-          s.userInfo.age = parseInt(info.age) || 0;
-          s.userInfo.height = parseInt(info.height) || 0;
-          if (info.goal) s.userInfo.goal = info.goal;
-          saveSettings(s);
-          showToast('✅ 信息已完善', 'success');
-          renderMePage();
-          return;
-        } catch(e) {}
-      }
-      // JSON 解析失败，用对话提取
-      const answer = data.answer;
-      if (answer.includes('男')) s.userInfo.gender = '男';
-      else if (answer.includes('女')) s.userInfo.gender = '女';
-      const ageMatch = answer.match(/(\d+)\s*岁/);
-      if (ageMatch) s.userInfo.age = parseInt(ageMatch[1]);
-      const heightMatch = answer.match(/(\d+)\s*cm/);
-      if (heightMatch) s.userInfo.height = parseInt(heightMatch[1]);
-      saveSettings(s);
-      showToast('✅ AI 已帮你填写基本信息', 'success');
-      renderMePage();
-    } else {
-      showToast('AI 暂时不可用，请手动填写', 'error');
-    }
-  } catch(e) {
-    showToast('AI 服务未连接，请手动填写', 'error');
+function startInfoWizard() {
+  infoWizard = { step: 0, answers: {} };
+  showInfoWizardDialog();
+}
+
+function showInfoWizardDialog() {
+  const step = INFO_STEPS[infoWizard.step];
+  // 移除旧弹窗
+  const old = document.getElementById('info-wizard-overlay');
+  if (old) old.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'info-wizard-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `<div style="background:var(--surface);border-radius:var(--radius);padding:24px;max-width:340px;width:90%;animation:fadeUp .3s var(--ease-out);text-align:center;">
+    <div style="font-size:40px;margin-bottom:12px;">🤖</div>
+    <h3 style="margin-bottom:4px;">完善个人信息 (${infoWizard.step+1}/${INFO_STEPS.length})</h3>
+    <p style="margin-bottom:16px;">${step.question}</p>
+    <input type="text" class="form-input" id="info-wizard-input" placeholder="${step.hint}" autofocus onkeydown="if(event.key==='Enter')infoWizardNext()" style="text-align:center;font-size:18px;">
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('info-wizard-overlay').remove()" style="flex:1;">跳过</button>
+      <button class="btn btn-accent btn-sm" onclick="infoWizardNext()" style="flex:1;">${infoWizard.step===INFO_STEPS.length-1?'完成':'下一步 →'}</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  setTimeout(() => document.getElementById('info-wizard-input')?.focus(), 200);
+}
+
+function infoWizardNext() {
+  const input = document.getElementById('info-wizard-input');
+  const val = (input?.value || '').trim();
+  const step = INFO_STEPS[infoWizard.step];
+
+  if (step.field === 'age' || step.field === 'height') {
+    const n = parseInt(val);
+    if (!n || n < 1 || n > 300) { showToast('请输入有效数值', 'error'); return; }
+    infoWizard.answers[step.field] = n;
+  } else {
+    infoWizard.answers[step.field] = val || step.hint;
   }
+
+  infoWizard.step++;
+  if (infoWizard.step >= INFO_STEPS.length) {
+    infoWizardSave();
+    return;
+  }
+  showInfoWizardDialog();
+}
+
+function infoWizardSave() {
+  const s = getSettings();
+  s.userInfo.gender = infoWizard.answers.gender || '';
+  s.userInfo.age = infoWizard.answers.age || 0;
+  s.userInfo.height = infoWizard.answers.height || 0;
+  s.userInfo.goal = infoWizard.answers.goal || '';
+  saveSettings(s);
+  document.getElementById('info-wizard-overlay')?.remove();
+  showToast('✅ 信息已完善', 'success');
+  renderMePage();
 }
 
 function saveAIMe() {
@@ -607,104 +630,35 @@ async function coachRegenerate(customPrompt) {
 async function coachGeneratePlan() {
   coachLoading = true;
   renderAICoach(document.getElementById('features-content'));
-
   const status = document.getElementById('coach-status');
-  if (status) status.textContent = '🧠 AI正在为你定制训练方案...';
-
-  // Build comprehensive prompt
-  const s = getSettings();
-  let prompt = `## 用户信息\n性别：${s.userInfo.gender} · 年龄：${s.userInfo.age} · 身高：${s.userInfo.height}cm\n`;
-  prompt += `## 训练问卷\n`;
-  COACH_STEPS.forEach(st => { prompt += `${st.question} → ${coachProfile[st.key]}\n`; });
-  // 注入体态信息
-  const bp = getBodyProfile();
-  prompt += `\n## 体态信息\n`;
-  prompt += bp && bp.postureTags.length > 0 ? `体态问题：${bp.postureTags.join('、')}\n注意：方案需考虑体态矫正需求，对相关部位动作做安全替换或增加矫正动作。` : '体态正常，无特殊限制。';
-  prompt += `\n\n## 要求\n根据以上信息定制训练方案。\n用户选择的分化方式：${coachProfile.split}`;
-  prompt += `\n如选"由你推荐"则根据训练天数(${coachProfile.days})判断：≤3天→三分化，4-5天→五分化`;
-  prompt += `\n当前体重：${(getWeights().slice(-1)[0]||{}).weight||'未知'}kg\n每次训练时长：${coachProfile.time}`;
-  // 动作库参考（取代表性动作，控制token）
-  const sampleEx = EXERCISE_DB.filter(e => e.type === '复合' || e.difficulty !== '高级').slice(0, 80).map(e => e.name).join('、');
-  // 强制规范（3+1或5+1结构）
-  const splitType = (coachProfile.split && coachProfile.split.includes('五')) ? '5day' : '3day';
-  const dayCount = splitType === '5day' ? 5 : 3;
-  prompt += `\n\n## 强制规范 — 必须严格遵守`;
-  prompt += `\n- 方案类型：${splitType}（${dayCount}个训练日+1个休息日）`;
-  prompt += `\n- 每个训练日必须包含3个section：warmup(热身)/main(正式)/stretch(拉伸)`;
-  prompt += `\n- warmup固定2组(各2选1)：有氧预热(跑步机快走/跳绳)、关节激活(肩髋动态拉伸/泡沫轴滚动)`;
-  prompt += `\n- main每组2-3个备选动作(必须从动作库选)，pickHint如"3选1-2"`;
-  prompt += `\n- stretch固定2组(各2选1)：上肢拉伸(胸肌门框拉伸/背阔肌拉伸)、下肢拉伸(股四头肌拉伸/腘绳肌拉伸)`;
-  prompt += `\n- 休息日：1个main section，含核心训练(2选1:平板支撑/死虫式)+体态拉伸(2选1:胸肌门框拉伸/鸽子式)`;
-  prompt += `\n- 严禁自创动作名，所有名称必须完全匹配以下动作库:\n${sampleEx}`;
-  prompt += `\n- 输出纯JSON(无markdown)，格式:\n{"name":"方案名","type":"${splitType}","description":"简介","days":[{"label":"训练日1","sections":[{"type":"warmup","title":"热身","groups":[...]},{"type":"main","title":"正式","groups":[...]},{"type":"stretch","title":"拉伸","groups":[...]}]},{"label":"休息日","sections":[{"type":"main","title":"休息日","groups":[...]}]}]}`;
-
+  if (status) status.textContent = '🧠 正在计算最优训练方案...';
   try {
-    const resp = await fetch(getAIServer()+'/api/ask', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({password:getAIPassword(),deviceId:getDeviceId(),content:prompt})
-    });
-    const data = await resp.json();
-    if (data.success) {
-      // 尝试解析JSON（多种格式兼容）
-      let plan = null;
-      let raw = data.answer;
-      // 去掉markdown代码块
-      raw = raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
-      // 尝试提取JSON对象
-      const jsonMatch = raw.match(/\{[\s\S]*"name"[\s\S]*"days"[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          const json = JSON.parse(jsonMatch[0]);
-          if (json.name && json.days && Array.isArray(json.days)) {
-            // 清洗数据：确保 groups/exercises 为数组，过滤 null
-            json.days = json.days.filter(d => d && typeof d === 'object').map(d => {
-              const sections = (d.sections || []).map(s => ({
-                type: s.type || 'main', title: s.title || '', groups: (s.groups || []).filter(g => g && Array.isArray(g.exercises)).map(g => ({
-                  label: g.label || '', pickHint: g.pickHint || '1选1',
-                  exercises: (g.exercises || []).filter(ex => ex && ex.name).map(ex => ({ name: ex.name, sets: ex.sets || '3组×10-12次' }))
-                }))
-              }));
-              return { label: d.label || '训练', sections };
-            });
-            plan = json;
-          }
-        } catch(e) { console.log('JSON parse error:', e.message); }
-      }
-
-      let resultText = '';
-      if (plan) {
-        pendingPlan = plan; // 暂存，等用户确认
-        resultText = `✅ 方案预览：\n\n📋 ${plan.type === '5day' ? '五分化' : '三分化'} · ${plan.days.length}天\n`;
-        plan.days.forEach(d => {
-          resultText += `\n▸ ${d.label}`;
-          // 新格式：sections[].groups[]
-          const groups = d.sections ? d.sections.flatMap(s => s.groups || []) : (d.groups || []);
-          const mainGroups = d.sections ? d.sections.filter(s => s.type === 'main' || !s.type).flatMap(s => s.groups || []) : groups;
-          mainGroups.forEach(g => {
-            if (g.exercises) g.exercises.slice(0, 4).forEach(ex => {
-              resultText += `\n  · ${ex.name}  ${ex.sets||''}`;
-            });
+    const ctx = buildContext(coachProfile);
+    const plan = buildPlan(ctx);
+    pendingPlan = plan;
+    coachLoading = false;
+    let resultText = '✅ 方案已生成！\n\n📋 ' + (plan.type==='5day'?'五分化':'三分化') + ' · ' + plan.days.length + '天';
+    plan.days.forEach(d => {
+      resultText += '\n\n▸ ' + d.label;
+      const mainSections = (d.sections || []).filter(s => s.type === 'main' || !s.type);
+      mainSections.forEach(s => {
+        (s.groups || []).forEach(g => {
+          if (g.exercises) g.exercises.slice(0, 3).forEach(ex => {
+            resultText += '\n  · ' + ex.name + '  ' + (ex.sets||'');
           });
         });
-        resultText += `\n\n──────────────`;
-        coachPlanGenerated = null; // 等用户决定
-        if (status) status.textContent = '请选择保存或放弃';
-      } else {
-        resultText = '⚠️ AI返回了方案但格式无法解析，请重试\n\n原始回复：\n' + data.answer.substring(0, 200) + '...';
-        coachPlanGenerated = null;
-        if (status) status.textContent = 'JSON解析失败，点击重试';
-      }
-      const msgOpts = pendingPlan ? ['💾 保存方案', '✏️ 修改调整', '🗑️ 放弃', '🔄 重新生成'] : ['🔄 重新生成'];
-      coachMessages.push({ role: 'ai', content: resultText, options: msgOpts });
-    } else {
-      coachMessages.push({ role: 'ai', content: '⚠️ 生成失败：' + data.error, options: ['🔄 重试'] });
-      if (status) status.textContent = '';
-    }
+      });
+    });
+    resultText += '\n\n──────────────';
+    coachPlanGenerated = null;
+    if (status) status.textContent = '本地引擎生成 · 100%动作匹配';
+    const msgOpts = ['💾 保存方案', '✏️ 修改调整', '🗑️ 放弃', '🔄 重新生成'];
+    coachMessages.push({ role: 'ai', content: resultText, options: msgOpts });
   } catch(e) {
-    coachMessages.push({ role: 'ai', content: '⚠️ 无法连接AI服务', options: ['🔄 重试'] });
+    coachLoading = false;
+    coachMessages.push({ role: 'ai', content: '⚠️ 方案生成失败：' + e.message, options: ['🔄 重试'] });
     if (status) status.textContent = '';
   }
-  coachLoading = false;
   renderAICoach(document.getElementById('features-content'));
 }
 

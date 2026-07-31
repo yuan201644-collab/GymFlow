@@ -58,12 +58,22 @@ function renderAIPage() {
   h += '<div class="chat-box" id="chat-box">';
 
   if (aiMessages.length === 0) {
-    h += '<div class="chat-empty"><div class="chat-empty-icon">💬</div><p>问我任何健身相关问题</p><div class="chat-suggestions">';
-    h += '<button class="chat-sugg-btn" onclick="askSuggestion(\'练胸日注意什么？\')">练胸日注意什么？</button>';
-    h += '<button class="chat-sugg-btn" onclick="askSuggestion(\'减脂期间晚餐建议\')">减脂晚餐建议</button>';
-    h += '<button class="chat-sugg-btn" onclick="askSuggestion(\'圆肩怎么改善？\')">圆肩怎么改善？</button>';
-    h += '<button class="chat-sugg-btn" onclick="askSuggestion(\'今天练腿推荐动作？\')">练腿推荐动作</button>';
-    h += '</div></div>';
+    const allSuggestions = [
+      '练胸日注意什么？','减脂晚餐吃什么？','圆肩怎么改善？','练腿推荐动作？',
+      '深蹲膝盖疼怎么办？','减脂期蛋白质吃多少？','肩峰撞击怎么避免？',
+      '背日必练动作有哪些？','新手三分化怎么安排？','有氧和无氧怎么搭配？',
+      '瘦大腿最有效的动作？','增肌期一天吃几顿？','杠铃卧推标准动作要点',
+      '如何判断训练过度？','手臂怎么练粗？','腘绳肌训练推荐',
+      '练前吃什么比较好？','减脂不掉肌肉的方法','改善驼背的训练',
+      '休息日应该做什么？','三分化和五分化哪个好？','女生练臀不粗腿',
+      '体脂怎么估算？','大重量少次还是轻重量多次？','空腹训练好不好？',
+    ];
+    // 随机选 6 个
+    const picks = allSuggestions.sort(() => Math.random() - 0.5).slice(0, 6);
+    h += '<div class="chat-empty"><div class="chat-empty-icon">💬</div><p>问我任何健身相关问题</p>';
+    h += '<div class="chat-sugg-scroll"><div class="chat-suggestions">';
+    picks.forEach(q => { h += `<button class="chat-sugg-btn" onclick="askSuggestion('${q}')">${q}</button>`; });
+    h += '</div></div></div>';
   } else {
     aiMessages.forEach((msg, i) => {
       h += '<div class="chat-msg ' + msg.role + '" style="animation:fadeUp .3s var(--ease-out) both;animation-delay:' + (i * 0.05) + 's;">';
@@ -89,7 +99,8 @@ function renderAIPage() {
 
 // ===== 快捷提问 =====
 function askSuggestion(text) {
-  document.getElementById('chat-input').value = text;
+  const input = document.getElementById('chat-input');
+  if (input) input.value = text;
   sendAIMessage();
 }
 
@@ -100,14 +111,17 @@ async function sendAIMessage() {
   if (!text || aiLoading) return;
 
   input.value = '';
+
+  // 先检测跳转意图（跳过AI调用，直接跳转）
+  if (checkAIIntentAndNavigate(text)) return;
+
   aiMessages.push({ role: 'user', content: text });
   aiLoading = true;
-  renderAIPage();
+  appendChatMessage('user', text);
+  appendChatLoading();
 
-  // 随机思考文案
-  const thinkingTexts = ['分析中...', '整理健身知识...', '查阅训练方案...', '评估动作要点...'];
   const statusEl = document.getElementById('chat-status');
-  let dotCount = 0;
+  const thinkingTexts = ['分析中...', '整理健身知识...', '查阅训练方案...', '评估动作要点...'];
   const statusInterval = setInterval(() => {
     if (statusEl) statusEl.textContent = '🤔 ' + thinkingTexts[Math.floor(Math.random() * thinkingTexts.length)];
   }, 1500);
@@ -121,19 +135,65 @@ async function sendAIMessage() {
     const data = await resp.json();
 
     clearInterval(statusInterval);
+    removeChatLoading();
     if (data.success) {
       aiMessages.push({ role: 'ai', content: data.answer });
+      appendChatMessage('ai', data.answer);
       if (statusEl) statusEl.textContent = '剩余 ' + (data.usage?.remaining || '?') + ' 次';
     } else {
       aiMessages.push({ role: 'ai', content: '⚠️ ' + data.error });
+      appendChatMessage('ai', '⚠️ ' + data.error);
       if (statusEl) statusEl.textContent = '请求失败';
     }
   } catch (e) {
     clearInterval(statusInterval);
-    aiMessages.push({ role: 'ai', content: '⚠️ 无法连接 AI 服务\n\n请确认：\n1. 电脑上已启动后端 (cd server && node server.js)\n2. 已启动隧道 (cloudflared tunnel --url http://localhost:3000)\n3. 「我的→AI服务」地址正确' });
-    if (statusEl) statusEl.textContent = '连接失败 · 检查AI服务配置';
+    removeChatLoading();
+    aiMessages.push({ role: 'ai', content: '⚠️ 无法连接 AI 服务\n\n请确认：\n1. 电脑上已启动后端\n2. 已启动隧道\n3. AI服务地址正确' });
+    appendChatMessage('ai', '⚠️ 无法连接 AI 服务');
+    if (statusEl) statusEl.textContent = '连接失败';
   }
 
   aiLoading = false;
-  renderAIPage();
+}
+
+function appendChatMessage(role, content) {
+  const box = document.getElementById('chat-box');
+  if (!box) return;
+  box.insertAdjacentHTML('beforeend', `<div class="chat-msg ${role}" style="animation:fadeUp .25s var(--ease-out) both;"><div class="chat-bubble">${content.replace(/\n/g,'<br>')}</div></div>`);
+  box.scrollTop = box.scrollHeight;
+}
+
+function appendChatLoading() {
+  const box = document.getElementById('chat-box');
+  if (!box) return;
+  box.insertAdjacentHTML('beforeend', '<div class="chat-msg ai" id="chat-loading"><div class="chat-bubble typing-dots"><span></span><span></span><span></span></div></div>');
+  box.scrollTop = box.scrollHeight;
+}
+
+function removeChatLoading() {
+  const el = document.getElementById('chat-loading');
+  if (el) el.remove();
+}
+
+function checkAIIntentAndNavigate(userText) {
+  const t = userText.toLowerCase();
+  let target = null, label = '';
+  if (t.includes('训练方案') || t.includes('定制') || t.includes('制定') || t.includes('生成计划')) {
+    target = 'ai-coach'; label = 'AI训练方案';
+  } else if (t.includes('统计') || t.includes('数据') || t.includes('报告')) {
+    target = 'stats'; label = '数据统计';
+  } else if (t.includes('体重') || t.includes('bmi')) {
+    target = 'weight'; label = '体重追踪';
+  } else if (t.includes('方案库') || t.includes('切换方案')) {
+    target = 'plans'; label = '方案库';
+  } else if (t.includes('体态') || t.includes('圆肩') || t.includes('溜肩') || t.includes('肱骨')) {
+    target = 'posture'; label = '体态矫正';
+  }
+  if (target) {
+    showToast(`已识别意图，跳转到「${label}」`,'success');
+    navigateTo('features');
+    setTimeout(() => openFeatureModule(target), 200);
+    return true;
+  }
+  return false;
 }

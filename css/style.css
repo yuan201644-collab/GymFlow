@@ -11,7 +11,7 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16px;-webkit-tap-highlight-color:transparent}
-body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100dvh;-webkit-font-smoothing:antialiased;user-select:none}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100dvh;-webkit-font-smoothing:antialiased}
 
 /* Keyframes */
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
@@ -117,8 +117,9 @@ h1{font-size:22px;font-weight:700;letter-spacing:-.3px}h2{font-size:18px;font-we
 .group-header.group-done .group-pick-hint{color:var(--accent);background:rgba(0,200,83,.1)}
 .group-header.just-done{animation:groupPop .6s var(--ease-out)}
 @keyframes groupPop{0%{transform:scale(1)}15%{transform:scale(1.03);background:rgba(0,200,83,.08);border-radius:8px}100%{transform:scale(1);background:transparent}}
-.group-exercises{overflow:hidden;max-height:2000px;transition:max-height .4s var(--ease-out),opacity .35s var(--ease-out),margin .4s var(--ease-out);opacity:1}
-.group-exercises.collapsed{max-height:0!important;opacity:0;margin-bottom:0!important}
+.group-exercises{overflow:hidden;transition:all .35s var(--ease-out)}
+.group-exercise-card{transition:all .3s var(--ease-out),opacity .25s var(--ease-out)}
+.group-exercise-card.collapse-hide{max-height:0!important;opacity:0;margin-bottom:0!important;padding-top:0!important;padding-bottom:0!important;border-width:0!important;overflow:hidden}
 
 /* Exercise Card */
 .card-header{display:flex;justify-content:space-between;align-items:flex-start}
@@ -243,6 +244,7 @@ h1{font-size:22px;font-weight:700;letter-spacing:-.3px}h2{font-size:18px;font-we
 .chat-box{flex:1;display:flex;flex-direction:column;gap:10px;overflow-y:auto;padding-bottom:78px}
 .chat-empty{text-align:center;padding:60px 20px}.chat-empty-icon{font-size:40px;margin-bottom:10px}
 .chat-empty p{margin-bottom:14px}
+.chat-sugg-scroll{max-height:130px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 4px}
 .chat-suggestions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .chat-sugg-btn{background:var(--bg);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--font);font-size:13px;padding:8px 16px;cursor:pointer;transition:all .2s;min-height:40px}
 .chat-sugg-btn:active{border-color:var(--accent);color:var(--accent)}
