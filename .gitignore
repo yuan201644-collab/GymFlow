@@ -2,7 +2,3 @@
 *.apk
 .DS_Store
 Thumbs.db
-
-# Server — 密钥和配置（绝不上传）
-server/config.json
-server/node_modules/
