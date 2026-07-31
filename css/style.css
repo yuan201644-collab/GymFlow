@@ -91,7 +91,7 @@ h1{font-size:22px;font-weight:700;letter-spacing:-.3px}h2{font-size:18px;font-we
 
 /* Checkbox */
 .checkbox-wrapper{display:flex;align-items:center;gap:10px;cursor:pointer;min-height:44px}
-.checkbox-custom{width:28px;height:28px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .25s var(--ease-in-out);font-size:14px;color:transparent;background:transparent}
+.checkbox-custom{width:28px;height:28px;border-radius:50%;border:2px solid #555;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .25s var(--ease-in-out);font-size:14px;color:transparent;background:transparent}
 .checkbox-custom.checked{animation:popIn .3s var(--ease-out);background:var(--accent);border-color:var(--accent);color:#000}
 
 /* Plan Selector */
