@@ -790,6 +790,12 @@ p  { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
   transition: all 0.15s;
 }
 
+.calendar-day {
+  position: relative;
+  flex-direction: column;
+  gap: 0;
+}
+
 .calendar-day.trained {
   background: var(--accent-dim);
   color: var(--accent);
@@ -799,6 +805,35 @@ p  { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
 .calendar-day.today {
   border: 1px solid var(--accent);
   color: var(--accent);
+}
+
+/* 训练类型颜色标记 */
+.cal-type-push { color: #00e676; background: rgba(0,230,118,0.12); font-weight: 700; }
+.cal-type-pull { color: #00c8c8; background: rgba(0,200,200,0.12); font-weight: 700; }
+.cal-type-legs { color: #c896ff; background: rgba(200,150,255,0.12); font-weight: 700; }
+.cal-type-rest { color: #ffab40; background: rgba(255,171,64,0.12); font-weight: 700; }
+
+.cal-dot {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  margin-top: -2px;
+}
+
+.cal-dot-leg {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 2px;
+  vertical-align: middle;
+}
+
+.cal-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .calendar-day.empty {
@@ -1090,6 +1125,67 @@ p  { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
   --danger: #d32f2f;
   --danger-dim: rgba(211, 47, 47, 0.1);
   --border: #e0e0e0;
+}
+
+/* ========== History ========== */
+.history-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-back-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-family: var(--font);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.history-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.history-edit-btn {
+  background: var(--accent-dim);
+  border: none;
+  color: var(--accent);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.history-link {
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.history-link:hover {
+  text-decoration: underline;
+}
+
+.history-card {
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.history-card:active {
+  background: var(--bg-input);
+}
+
+.history-card.history-done {
+  border-left: 3px solid var(--accent);
 }
 
 /* ========== Theme Switcher ========== */

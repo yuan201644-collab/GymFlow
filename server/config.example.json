@@ -1,0 +1,22 @@
+{
+  "_说明": "复制本文件为 config.json，填入你的真实配置。config.json 不会被上传到 Git。",
+
+  "ai": {
+    "apiUrl": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+    "apiKey": "你的智谱API密钥，从 https://open.bigmodel.cn 获取",
+    "model": "glm-4-flash"
+  },
+
+  "auth": {
+    "password": "自己设一个访问密码，英文+数字，8位以上"
+  },
+
+  "rateLimit": {
+    "maxPerDevicePerDay": 30,
+    "maxConcurrentUsers": 15
+  },
+
+  "server": {
+    "port": 3000
+  }
+}

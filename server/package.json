@@ -1,0 +1,13 @@
+{
+  "name": "gymflow-ai",
+  "version": "1.0.0",
+  "description": "GymFlow AI 后端代理 — 对接智谱 GLM-4-Flash，为健身助手 APK 提供 AI 问答",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}

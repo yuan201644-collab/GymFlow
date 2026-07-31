@@ -49,10 +49,7 @@ function renderStatsPage() {
         </div>
       </div>
       <div class="calendar-grid" id="cal-grid"></div>
-      <div class="mt-16 flex-between" style="font-size:12px;color:var(--text-muted);">
-        <span>🟢 已训练</span>
-        <span>⚪ 未训练</span>
-      </div>
+      <div class="cal-legend" id="cal-legend" style="display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:12px;color:var(--text-muted);"></div>
     </div>
   `;
 
@@ -215,6 +212,17 @@ function navigateCalendar(delta) {
   renderCalendar();
 }
 
+function getDateTypeMap() {
+  const records = getRecords();
+  const map = {};
+  records.forEach(r => {
+    if (r.completed || r.exercises.length > 0) {
+      map[r.date] = r.type;
+    }
+  });
+  return map;
+}
+
 function renderCalendar() {
   const labelEl = document.getElementById('cal-month-label');
   const gridEl = document.getElementById('cal-grid');
@@ -223,39 +231,50 @@ function renderCalendar() {
   const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
   labelEl.textContent = `${months[calendarMonth]} ${calendarYear}`;
 
-  const trainedDates = getTrainedDates();
+  const dateTypeMap = getDateTypeMap();
   const today = todayStr();
   const daysInMonth = getDaysInMonth(calendarYear, calendarMonth);
   const firstDay = getFirstDayOfMonth(calendarYear, calendarMonth);
 
+  const typeEmoji = { push: '🏋️', pull: '🏋️', legs: '🏋️', rest: '🧘' };
+  const typeLabel = { push: '推', pull: '拉', legs: '腿', rest: '休' };
+
   let html = '';
 
-  // 星期头（周一开始）
+  // 星期头
   ['一', '二', '三', '四', '五', '六', '日'].forEach(day => {
     html += `<div class="calendar-day-header">${day}</div>`;
   });
 
-  // 调整 firstDay: 0=Sun → 转换为周一=0
   const startOffset = (firstDay + 6) % 7;
 
-  // 填充前面的空白
   for (let i = 0; i < startOffset; i++) {
     html += '<div class="calendar-day empty"></div>';
   }
 
-  // 日期格子
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const isTrained = trainedDates.has(dateStr);
+    const type = dateTypeMap[dateStr] || null;
     const isToday = dateStr === today;
     const cls = [
       'calendar-day',
-      isTrained ? 'trained' : '',
+      type ? `cal-type-${type}` : '',
       isToday ? 'today' : '',
     ].filter(Boolean).join(' ');
 
-    html += `<div class="${cls}">${day}</div>`;
+    html += `<div class="${cls}" title="${type ? typeLabel[type] + '日' : ''}">${day}${type ? '<span class="cal-dot">' + typeLabel[type] + '</span>' : ''}</div>`;
   }
 
   gridEl.innerHTML = html;
+
+  // 图例
+  const legendEl = document.getElementById('cal-legend');
+  if (legendEl) {
+    legendEl.innerHTML = `
+      <span class="cal-legend-item"><span class="cal-dot-leg" style="background:#00e676;"></span> 推日</span>
+      <span class="cal-legend-item"><span class="cal-dot-leg" style="background:#00c8c8;"></span> 拉日</span>
+      <span class="cal-legend-item"><span class="cal-dot-leg" style="background:#c896ff;"></span> 臀腿日</span>
+      <span class="cal-legend-item"><span class="cal-dot-leg" style="background:#ffab40;"></span> 休息日</span>
+    `;
+  }
 }

@@ -646,7 +646,7 @@ function renderTrainingPage() {
       <div class="progress-header">
         <div>
           <div class="day-label">${plan.emoji} ${plan.label}</div>
-          <div class="day-subtitle">${plan.subtitle}</div>
+          <div class="day-subtitle">${plan.subtitle} · <span class="history-link" onclick="showHistory()">📋 历史</span></div>
         </div>
         <div class="progress-count">
           <span id="completed-count">${completedGroups}</span>/<span>${totalGroups}</span> 部位完成
@@ -921,4 +921,223 @@ function switchTrainingDay(type) {
 
 function escapeHtml(str) {
   return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+// ========== 训练历史 ==========
+
+let historyView = null; // null | 'list' | 'detail'
+let historyDetailDate = null;
+let historyEditMode = false;
+
+function showHistory() {
+  historyView = 'list';
+  historyEditMode = false;
+  renderHistoryList();
+}
+
+function backToTraining() {
+  historyView = null;
+  historyDetailDate = null;
+  historyEditMode = false;
+  renderTrainingPage();
+}
+
+function renderHistoryList() {
+  const container = document.getElementById('training-content');
+  const records = getRecords().sort((a, b) => b.date.localeCompare(a.date));
+
+  let html = `
+    <div class="history-topbar">
+      <button class="history-back-btn" onclick="backToTraining()">← 返回</button>
+      <span class="history-title">训练历史</span>
+      <span></span>
+    </div>
+  `;
+
+  if (records.length === 0) {
+    html += `
+      <div class="empty-state mt-24">
+        <span class="empty-icon">📋</span>
+        <p>暂无训练记录</p>
+      </div>
+    `;
+  } else {
+    records.forEach(r => {
+      const plan = getTrainingPlan(r.type);
+      const exDone = r.exercises.filter(e => e.completed).length;
+      const totalEx = r.exercises.length;
+      html += `
+        <div class="card history-card ${r.completed ? 'history-done' : ''}" onclick="viewHistoryRecord('${r.id}')">
+          <div class="flex-between">
+            <div>
+              <div style="font-weight:700;font-size:15px;">${plan.emoji} ${plan.label} · ${formatDate(r.date)}</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+                ${r.completed ? '✅ 已完成' : '⬜ 未完成'} · ${exDone}/${totalEx} 动作
+              </div>
+            </div>
+            <div style="font-size:20px;color:var(--text-muted);">→</div>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  container.innerHTML = html;
+}
+
+function viewHistoryRecord(id) {
+  const records = getRecords();
+  const record = records.find(r => r.id === id);
+  if (!record) return;
+
+  historyView = 'detail';
+  historyDetailDate = record.date;
+  historyEditMode = false;
+  renderHistoryDetail(record);
+}
+
+function renderHistoryDetail(record) {
+  const container = document.getElementById('training-content');
+  const plan = getTrainingPlan(record.type);
+  const allExFlat = getAllExercisesFlat(plan);
+  const planTypeLabel = plan.emoji + ' ' + plan.label;
+
+  let html = `
+    <div class="history-topbar">
+      <button class="history-back-btn" onclick="showHistory()">← 返回</button>
+      <span class="history-title">${planTypeLabel} · ${formatDate(record.date)}</span>
+      <button class="history-edit-btn" id="hist-edit-toggle" onclick="toggleHistoryEdit()">
+        ${historyEditMode ? '💾 保存' : '✏️ 编辑'}
+      </button>
+    </div>
+  `;
+
+  // 有动作数据时展示
+  if (allExFlat.length > 0) {
+    let globalIdx = 0;
+    plan.sections.forEach(section => {
+      html += `<div class="mb-8">`;
+      html += `<span class="${section.badgeClass || 'section-badge'}" style="opacity:0.6;">${section.badge}</span>`;
+
+      section.groups.forEach(group => {
+        html += `<div class="group-header" style="opacity:0.7;"><span class="group-target-label">🎯 ${group.label}</span></div>`;
+
+        group.exercises.forEach(ex => {
+          const idx = globalIdx++;
+          const recEx = record.exercises.find(e => e.name === ex.name && e.groupId === group.id);
+          const isCompleted = recEx ? recEx.completed : false;
+          const weight = recEx ? (recEx.weight || '') : '';
+
+          if (historyEditMode) {
+            html += `
+              <div class="card group-exercise-card ${isCompleted ? 'completed' : ''}" id="hist-card-${idx}">
+                <div class="card-header">
+                  <div class="checkbox-wrapper" onclick="toggleHistoryExercise('${record.id}','${group.id}','${escapeHtml(ex.name)}',${idx})">
+                    <div class="checkbox-custom ${isCompleted ? 'checked' : ''}" id="hist-check-${idx}">${isCompleted ? '✓' : ''}</div>
+                    <div style="flex:1;">
+                      <div class="card-title" style="font-size:14px;">${ex.name}</div>
+                      <div class="card-meta">${ex.sets}</div>
+                      ${section.type === 'main' && ex.equipment ? `
+                      <div class="weight-row" onclick="stopPropagation(event)">
+                        <span class="weight-label">🏋️</span>
+                        <input type="number" class="weight-input-sm" value="${weight}"
+                          onchange="updateHistoryWeight('${record.id}','${group.id}','${escapeHtml(ex.name)}',this.value)"
+                          onfocus="this.select()" step="5" min="0" max="500">
+                        <span class="weight-unit">kg</span>
+                      </div>` : ''}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `;
+          } else {
+            html += `
+              <div class="card group-exercise-card ${isCompleted ? 'completed' : ''}" style="opacity:${isCompleted ? '1' : '0.45'};">
+                <div class="card-header">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <div class="checkbox-custom ${isCompleted ? 'checked' : ''}" style="width:22px;height:22px;font-size:12px;">${isCompleted ? '✓' : ''}</div>
+                    <div style="flex:1;">
+                      <div class="card-title" style="font-size:14px;${isCompleted ? '' : 'text-decoration:line-through;opacity:0.5;'}">${ex.name}</div>
+                      <div class="card-meta">${ex.sets}${weight ? ' · ' + weight + 'kg' : ''}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }
+        });
+      });
+      html += `</div>`;
+    });
+  } else {
+    html += `<div class="empty-state mt-24"><span class="empty-icon">📋</span><p>该日无训练记录</p></div>`;
+  }
+
+  html += `
+    <button class="btn btn-danger mt-16" onclick="deleteHistoryRecord('${record.id}')">🗑️ 删除此记录</button>
+  `;
+
+  container.innerHTML = html;
+}
+
+function toggleHistoryEdit() {
+  historyEditMode = !historyEditMode;
+  const records = getRecords();
+  const record = records.find(r => r.date === historyDetailDate);
+  if (record) renderHistoryDetail(record);
+}
+
+function toggleHistoryExercise(recordId, groupId, exName, idx) {
+  const records = getRecords();
+  const record = records.find(r => r.id === recordId);
+  if (!record) return;
+
+  let recEx = record.exercises.find(e => e.name === exName && e.groupId === groupId);
+  if (!recEx) {
+    recEx = { name: exName, groupId: groupId, completed: false };
+    record.exercises.push(recEx);
+  }
+  recEx.completed = !recEx.completed;
+
+  // 更新整体完成状态
+  const plan = getTrainingPlan(record.type);
+  const allEx = getAllExercisesFlat(plan);
+  record.completed = allEx.every(ex => {
+    const re = record.exercises.find(e => e.name === ex.name && e.groupId === ex.groupId);
+    return re && re.completed;
+  });
+
+  saveRecords(records);
+
+  // 更新UI
+  const checkbox = document.getElementById(`hist-check-${idx}`);
+  const card = document.getElementById(`hist-card-${idx}`);
+  if (checkbox) {
+    if (recEx.completed) { checkbox.classList.add('checked'); checkbox.textContent = '✓'; }
+    else { checkbox.classList.remove('checked'); checkbox.textContent = ''; }
+  }
+  if (card) {
+    if (recEx.completed) card.classList.add('completed');
+    else card.classList.remove('completed');
+  }
+}
+
+function updateHistoryWeight(recordId, groupId, exName, value) {
+  const records = getRecords();
+  const record = records.find(r => r.id === recordId);
+  if (!record) return;
+  let recEx = record.exercises.find(e => e.name === exName && e.groupId === groupId);
+  if (!recEx) {
+    recEx = { name: exName, groupId: groupId, completed: false };
+    record.exercises.push(recEx);
+  }
+  recEx.weight = parseFloat(value) || 0;
+  saveRecords(records);
+}
+
+function deleteHistoryRecord(id) {
+  if (!confirm('确定删除这条训练记录吗？此操作不可恢复。')) return;
+  deleteRecord(id);
+  showToast('已删除', 'success');
+  showHistory();
 }

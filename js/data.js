@@ -141,6 +141,15 @@ function getRecordByDate(dateStr) {
 }
 
 /**
+ * 删除训练记录
+ */
+function deleteRecord(id) {
+  const records = getRecords();
+  const filtered = records.filter(r => r.id !== id);
+  saveRecords(filtered);
+}
+
+/**
  * 更新某个动作的打卡数据
  */
 function updateExerciseRecord(dateStr, exerciseName, updates) {
