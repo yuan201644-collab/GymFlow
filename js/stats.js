@@ -49,7 +49,7 @@ function renderStatsPage() {
         </div>
       </div>
       <div class="calendar-grid" id="cal-grid"></div>
-      <div class="cal-legend" id="cal-legend" style="display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:12px;color:var(--text-muted);"></div>
+      <div class="cal-legend" id="cal-legend" style="display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:12px;color:var(--muted);"></div>
     </div>
   `;
 

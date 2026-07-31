@@ -20,6 +20,7 @@ const TRAINING_PLANS = {
           {
             id: 'push-warmup-chest-stretch',
             label: '胸肌预拉伸',
+            region: '胸',
             pickHint: '3选1',
             exercises: [
               { name: '门框胸肌拉伸', sets: '每侧30秒×2组', equipment: '', tip: '手肘与肩同高或略低于肩（避免肩峰撞击⚠️），身体缓慢前倾至胸肌有拉伸感。圆肩者胸小肌通常过度紧张，重点感受锁骨下方到肩前侧的牵拉', default: true },
@@ -30,6 +31,7 @@ const TRAINING_PLANS = {
           {
             id: 'push-warmup-scapula',
             label: '肩胛激活',
+            region: '肩',
             pickHint: '3选1',
             exercises: [
               { name: '墙面天使', sets: '15次×2组', equipment: '', tip: '背、臀、后脑勺三点贴墙，手臂呈W形上下滑动，手背和肘关节全程努力贴墙。核心收紧，腰部离墙不超一掌厚。激活中下斜方肌和前锯肌，矫正肱骨前移', default: true },
@@ -40,6 +42,7 @@ const TRAINING_PLANS = {
           {
             id: 'push-warmup-rotator',
             label: '肩袖激活',
+            region: '肩',
             pickHint: '3选1',
             exercises: [
               { name: '弹力带肩外旋', sets: '15次×2组', equipment: '弹力带', tip: '上臂贴紧身体侧面，肘关节屈曲90°，双手握弹力带向外旋转。只有小臂动，大臂不离开身体。激活冈下肌和小圆肌，稳定肩关节防撞击⚠️', default: true },
@@ -50,6 +53,7 @@ const TRAINING_PLANS = {
           {
             id: 'push-warmup-press',
             label: '推胸预热',
+            region: '胸',
             pickHint: '3选1',
             exercises: [
               { name: '轻重量坐姿推胸机预热', sets: '15次×1组', equipment: '坐姿推胸机', tip: '最轻配重，目的是润滑关节、建立神经连接。沉肩，肩胛骨全程贴紧靠背，控制节奏2秒推2秒回', default: true },
@@ -68,6 +72,7 @@ const TRAINING_PLANS = {
           {
             id: 'push-main-mid-chest',
             label: '胸大肌 — 中胸',
+            region: '胸.中胸',
             pickHint: '3选1-2',
             exercises: [
               { name: '坐姿推胸机（平板）', sets: '4组×10-12次', equipment: '可调角度推胸机', tip: '①坐姿：臀部坐实，肩胛骨收紧下压贴紧靠背；②手肘：向下约30°（非水平外展！），避免肩峰撞击⚠️；③推法：推至肘微屈不锁死，顶峰夹胸1秒；④节奏：3秒离心下放，1秒向心推起。全程沉肩', default: true },
@@ -78,6 +83,7 @@ const TRAINING_PLANS = {
           {
             id: 'push-main-upper-chest',
             label: '胸大肌 — 上胸',
+            region: '胸.上胸',
             pickHint: '3选1-2',
             exercises: [
               { name: '坐姿推胸机（上斜30°）', sets: '3组×10-12次', equipment: '可调角度推胸机', tip: '座椅调至上斜30°（不超过45°⚠️）。手肘保持向下约30°。推起时感受锁骨下方发力。肩峰撞击者注意推起末段不要完全伸直肘关节', default: true },
@@ -88,6 +94,7 @@ const TRAINING_PLANS = {
           {
             id: 'push-main-lower-chest',
             label: '胸大肌 — 下胸 + 肩前束',
+            region: '胸.下胸',
             pickHint: '3选1',
             exercises: [
               { name: '蝴蝶机反向夹胸', sets: '3组×12-15次', equipment: '蝴蝶机', tip: '面朝靠背坐，双手握前方把手做夹胸。打造下胸和胸中缝线条。顶峰停1秒，慢放2-3秒。肩胛骨全程贴靠背', default: true },
@@ -98,6 +105,7 @@ const TRAINING_PLANS = {
           {
             id: 'push-main-front-delt',
             label: '三角肌前束 + 中束',
+            region: '肩.前束',
             pickHint: '3选1',
             exercises: [
               { name: '器械肩推（轻重量）', sets: '3组×12-15次', equipment: '坐姿肩推机', tip: '⚠️用轻重量！手肘微内收（向前15-20°），不要完全侧展。推至3/4不锁死，下放至上臂略低于水平即停。肩前刺痛立即停止', default: true },
@@ -108,6 +116,7 @@ const TRAINING_PLANS = {
           {
             id: 'push-main-triceps',
             label: '肱三头肌',
+            region: '手臂.三头',
             pickHint: '3选2',
             exercises: [
               { name: '绳索下压（三头）', sets: '3组×12-15次', equipment: '高位绳索', tip: '大臂锁定在身体两侧，只动肘关节下压至手臂伸直。最低点手腕微外旋让三头内侧头充分收缩。肱骨前移者保持肩胛后收位', default: true },
@@ -126,6 +135,7 @@ const TRAINING_PLANS = {
           {
             id: 'push-stretch-chest',
             label: '胸肌拉伸',
+            region: '胸',
             pickHint: '2选1',
             exercises: [
               { name: '门框胸肌静态拉伸', sets: '每侧30秒', equipment: '', tip: '手肘90°放在门框上，同侧腿前跨一步缓慢前移身体。感受胸大肌+胸小肌拉伸。圆肩者每天必做，可延长至45秒', default: true },
@@ -135,6 +145,7 @@ const TRAINING_PLANS = {
           {
             id: 'push-stretch-front-delt',
             label: '三角肌前束拉伸',
+            region: '肩',
             pickHint: '2选1',
             exercises: [
               { name: '背后交握抬臂', sets: '每侧30秒', equipment: '', tip: '双手背后交握，缓慢抬高手臂直至肩前侧有拉伸感。保持躯干直立不弯腰。肩峰撞击者勿强行抬高', default: true },
@@ -144,6 +155,7 @@ const TRAINING_PLANS = {
           {
             id: 'push-stretch-triceps',
             label: '肱三头肌拉伸',
+            region: '手臂',
             pickHint: '2选1',
             exercises: [
               { name: '过头三头肌拉伸', sets: '每侧30秒', equipment: '', tip: '一侧手臂屈肘过头，手摸向对侧肩胛骨，另一只手轻推肘关节向后。肱骨前移者肘关节保持指向上方而非前上方', default: true },
@@ -169,6 +181,7 @@ const TRAINING_PLANS = {
           {
             id: 'pull-warmup-ytw',
             label: '肩胛+后束激活',
+            region: '背',
             pickHint: '2选1',
             exercises: [
               { name: 'YTW激活', sets: '每个字母10次×2组', equipment: '', tip: '俯身约45°，Y：手臂过头拇指朝上；T：侧平举肩胛后缩；W：屈肘下拉肩胛全力挤压。每个姿势顶端停1秒', default: true },
@@ -178,6 +191,7 @@ const TRAINING_PLANS = {
           {
             id: 'pull-warmup-rotator',
             label: '肩袖激活',
+            region: '肩',
             pickHint: '2选1',
             exercises: [
               { name: '弹力带肩外旋', sets: '15次×2组', equipment: '弹力带', tip: '上臂贴紧身体，只外旋小臂。强化肩袖后侧肌群，对抗肱骨前移', default: true },
@@ -187,6 +201,7 @@ const TRAINING_PLANS = {
           {
             id: 'pull-warmup-scapula',
             label: '肩胛控制',
+            region: '背',
             pickHint: '2选1',
             exercises: [
               { name: '沉肩+肩胛后缩', sets: '15次×2组', equipment: '', tip: '先"沉肩"（肩膀远离耳朵），再"后缩"（肩胛骨向脊柱夹）。分两步做建立神经肌肉控制。圆肩者重建肩胛位置感', default: true },
@@ -196,6 +211,7 @@ const TRAINING_PLANS = {
           {
             id: 'pull-warmup-pulldown',
             label: '下拉预热',
+            region: '背',
             pickHint: '2选1',
             exercises: [
               { name: '轻重量高位下拉预热', sets: '15次×1组', equipment: '高位下拉机', tip: '最轻配重，下拉前先沉肩再拉，感受肩胛骨的下降和后缩。不要用上斜方肌发力', default: true },
@@ -213,6 +229,7 @@ const TRAINING_PLANS = {
           {
             id: 'pull-main-lats',
             label: '背阔肌、大圆肌',
+            region: '背.背阔',
             pickHint: '3选1-2',
             exercises: [
               { name: '高位下拉（宽握）', sets: '4组×10-12次', equipment: '高位下拉机', tip: '握距约1.5倍肩宽。启动前先沉肩肩胛下压后缩。杆拉到上胸/锁骨高度。慢放2-3秒，手臂伸直时肩胛顺势上提——不要猛放！改善圆肩', default: true },
@@ -223,6 +240,7 @@ const TRAINING_PLANS = {
           {
             id: 'pull-main-mid-back',
             label: '中下斜方肌、菱形肌',
+            region: '背.中背',
             pickHint: '3选1-2',
             exercises: [
               { name: '坐姿划船', sets: '4组×10-12次', equipment: '坐姿划船机', tip: '拉向腹部时先肩胛后缩再用手臂拉。顶峰肩胛全力挤压1秒。直接对抗圆肩体态', default: true },
@@ -233,6 +251,7 @@ const TRAINING_PLANS = {
           {
             id: 'pull-main-lats-iso',
             label: '背阔肌（孤立）',
+            region: '背.背阔',
             pickHint: '3选1',
             exercises: [
               { name: '直臂下压', sets: '3组×12-15次', equipment: '高位绳索', tip: '手臂伸直微屈肘，从头顶上方压至大腿前侧。肘关节角度不变，只有肩关节动。感受背阔肌全幅度收缩', default: true },
@@ -243,6 +262,7 @@ const TRAINING_PLANS = {
           {
             id: 'pull-main-rear-delt',
             label: '三角肌后束 + 肩袖（矫正重点⭐）',
+            region: '肩.后束',
             pickHint: '3选1',
             exercises: [
               { name: '面拉（Face Pull）', sets: '3组×15次', equipment: '绳索+绳索附件', tip: '⭐最重要矫正动作！拉到脸前时双手外旋（拇指向后），手肘向两侧打开，肩胛全力后缩。改善肱骨前移、强化肩后束和肩袖后侧', default: true },
@@ -253,6 +273,7 @@ const TRAINING_PLANS = {
           {
             id: 'pull-main-rear-delt-iso',
             label: '三角肌后束（孤立）',
+            region: '肩.后束',
             pickHint: '3选1',
             exercises: [
               { name: '反向飞鸟', sets: '3组×15次', equipment: '蝴蝶机反向', tip: '面朝靠背坐，手臂微屈向后方打开至肩胛后缩。顶峰停1秒慢放2秒。⚠️轻重量，不要用上斜方肌借力', default: true },
@@ -263,6 +284,7 @@ const TRAINING_PLANS = {
           {
             id: 'pull-main-biceps',
             label: '肱二头肌',
+            region: '手臂.二头',
             pickHint: '3选1-2',
             exercises: [
               { name: '哑铃弯举', sets: '3组×12次', equipment: '哑铃', tip: '上臂贴紧身体两侧不动，仅屈肘举至肩前。顶峰挤压1秒，慢放3秒（离心最重要）。身体不借力摆动', default: true },
@@ -281,6 +303,7 @@ const TRAINING_PLANS = {
           {
             id: 'pull-stretch-lats',
             label: '背阔肌拉伸',
+            region: '背',
             pickHint: '2选1',
             exercises: [
               { name: '固定物背阔肌拉伸', sets: '每侧30秒', equipment: '', tip: '双手抓稳固定物，身体后坐，感受背阔肌从腋下到腰侧的拉伸。圆肩者此区域通常也紧张', default: true },
@@ -290,6 +313,7 @@ const TRAINING_PLANS = {
           {
             id: 'pull-stretch-biceps',
             label: '肱二头肌拉伸',
+            region: '手臂',
             pickHint: '2选1',
             exercises: [
               { name: '站姿肱二头肌拉伸', sets: '每侧30秒', equipment: '', tip: '手臂伸直向身体后方伸展，手掌朝上。保持躯干直立，不要弯腰代偿', default: true },
@@ -299,6 +323,7 @@ const TRAINING_PLANS = {
           {
             id: 'pull-stretch-chest-again',
             label: '胸肌再拉伸（对抗圆肩）',
+            region: '胸',
             pickHint: '2选1',
             exercises: [
               { name: '门框胸肌拉伸×2', sets: '30-45秒', equipment: '', tip: '拉日结束时再拉伸胸肌！圆肩的根源是前紧后弱。训练后胸肌疲劳是拉伸最佳时机', default: true },
@@ -324,6 +349,7 @@ const TRAINING_PLANS = {
           {
             id: 'legs-warmup-hip',
             label: '髋部激活',
+            region: '臀腿',
             pickHint: '2选1',
             exercises: [
               { name: '髋绕环', sets: '每侧10次', equipment: '', tip: '单腿站立，另一腿屈髋屈膝由内向外画大圈绕环。感受髋关节囊充分活动开', default: true },
@@ -333,6 +359,7 @@ const TRAINING_PLANS = {
           {
             id: 'legs-warmup-glute-med',
             label: '臀中肌激活',
+            region: '臀腿',
             pickHint: '2选1',
             exercises: [
               { name: '蚌式开合', sets: '每侧15次×2组', equipment: '弹力带（可选）', tip: '侧卧双膝弯曲并拢，上侧膝盖像蚌壳向上打开。顶峰停1秒。激活臀中肌，改善膝盖内扣', default: true },
@@ -342,6 +369,7 @@ const TRAINING_PLANS = {
           {
             id: 'legs-warmup-squat',
             label: '下肢预热',
+            region: '臀腿',
             pickHint: '2选1',
             exercises: [
               { name: '自重深蹲', sets: '15次×2组', equipment: '', tip: '双脚与肩同宽，下蹲时髋部先动像坐椅子，膝盖沿脚尖方向走。大腿至少平行地面。膝盖内扣说明臀中肌未激活', default: true },
@@ -351,6 +379,7 @@ const TRAINING_PLANS = {
           {
             id: 'legs-warmup-legpress',
             label: '腿举预热',
+            region: '臀腿',
             pickHint: '2选1',
             exercises: [
               { name: '轻重量腿举预热', sets: '15次×1组', equipment: '腿举机', tip: '轻配重润滑膝关节和髋关节。脚放踏板中间，下放时膝盖靠近胸部但不让臀部离开靠背。节奏3秒下2秒上', default: true },
@@ -368,6 +397,7 @@ const TRAINING_PLANS = {
           {
             id: 'legs-main-squat',
             label: '股四头肌 + 臀大肌（复合）',
+            region: '臀腿.股四头',
             pickHint: '3选1-2',
             exercises: [
               { name: '正向哈克深蹲', sets: '4组×10-12次', equipment: '哈克深蹲机', tip: '背部全程贴靠垫。重心偏脚跟，下蹲时膝盖沿脚尖方向——绝不内扣！蹲至大腿平行即停。推起时脚跟发力', default: true },
@@ -378,6 +408,7 @@ const TRAINING_PLANS = {
           {
             id: 'legs-main-hip-thrust',
             label: '臀大肌（上臀）+ 腘绳肌',
+            region: '臀腿.腘绳',
             pickHint: '3选1-2',
             exercises: [
               { name: '腿举（脚高位）', sets: '4组×10-12次', equipment: '腿举机', tip: '脚放踏板偏上位置，髋关节屈曲角度更大，上臀和腘绳肌参与更多。下放时不过度让臀部离背。推起不锁膝', default: true },
@@ -388,6 +419,7 @@ const TRAINING_PLANS = {
           {
             id: 'legs-main-glute-thrust',
             label: '臀大肌（王牌动作）',
+            region: '臀腿.臀',
             pickHint: '3选1',
             exercises: [
               { name: '器械臀推', sets: '4组×10-12次', equipment: '臀推机/杠铃', tip: '上背靠凳边，杠铃横跨髋部。推起时臀部全力收缩顶峰夹臀2秒。⚠️腰部不代偿。瘦大腿+提臀的王牌', default: true },
@@ -398,6 +430,7 @@ const TRAINING_PLANS = {
           {
             id: 'legs-main-abduction',
             label: '臀中肌 + 臀小肌',
+            region: '臀腿.臀',
             pickHint: '3选1',
             exercises: [
               { name: '髋外展', sets: '3组×15次', equipment: '髋外展机', tip: '身体微前倾15°让力集中在上臀。顶峰停1秒慢放3秒。打造臀部上侧弧度', default: true },
@@ -408,6 +441,7 @@ const TRAINING_PLANS = {
           {
             id: 'legs-main-quads',
             label: '股四头肌（孤立）',
+            region: '臀腿.股四头',
             pickHint: '3选1',
             exercises: [
               { name: '腿屈伸', sets: '3组×12-15次', equipment: '腿屈伸机', tip: '伸膝踢至水平位，顶峰收缩1秒。慢放3秒。脚尖微外旋可更好刺激股四头内侧头', default: true },
@@ -418,6 +452,7 @@ const TRAINING_PLANS = {
           {
             id: 'legs-main-hamstrings',
             label: '腘绳肌（孤立）',
+            region: '臀腿.腘绳',
             pickHint: '3选1',
             exercises: [
               { name: '腿弯举', sets: '3组×12-15次', equipment: '俯卧/坐姿腿弯举', tip: '屈膝拉向臀部，顶峰停1秒慢放3秒。腿前后肌群力量需平衡防膝盖受伤', default: true },
@@ -436,6 +471,7 @@ const TRAINING_PLANS = {
           {
             id: 'legs-stretch-glute',
             label: '臀部拉伸',
+            region: '臀腿',
             pickHint: '2选1',
             exercises: [
               { name: '鸽子式', sets: '每侧30秒', equipment: '', tip: '一腿屈膝横放前，后腿伸直，身体前倾至臀大肌和臀中肌有拉伸感。髋紧张者在前腿臀下垫毛巾', default: true },
@@ -445,6 +481,7 @@ const TRAINING_PLANS = {
           {
             id: 'legs-stretch-quads',
             label: '股四头肌拉伸',
+            region: '臀腿',
             pickHint: '2选1',
             exercises: [
               { name: '站姿股四头肌拉伸', sets: '每侧30秒', equipment: '', tip: '单腿站立，同侧手抓脚踝向后拉，膝盖并拢。膝盖不适者动作轻柔', default: true },
@@ -454,6 +491,7 @@ const TRAINING_PLANS = {
           {
             id: 'legs-stretch-hamstrings',
             label: '腘绳肌拉伸',
+            region: '臀腿',
             pickHint: '2选1',
             exercises: [
               { name: '坐姿体前屈', sets: '每侧30秒', equipment: '', tip: '坐姿一腿伸直一腿屈膝，身体前倾手够脚尖。够不到够小腿即可。保持背部挺直', default: true },
@@ -463,6 +501,7 @@ const TRAINING_PLANS = {
           {
             id: 'legs-stretch-calves',
             label: '小腿拉伸',
+            region: '臀腿',
             pickHint: '2选1',
             exercises: [
               { name: '弓步小腿拉伸', sets: '每侧30秒', equipment: '', tip: '弓步后腿伸直脚后跟着地，身体前倾。感受腓肠肌拉伸。久坐者此区域通常很紧', default: true },
@@ -488,6 +527,7 @@ const TRAINING_PLANS = {
           {
             id: 'rest-core-deadbug',
             label: '核心稳定性',
+            region: '核心',
             pickHint: '3选1-2',
             exercises: [
               { name: '死虫式（Dead Bug）', sets: '3组×10次/侧', equipment: '瑜伽垫', tip: '仰卧四肢朝天，腰部贴紧地面（手离地一掌厚）。对侧手脚缓慢下放至接近地面，呼气收回。全程核心收紧，腰部不离开地面。改善核心稳定性和骨盆控制', default: true },
@@ -498,6 +538,7 @@ const TRAINING_PLANS = {
           {
             id: 'rest-core-rotation',
             label: '核心抗旋',
+            region: '核心',
             pickHint: '2选1',
             exercises: [
               { name: '帕洛夫推（Pallof Press）', sets: '3组×10次/侧', equipment: '弹力带/绳索', tip: '弹力带固定在侧面，双手握于胸前向前推出，对抗弹力带的旋转拉力。停2秒后收回。训练核心抗旋能力', default: true },
@@ -515,6 +556,7 @@ const TRAINING_PLANS = {
           {
             id: 'rest-posture-chest',
             label: '胸肌+前肩（对抗圆肩）',
+            region: '胸',
             pickHint: '2选1',
             exercises: [
               { name: '门框胸肌拉伸（加长版）', sets: '每侧45秒×2组', equipment: '', tip: '比训练日拉伸更久！手肘90°放门框，身体缓慢前移。圆肩的根本原因是胸肌过紧，休息日投入更多时间拉伸', default: true },
@@ -524,6 +566,7 @@ const TRAINING_PLANS = {
           {
             id: 'rest-posture-neck',
             label: '颈部+上斜方放松',
+            region: '肩',
             pickHint: '2选1',
             exercises: [
               { name: '下巴回缩（Chin Tuck）', sets: '10次×3组', equipment: '', tip: '坐直或站直，下巴水平向后缩（像做双下巴），后脑勺有轻微拉伸感。保持2秒放松。纠正头前伸姿势', default: true },
@@ -533,6 +576,7 @@ const TRAINING_PLANS = {
           {
             id: 'rest-posture-hips',
             label: '髋部+下背放松',
+            region: '臀腿',
             pickHint: '2选1',
             exercises: [
               { name: '90-90髋部拉伸', sets: '每侧30秒×2组', equipment: '瑜伽垫', tip: '坐姿前腿屈膝90°外旋，后腿屈膝90°内旋（呈两个90°角）。身体前倾拉伸前腿臀部和后腿髋屈肌。改善髋关节灵活性', default: true },
@@ -542,6 +586,7 @@ const TRAINING_PLANS = {
           {
             id: 'rest-posture-scapula',
             label: '肩胛稳定性（防溜肩）',
+            region: '背',
             pickHint: '2选1',
             exercises: [
               { name: '靠墙天使（慢速版）', sets: '10次×2组', equipment: '', tip: '比训练日速度更慢，每个位置停留3秒。重点感受中下斜方肌和前锯肌发力。闭眼做，专注肌肉感受', default: true },
@@ -560,13 +605,12 @@ function getTrainingPlan(type) {
   return TRAINING_PLANS[type] || TRAINING_PLANS.push;
 }
 
-/** 获取所有动作（扁平化，遍历所有group的所有exercise） */
 function getAllExercisesFlat(plan) {
   const exercises = [];
   plan.sections.forEach(section => {
     if (section.groups) {
       section.groups.forEach(group => {
-        group.exercises.forEach((ex, i) => {
+        group.exercises.forEach(ex => {
           exercises.push({ ...ex, groupId: group.id, groupLabel: group.label, isDefault: ex.default });
         });
       });
@@ -575,7 +619,6 @@ function getAllExercisesFlat(plan) {
   return exercises;
 }
 
-/** 获取所有动作组 */
 function getAllGroups(plan) {
   const groups = [];
   plan.sections.forEach(section => {
@@ -584,225 +627,174 @@ function getAllGroups(plan) {
   return groups;
 }
 
-/** 检查一个组是否已完成（至少完成1个动作） */
 function isGroupCompleted(group, record) {
-  return group.exercises.some(ex => {
+  // 从 pickHint 解析最少需要完成几个动作
+  let minRequired = 1;
+  if (group.pickHint) {
+    const m = group.pickHint.match(/(\d+)选(\d+)/);
+    if (m) minRequired = parseInt(m[2]);
+    else if (group.pickHint.includes('选')) {
+      const n = parseInt(group.pickHint);
+      if (n) minRequired = n;
+    }
+  }
+  const completed = group.exercises.filter(ex => {
     const recEx = record.exercises.find(e => e.name === ex.name && e.groupId === group.id);
     return recEx && recEx.completed;
-  });
+  }).length;
+  return completed >= minRequired;
 }
 
-// ========== 渲染训练页 ==========
+function getSelectedExercise(group, record) {
+  if (!record.groupSelections) record.groupSelections = {};
+  const saved = record.groupSelections[group.id];
+  if (saved) {
+    const found = group.exercises.find(e => e.name === saved);
+    if (found) return found;
+  }
+  return group.exercises.find(e => e.default) || group.exercises[0];
+}
 
 function renderTrainingPage() {
   const container = document.getElementById('training-content');
   const record = getTodayRecord();
   const plan = getTrainingPlan(record.type);
+  if (!record.groupSelections) { record.groupSelections = {}; saveTodayRecord(record); }
 
   const allGroups = getAllGroups(plan);
   const totalGroups = allGroups.length;
-
-  // 计算完成部位数
   let completedGroups = 0;
-  allGroups.forEach(group => {
-    if (isGroupCompleted(group, record)) completedGroups++;
-  });
+  allGroups.forEach(g => { if (isGroupCompleted(g, record)) completedGroups++; });
 
   let html = '';
 
-  // 新安装检测：无任何记录时显示导入提示
-  const allRecords = getRecords();
-  const allWeights = getWeights();
-  if (allRecords.length === 0 && allWeights.length === 0) {
-    html += `
-      <div class="fresh-install-banner">
-        <div class="fresh-install-icon">📂</div>
-        <div class="fresh-install-text">
-          <b>首次使用或更换了文件夹？</b><br>
-          如有备份文件，请先导入恢复数据
-        </div>
-        <button class="btn btn-sm btn-outline" onclick="navigateTo('settings')" style="width:auto;flex-shrink:0;">去导入 →</button>
-      </div>
-    `;
-  }
+  html += `<div class="day-switcher mb-8">`;
+  ['push','pull','legs','rest'].forEach(type => {
+    const p = getTrainingPlan(type);
+    html += `<button class="day-switch-btn ${record.type===type?'active':''}" onclick="switchTrainingDay('${type}')">${p.emoji} ${p.label}</button>`;
+  });
+  html += `</div>`;
 
-  // 进度头部
-  html += `
-    <div class="progress-section">
-      <div class="day-switcher mb-16">
-        ${['push','pull','legs','rest'].map(type => {
-          const p = getTrainingPlan(type);
-          const isActive = record.type === type;
-          return `
-            <button class="day-switch-btn ${isActive ? 'active' : ''}"
-              onclick="switchTrainingDay('${type}')">
-              <span class="day-switch-emoji">${p.emoji}</span>
-              <span class="day-switch-label">${p.label}</span>
-            </button>
-          `;
-        }).join('')}
-      </div>
+  html += `<div class="progress-section"><div class="progress-header"><div><div class="day-label" style="font-size:17px;">${plan.emoji} ${plan.label}</div><div class="day-subtitle" style="font-size:12px;color:var(--muted);">${plan.subtitle} · <span class="history-link" onclick="showHistory()">📋 历史</span></div></div><div class="progress-count"><span id="completed-count">${completedGroups}</span>/<span>${totalGroups}</span> 部位</div></div><div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:${totalGroups?(completedGroups/totalGroups*100):0}%"></div></div></div>`;
 
-      <div class="progress-header">
-        <div>
-          <div class="day-label">${plan.emoji} ${plan.label}</div>
-          <div class="day-subtitle">${plan.subtitle} · <span class="history-link" onclick="showHistory()">📋 历史</span></div>
-        </div>
-        <div class="progress-count">
-          <span id="completed-count">${completedGroups}</span>/<span>${totalGroups}</span> 部位完成
-        </div>
-      </div>
-      <div class="progress-bar mt-8">
-        <div class="progress-fill" id="progress-fill" style="width: ${totalGroups ? (completedGroups / totalGroups * 100) : 0}%"></div>
-      </div>
-    </div>
-  `;
-
-  let globalIdx = 0;
-
-  // 遍历每个 section
   plan.sections.forEach((section, secIdx) => {
-    html += `<div class="mb-16">`;
-    html += `<span class="${section.badgeClass || 'section-badge'}">${section.badge}</span>`;
-    html += `<h3 class="mb-8" style="font-size:15px;color:var(--text-secondary);">${section.title}</h3>`;
+    html += `<div class="mb-8"><span class="${section.badgeClass||'section-badge'}" style="opacity:0.7;">${section.badge}</span>`;
 
-    section.groups.forEach((group) => {
-      // 组头部标签 — 显示几选几提示
-      const pickHint = group.pickHint || `${group.exercises.length}选1-${group.exercises.length}`;
+    section.groups.forEach((group, grpIdx) => {
       const groupDone = isGroupCompleted(group, record);
-      html += `
-        <div class="group-header ${groupDone ? 'group-done' : ''}">
-          <span class="group-target-label">${groupDone ? '✅' : '🎯'} ${group.label}</span>
-          <span class="group-pick-hint">${pickHint}</span>
-        </div>
-      `;
+      const currentEx = getSelectedExercise(group, record);
+      const recEx = record.exercises.find(e => e.name === currentEx.name && e.groupId === group.id);
+      const isDone = recEx ? recEx.completed : false;
+      const pickHint = group.pickHint || (group.exercises.length + '选1-' + group.exercises.length);
+      const weight = recEx ? (recEx.weight || '') : '';
+      const groupId = group.id;
 
-      group.exercises.forEach((exercise) => {
-        const idx = globalIdx++;
-        const recEx = record.exercises.find(e => e.name === exercise.name && e.groupId === group.id);
-        const isCompleted = recEx ? recEx.completed : false;
-        const weight = recEx ? (recEx.weight || '') : '';
+      html += `<div class="group-header ${groupDone?'group-done':''}" onclick="toggleGroup('${secIdx}-${grpIdx}')" id="gh-${secIdx}-${grpIdx}">`;
+      html += `<span class="group-target-label">${groupDone?'✅':'🎯'} ${group.label}</span>`;
+      html += `<div class="group-right"><span class="group-pick-hint">${pickHint}</span><span class="group-expand-icon" id="ge-${secIdx}-${grpIdx}">▼</span></div></div>`;
 
-        html += `
-          <div class="card group-exercise-card ${isCompleted ? 'completed' : ''}" id="card-${idx}">
-            <div class="card-header">
-              <div class="checkbox-wrapper" onclick="toggleFlatExercise(${idx},'${group.id}','${escapeHtml(exercise.name)}')">
-                <div class="checkbox-custom ${isCompleted ? 'checked' : ''}" id="check-${idx}">
-                  ${isCompleted ? '✓' : ''}
-                </div>
-                <div style="flex:1;">
-                  <div class="card-title" style="font-size:15px;${isCompleted ? 'text-decoration:line-through;color:var(--accent);' : ''}">${exercise.name}</div>
-                  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-                    ${exercise.equipment ? `<span class="card-equipment">${exercise.equipment}</span>` : ''}
-                  </div>
-                  <div class="card-meta">${exercise.sets}</div>
-                  ${(section.type === 'main' && exercise.equipment) ? `
-                  <div class="weight-row" onclick="stopPropagation(event)">
-                    <span class="weight-label">🏋️</span>
-                    <input type="number" class="weight-input-sm" placeholder="重量" value="${weight}"
-                      onchange="updateExerciseWeight('${group.id}','${escapeHtml(exercise.name)}',this.value)"
-                      onfocus="this.select()" inputmode="decimal" step="5" min="0" max="500">
-                    <span class="weight-unit">kg</span>
-                  </div>` : ''}
-                </div>
-              </div>
-            </div>
-            ${exercise.tip ? `<div class="card-tip">💡 ${exercise.tip}</div>` : ''}
-          </div>
-        `;
+      html += `<div class="group-exercises ${groupDone?'collapsed':''}" id="gx-${secIdx}-${grpIdx}">`;
+
+      group.exercises.forEach((ex, exIdx) => {
+        const exRec = record.exercises.find(e => e.name === ex.name && e.groupId === groupId);
+        const exDone = exRec ? exRec.completed : false;
+        const exWeight = exRec ? (exRec.weight || '') : '';
+        const isSelected = ex.name === currentEx.name;
+        const uid = secIdx + '-' + grpIdx + '-' + exIdx;
+
+        html += `<div class="card group-exercise-card ${exDone?'completed':''}" style="margin-bottom:6px;${!isSelected?'opacity:0.55;':''}" id="card-${uid}">`;
+        html += `<div class="card-header"><div class="checkbox-wrapper" onclick="selectAndToggle('${secIdx}','${grpIdx}','${exIdx}','${groupId}','${escapeHtml(ex.name)}')">`;
+        html += `<div class="checkbox-custom ${exDone?'checked':''}" id="check-${uid}">${exDone?'✓':''}</div>`;
+        html += `<div style="flex:1;"><div class="card-title" style="font-size:14px;${exDone?'text-decoration:line-through;color:var(--accent);':''}">${ex.name}${ex.default?'<span class="card-default-tag">推荐</span>':''}</div>`;
+        if(ex.equipment) html += `<span class="card-equipment">${ex.equipment}</span>`;
+        html += `<div class="card-meta">${ex.sets}</div>`;
+        if(section.type==='main'&&ex.equipment){
+          html += `<div class="weight-row" onclick="stopPropagation(event)"><span class="weight-label">🏋️</span><input type="number" class="weight-input-sm" value="${exWeight}" onchange="updateExerciseWeight('${groupId}','${escapeHtml(ex.name)}',this.value)" onfocus="this.select()" step="5" min="0" max="500"><span class="weight-unit">kg</span></div>`;
+        }
+        html += `</div></div></div>`;
+        if(ex.tip) html += `<div class="card-tip">💡 ${ex.tip}</div>`;
+        html += `</div>`;
       });
-    });
 
+      html += `</div>`;
+    });
     html += `</div>`;
   });
 
-  // 有氧提醒卡片（仅推/拉/臀腿日显示）
   if (record.type !== 'rest') {
-    html += `
-      <div class="card cardio-card mt-16">
-        <div class="cardio-header">
-          <span>🏃 今日有氧计划</span>
-          <span class="cardio-split">上午无氧 → 傍晚有氧</span>
-        </div>
-        <div class="cardio-detail">
-          <div class="cardio-item">
-            <span class="cardio-label">方式</span>
-            <span>坡度爬坡</span>
-          </div>
-          <div class="cardio-item">
-            <span class="cardio-label">心率</span>
-            <span>60% 目标心率 ≈ <b>126次/分</b></span>
-          </div>
-          <div class="cardio-item">
-            <span class="cardio-label">时长</span>
-            <span>30-40分钟</span>
-          </div>
-          <div class="cardio-item">
-            <span class="cardio-label">频率</span>
-            <span>每周4-5次</span>
-          </div>
-        </div>
-        <div class="cardio-note">
-          ⚠️ 睡眠差或身体疲惫时，降低时长/强度或暂停有氧
-        </div>
-      </div>
-    `;
+    const cardio = record.cardio || {};
+    html += `<div class="card cardio-card mt-16 ${cardio.done?'completed':''}"><div class="cardio-header"><div class="checkbox-wrapper" onclick="toggleCardio()"><div class="checkbox-custom ${cardio.done?'checked':''}" id="check-cardio">${cardio.done?'✓':''}</div><span style="font-weight:600;font-size:15px;">🏃 今日有氧</span></div><span class="cardio-split">上午无氧→傍晚有氧</span></div><div class="cardio-inputs" onclick="stopPropagation(event)"><div class="cardio-field"><label>时长(分钟)</label><input type="number" value="${cardio.duration||''}" placeholder="30" onchange="updateCardioData('duration',this.value)" onfocus="this.select()"></div><div class="cardio-field"><label>坡度(%)</label><input type="number" value="${cardio.incline||''}" placeholder="10" step="0.5" onchange="updateCardioData('incline',this.value)" onfocus="this.select()"></div><div class="cardio-field"><label>距离(km)</label><input type="number" value="${cardio.distance||''}" placeholder="3.0" step="0.1" onchange="updateCardioData('distance',this.value)" onfocus="this.select()"></div></div><div class="cardio-note">⚠️ 60%心率≈126次/分 · 疲惫可减量或暂停</div></div>`;
   }
 
-  // 重量标准提示
-  html += `
-    <div class="weight-standard mt-16">
-      <span class="weight-standard-icon">⚖️</span>
-      <span>动作形态优先于重量 · 动作不变形前提下，最后2次发力吃力为宜</span>
-    </div>
-  `;
+  const existingRating = record.aiRating || '';
+  html += `<div id="rating-section" class="mt-16">`;
+  if (existingRating) {
+    html += `<div class="rating-card"><div class="rating-card-header"><span>📊 AI 训练评分</span><span class="rating-refresh" onclick="submitForRating()">🔄 重新评估</span></div><div class="rating-card-body">${existingRating.replace(/\n/g,'<br>')}</div></div>`;
+  }
+  html += `</div>`;
 
-  // 完成按钮
-  const allDone = completedGroups >= totalGroups;
-  html += `
-    <button class="btn btn-accent mt-16" id="finish-btn"
-      ${allDone ? '' : 'disabled'}
-      onclick="finishTraining()">
-      ${allDone ? '🎉 训练完成！' : `请完成所有训练部位 (${completedGroups}/${totalGroups})`}
-    </button>
-  `;
-
+  html += `<div style="height:80px;"></div>`;
   container.innerHTML = html;
+  renderBottomBar(completedGroups, totalGroups);
 }
 
-// ========== 交互处理 ==========
-
-function updateExerciseWeight(groupId, exerciseName, value) {
-  const record = getTodayRecord();
-  let recEx = record.exercises.find(e => e.name === exerciseName && e.groupId === groupId);
-  if (!recEx) {
-    recEx = { name: exerciseName, groupId: groupId, completed: false };
-    record.exercises.push(recEx);
+function renderBottomBar(completedGroups, totalGroups) {
+  let bar = document.getElementById('bottom-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'bottom-bar';
+    document.getElementById('app').appendChild(bar);
   }
-  recEx.weight = parseFloat(value) || 0;
-  saveTodayRecord(record);
+  const allDone = completedGroups >= totalGroups;
+  bar.innerHTML = `
+    <button class="btn btn-outline" style="flex:1;" onclick="submitForRating()">📝 评分</button>
+    <button class="btn btn-accent" style="flex:1;" id="finish-btn" ${allDone?'':'disabled'} onclick="finishTraining()">${allDone?'✅ 完成训练':'未完成('+completedGroups+'/'+totalGroups+')'}</button>
+  `;
 }
 
-function toggleFlatExercise(idx, groupId, exerciseName) {
-  const record = getTodayRecord();
-
-  let recEx = record.exercises.find(e => e.name === exerciseName && e.groupId === groupId);
-  const currentCompleted = recEx ? recEx.completed : false;
-
-  if (!recEx) {
-    recEx = { name: exerciseName, groupId: groupId, completed: false };
-    record.exercises.push(recEx);
+function toggleGroup(uid) {
+  const el = document.getElementById('gx-' + uid);
+  const icon = document.getElementById('ge-' + uid);
+  if (!el) return;
+  const isCollapsed = el.classList.contains('collapsed');
+  if (isCollapsed) {
+    // 展开：先设 max-height，去 collapsed，过渡完成后清除
+    el.style.maxHeight = el.scrollHeight + 'px';
+    el.classList.remove('collapsed');
+    if(icon) { icon.style.transform = 'rotate(0deg)'; }
+    el.addEventListener('transitionend', function h() {
+      el.style.maxHeight = '';
+      el.removeEventListener('transitionend', h);
+    });
+  } else {
+    // 折叠：先锁 max-height，再加 collapsed
+    el.style.maxHeight = el.scrollHeight + 'px';
+    requestAnimationFrame(() => {
+      el.classList.add('collapsed');
+      el.style.maxHeight = '0px';
+    });
+    if(icon) { icon.style.transform = 'rotate(-90deg)'; }
   }
+}
 
-  recEx.completed = !currentCompleted;
+function selectAndToggle(secIdx, grpIdx, exIdx, groupId, exName) {
+  const record = getTodayRecord();
+  if (!record.groupSelections) record.groupSelections = {};
+  record.groupSelections[groupId] = exName;
+  let recEx = record.exercises.find(e => e.name === exName && e.groupId === groupId);
+  if (!recEx) { recEx = { name: exName, groupId: groupId, completed: false }; record.exercises.push(recEx); }
+  recEx.completed = !recEx.completed;
   saveTodayRecord(record);
 
-  // 更新 UI
-  const checkbox = document.getElementById(`check-${idx}`);
-  const card = document.getElementById(`card-${idx}`);
+  // ── 局部更新 DOM，不重渲染 ──
+
+  const uid = secIdx + '-' + grpIdx + '-' + exIdx;
+  const checkbox = document.getElementById('check-' + uid);
+  const card = document.getElementById('card-' + uid);
   const titleEl = card ? card.querySelector('.card-title') : null;
 
-  if (!currentCompleted) {
+  // 1. 勾选动画
+  if (recEx.completed) {
     if (checkbox) { checkbox.classList.add('checked'); checkbox.textContent = '✓'; }
     if (card) card.classList.add('completed');
     if (titleEl) { titleEl.style.textDecoration = 'line-through'; titleEl.style.color = 'var(--accent)'; }
@@ -812,103 +804,157 @@ function toggleFlatExercise(idx, groupId, exerciseName) {
     if (titleEl) { titleEl.style.textDecoration = ''; titleEl.style.color = ''; }
   }
 
-  updateProgress();
-  updateFinishButton();
-}
-
-function updateProgress() {
-  const record = getTodayRecord();
+  // 2. 更新组头状态
   const plan = getTrainingPlan(record.type);
-  const allGroups = getAllGroups(plan);
-
-  let completedGroups = 0;
-  allGroups.forEach(group => {
-    if (isGroupCompleted(group, record)) completedGroups++;
-  });
-
-  const countEl = document.getElementById('completed-count');
-  const fillEl = document.getElementById('progress-fill');
-  if (countEl) countEl.textContent = completedGroups;
-  if (fillEl) fillEl.style.width = allGroups.length ? (completedGroups / allGroups.length * 100) + '%' : '0%';
-
-  // 更新组头部状态
-  allGroups.forEach((group, i) => {
-    const done = isGroupCompleted(group, record);
-    const headers = document.querySelectorAll('.group-header');
-    if (headers[i]) {
-      const label = headers[i].querySelector('.group-target-label');
-      if (done) {
-        headers[i].classList.add('group-done');
-        if (label) label.textContent = label.textContent.replace('🎯', '✅');
-      } else {
-        headers[i].classList.remove('group-done');
-        if (label) label.textContent = label.textContent.replace('✅', '🎯');
+  let group = null;
+  plan.sections.forEach(s => { if(s.groups) s.groups.forEach(g => { if(g.id===groupId) group=g; }); });
+  if (group) {
+    const groupDone = isGroupCompleted(group, record);
+    const gh = document.getElementById('gh-' + secIdx + '-' + grpIdx);
+    const gx = document.getElementById('gx-' + secIdx + '-' + grpIdx);
+    const label = gh ? gh.querySelector('.group-target-label') : null;
+    if (groupDone) {
+      if (gh) gh.classList.add('group-done');
+      if (label) label.textContent = (label.textContent || '').replace('🎯', '✅');
+      // 平滑折叠
+      if (gx && !gx.classList.contains('collapsed')) {
+        gx.style.maxHeight = gx.scrollHeight + 'px';
+        const icon = document.getElementById('ge-' + secIdx + '-' + grpIdx);
+        requestAnimationFrame(() => {
+          gx.classList.add('collapsed');
+          gx.style.maxHeight = '0px';
+        });
+        if (icon) icon.style.transform = 'rotate(-90deg)';
       }
-    }
-  });
-}
-
-function updateFinishButton() {
-  const record = getTodayRecord();
-  const plan = getTrainingPlan(record.type);
-  const allGroups = getAllGroups(plan);
-
-  let completedGroups = 0;
-  allGroups.forEach(group => {
-    if (isGroupCompleted(group, record)) completedGroups++;
-  });
-
-  const allDone = completedGroups >= allGroups.length;
-  const btn = document.getElementById('finish-btn');
-  if (btn) {
-    if (allDone) {
-      btn.disabled = false;
-      btn.textContent = '🎉 训练完成！';
     } else {
-      btn.disabled = true;
-      btn.textContent = `请完成所有训练部位 (${completedGroups}/${allGroups.length})`;
+      if (gh) gh.classList.remove('group-done');
+      if (label) label.textContent = (label.textContent || '').replace('✅', '🎯');
     }
   }
+
+  // 3. 更新进度条
+  const allGroups = getAllGroups(plan);
+  let completedGroups = 0;
+  allGroups.forEach(g => { if (isGroupCompleted(g, record)) completedGroups++; });
+  const ce = document.getElementById('completed-count');
+  const fe = document.getElementById('progress-fill');
+  if (ce) ce.textContent = completedGroups;
+  if (fe) fe.style.width = allGroups.length ? (completedGroups / allGroups.length * 100) + '%' : '0%';
+
+  // 4. 更新底部按钮
+  renderBottomBar(completedGroups, allGroups.length);
+
+  // 5. 刷新评分区域（如果有评分内容）
+  const rs = document.getElementById('rating-section');
+  if (rs && rs.querySelector('.rating-card:not(.rating-loading)')) {
+    rs.innerHTML = '';
+  }
+}
+
+function toggleCardio() {
+  const record = getTodayRecord();
+  if (!record.cardio) record.cardio = {};
+  record.cardio.done = !record.cardio.done;
+  if (!record.cardio.duration) record.cardio.duration = 30;
+  if (!record.cardio.incline) record.cardio.incline = 10;
+  saveTodayRecord(record);
+  renderTrainingPage();
+}
+
+function updateCardioData(field, value) {
+  const record = getTodayRecord();
+  if (!record.cardio) record.cardio = {};
+  record.cardio[field] = parseFloat(value) || 0;
+  saveTodayRecord(record);
+}
+
+function updateExerciseWeight(groupId, exName, value) {
+  const record = getTodayRecord();
+  let recEx = record.exercises.find(e => e.name === exName && e.groupId === groupId);
+  if (!recEx) { recEx = { name: exName, groupId: groupId, completed: false }; record.exercises.push(recEx); }
+  recEx.weight = parseFloat(value) || 0;
+  saveTodayRecord(record);
 }
 
 function finishTraining() {
   const record = getTodayRecord();
   const plan = getTrainingPlan(record.type);
   const allGroups = getAllGroups(plan);
-
-  // 每个组至少标记一个动作为完成
-  allGroups.forEach(group => {
-    const alreadyDone = group.exercises.some(ex => {
-      const recEx = record.exercises.find(e => e.name === ex.name && e.groupId === group.id);
-      return recEx && recEx.completed;
-    });
-    if (!alreadyDone) {
-      const defaultEx = group.exercises.find(e => e.default) || group.exercises[0];
-      let recEx = record.exercises.find(e => e.name === defaultEx.name && e.groupId === group.id);
-      if (!recEx) {
-        recEx = { name: defaultEx.name, groupId: group.id, completed: false };
-        record.exercises.push(recEx);
-      }
-      recEx.completed = true;
-    }
+  allGroups.forEach(g => {
+    const ex = getSelectedExercise(g, record);
+    let recEx = record.exercises.find(e => e.name===ex.name && e.groupId===g.id);
+    if(!recEx){ recEx={name:ex.name,groupId:g.id,completed:false}; record.exercises.push(recEx); }
+    recEx.completed = true;
+    if(!record.groupSelections) record.groupSelections = {};
+    record.groupSelections[g.id] = ex.name;
   });
-
   record.completed = true;
   saveTodayRecord(record);
   advanceWorkout(record.type);
   showCelebration();
-  updateProgress();
-  updateFinishButton();
+}
+
+async function submitForRating() {
+  const record = getTodayRecord();
+  const plan = getTrainingPlan(record.type);
+  const allGroups = getAllGroups(plan);
+  const cardio = record.cardio || {};
+  const rs = document.getElementById('rating-section');
+  if(rs) rs.innerHTML = `<div class="rating-card rating-loading"><div class="rating-card-header">📊 AI 分析中...</div><div class="rating-card-body text-center" style="padding:20px;">🤔 正在综合评估...</div></div>`;
+
+  let completed = [], incomplete = [];
+  allGroups.forEach(g => {
+    const done = isGroupCompleted(g, record);
+    const ex = getSelectedExercise(g, record);
+    const recEx = record.exercises.find(e => e.name===ex.name && e.groupId===g.id);
+    const w = recEx?.weight||0;
+    const line = g.label + '：' + ex.name + (w>0?' '+w+'kg':'');
+    if(done) completed.push(line); else incomplete.push(line);
+  });
+
+  let report = '## 今日训练报告\n**类型**：'+plan.label+'（'+plan.subtitle+'）\n\n### ✅ 已完成\n';
+  report += completed.length?completed.join('\n'):'（无）';
+  report += '\n\n---以下未完成---\n';
+  report += incomplete.length?incomplete.join('\n'):'（全部完成！）';
+  report += '\n\n部位完成率：'+completed.length+'/'+allGroups.length;
+  if(cardio.done) report += '\n\n### 🏃 有氧（附加项）\n✅ '+ (cardio.duration||0) +'分钟 · 坡度'+(cardio.incline||0)+'% · '+(cardio.distance||0)+'km';
+  else report += '\n\n### 🏃 有氧（附加项）\n⬜ 未进行';
+  report += '\n\n请评分（满分100）并简短评价。有氧为附加项不扣分。格式：【评分】XX分 【评价】... 【建议】...';
+
+  try{
+    const resp = await fetch(getAIServer()+'/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:getAIPassword(),deviceId:getDeviceId(),content:report})});
+    const d = await resp.json();
+    if(d.success){
+      record.aiRating = d.answer; saveTodayRecord(record);
+      if(rs) rs.innerHTML = '<div class="rating-card"><div class="rating-card-header"><span>📊 AI 训练评分</span><span class="rating-refresh" onclick="submitForRating()">🔄 重新评估</span></div><div class="rating-card-body">'+d.answer.replace(/\n/g,'<br>')+'</div></div>';
+    }else{
+      if(rs) rs.innerHTML = '<div class="rating-card" style="border-color:var(--danger);"><div class="rating-card-header">⚠️ 评分失败</div><div class="rating-card-body">'+d.error+'</div><button class="btn btn-outline mt-8" onclick="submitForRating()">重试</button></div>';
+    }
+  }catch(e){
+    if(rs) rs.innerHTML = '<div class="rating-card" style="border-color:var(--danger);"><div class="rating-card-header">⚠️ 无法连接</div><div class="rating-card-body">请确认后端已启动</div><button class="btn btn-outline mt-8" onclick="submitForRating()">重试</button></div>';
+  }
 }
 
 function showCelebration() {
-  const el = document.getElementById('celebration');
-  el.classList.remove('celebration-hidden');
+  document.getElementById('celebration').classList.remove('celebration-hidden');
+  // 彩屑
+  const emojis = ['🎉','✨','💪','🔥','⭐','🏆'];
+  for (let i = 0; i < 20; i++) {
+    setTimeout(() => {
+      const el = document.createElement('span');
+      el.className = 'celebration-confetti';
+      el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      el.style.left = Math.random() * 100 + '%';
+      el.style.animationDuration = (2 + Math.random() * 3) + 's';
+      el.style.animationDelay = (Math.random() * 0.5) + 's';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 3500);
+    }, i * 80);
+  }
 }
 
 function closeCelebration() {
-  const el = document.getElementById('celebration');
-  el.classList.add('celebration-hidden');
+  document.getElementById('celebration').classList.add('celebration-hidden');
   renderTrainingPage();
 }
 
@@ -916,228 +962,116 @@ function switchTrainingDay(type) {
   switchTodayWorkoutType(type);
   renderTrainingPage();
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  showToast(`已切换到${getTrainingPlan(type).label}`, 'success');
 }
 
-function escapeHtml(str) {
-  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-}
+// ========== 历史 ==========
 
-// ========== 训练历史 ==========
+let historyView = null, historyDetailDate = null, historyEditMode = false;
 
-let historyView = null; // null | 'list' | 'detail'
-let historyDetailDate = null;
-let historyEditMode = false;
-
-function showHistory() {
-  historyView = 'list';
-  historyEditMode = false;
-  renderHistoryList();
-}
-
-function backToTraining() {
-  historyView = null;
-  historyDetailDate = null;
-  historyEditMode = false;
-  renderTrainingPage();
-}
+function showHistory() { historyView = 'list'; historyEditMode = false; renderHistoryList(); }
+function backToTraining() { historyView = null; historyDetailDate = null; historyEditMode = false; renderTrainingPage(); }
 
 function renderHistoryList() {
   const container = document.getElementById('training-content');
-  const records = getRecords().sort((a, b) => b.date.localeCompare(a.date));
+  const today = todayStr();
+  const records = getRecords().filter(r => r.date !== today).sort((a, b) => b.date.localeCompare(a.date));
+  let h = '<div class="history-topbar"><button class="history-back-btn" onclick="backToTraining()">← 返回</button><span class="history-title">训练历史</span><button class="history-add-btn" onclick="addHistoryRecord()">+ 补录</button></div>';
+  if(records.length===0) h += '<div class="empty-state mt-24"><span class="empty-icon">📋</span><p>暂无历史记录</p></div>';
+  else records.forEach(r => {
+    const plan = getTrainingPlan(r.type);
+    const exDone = r.exercises.filter(e=>e.completed).length;
+    h += '<div class="card history-card '+ (r.completed?'history-done':'') +'" onclick="viewHistoryRecord(\''+r.id+'\')"><div class="flex-between"><div><div style="font-weight:700;font-size:15px;">'+plan.emoji+' '+plan.label+' · '+formatDate(r.date)+'</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(r.completed?'✅':'⬜')+' · '+exDone+'个动作</div></div><div style="font-size:20px;color:var(--muted);">→</div></div></div>';
+  });
+  container.innerHTML = h;
+}
 
-  let html = `
-    <div class="history-topbar">
-      <button class="history-back-btn" onclick="backToTraining()">← 返回</button>
-      <span class="history-title">训练历史</span>
-      <span></span>
-    </div>
-  `;
-
-  if (records.length === 0) {
-    html += `
-      <div class="empty-state mt-24">
-        <span class="empty-icon">📋</span>
-        <p>暂无训练记录</p>
-      </div>
-    `;
-  } else {
-    records.forEach(r => {
-      const plan = getTrainingPlan(r.type);
-      const exDone = r.exercises.filter(e => e.completed).length;
-      const totalEx = r.exercises.length;
-      html += `
-        <div class="card history-card ${r.completed ? 'history-done' : ''}" onclick="viewHistoryRecord('${r.id}')">
-          <div class="flex-between">
-            <div>
-              <div style="font-weight:700;font-size:15px;">${plan.emoji} ${plan.label} · ${formatDate(r.date)}</div>
-              <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
-                ${r.completed ? '✅ 已完成' : '⬜ 未完成'} · ${exDone}/${totalEx} 动作
-              </div>
-            </div>
-            <div style="font-size:20px;color:var(--text-muted);">→</div>
-          </div>
-        </div>
-      `;
-    });
-  }
-
-  container.innerHTML = html;
+function addHistoryRecord() {
+  const date = prompt('训练日期 (YYYY-MM-DD)：', todayStr());
+  if(!date) return;
+  const type = prompt('类型 (push/pull/legs/rest)：', 'push');
+  if(!['push','pull','legs','rest'].includes(type)) { showToast('类型无效','error'); return; }
+  const record = { id: generateId(), date, type, completed: false, exercises: [], groupSelections: {} };
+  const records = getRecords(); records.push(record); saveRecords(records);
+  showToast('已创建记录','success');
+  historyDetailDate = date; historyView = 'detail'; historyEditMode = true;
+  renderHistoryDetail(record);
 }
 
 function viewHistoryRecord(id) {
-  const records = getRecords();
-  const record = records.find(r => r.id === id);
-  if (!record) return;
-
-  historyView = 'detail';
-  historyDetailDate = record.date;
-  historyEditMode = false;
-  renderHistoryDetail(record);
+  const r = getRecords().find(r=>r.id===id);
+  if(!r) return;
+  historyView = 'detail'; historyDetailDate = r.date; historyEditMode = false;
+  renderHistoryDetail(r);
 }
 
 function renderHistoryDetail(record) {
   const container = document.getElementById('training-content');
   const plan = getTrainingPlan(record.type);
-  const allExFlat = getAllExercisesFlat(plan);
-  const planTypeLabel = plan.emoji + ' ' + plan.label;
+  const allFlat = getAllExercisesFlat(plan);
+  let h = '<div class="history-topbar"><button class="history-back-btn" onclick="showHistory()">← 返回</button><span class="history-title">'+plan.emoji+' '+plan.label+' · '+formatDate(record.date)+'</span>';
+  h += '<div style="display:flex;gap:6px;"><button class="history-edit-btn" onclick="toggleHistEdit(\''+record.id+'\')">'+(historyEditMode?'💾 保存':'✏️ 编辑')+'</button><button class="btn btn-sm btn-outline" onclick="navigateTo(\'training\');backToTraining()" style="min-height:36px;">📍 今天</button></div></div>';
 
-  let html = `
-    <div class="history-topbar">
-      <button class="history-back-btn" onclick="showHistory()">← 返回</button>
-      <span class="history-title">${planTypeLabel} · ${formatDate(record.date)}</span>
-      <button class="history-edit-btn" id="hist-edit-toggle" onclick="toggleHistoryEdit()">
-        ${historyEditMode ? '💾 保存' : '✏️ 编辑'}
-      </button>
-    </div>
-  `;
-
-  // 有动作数据时展示
-  if (allExFlat.length > 0) {
-    let globalIdx = 0;
+  if (allFlat.length > 0) {
     plan.sections.forEach(section => {
-      html += `<div class="mb-8">`;
-      html += `<span class="${section.badgeClass || 'section-badge'}" style="opacity:0.6;">${section.badge}</span>`;
-
+      h += '<div class="mb-8"><span class="'+(section.badgeClass||'section-badge')+'" style="opacity:0.6;">'+section.badge+'</span>';
       section.groups.forEach(group => {
-        html += `<div class="group-header" style="opacity:0.7;"><span class="group-target-label">🎯 ${group.label}</span></div>`;
-
+        h += '<div class="group-header" style="opacity:0.7;"><span class="group-target-label">🎯 '+group.label+'</span></div>';
         group.exercises.forEach(ex => {
-          const idx = globalIdx++;
-          const recEx = record.exercises.find(e => e.name === ex.name && e.groupId === group.id);
-          const isCompleted = recEx ? recEx.completed : false;
-          const weight = recEx ? (recEx.weight || '') : '';
-
-          if (historyEditMode) {
-            html += `
-              <div class="card group-exercise-card ${isCompleted ? 'completed' : ''}" id="hist-card-${idx}">
-                <div class="card-header">
-                  <div class="checkbox-wrapper" onclick="toggleHistoryExercise('${record.id}','${group.id}','${escapeHtml(ex.name)}',${idx})">
-                    <div class="checkbox-custom ${isCompleted ? 'checked' : ''}" id="hist-check-${idx}">${isCompleted ? '✓' : ''}</div>
-                    <div style="flex:1;">
-                      <div class="card-title" style="font-size:14px;">${ex.name}</div>
-                      <div class="card-meta">${ex.sets}</div>
-                      ${section.type === 'main' && ex.equipment ? `
-                      <div class="weight-row" onclick="stopPropagation(event)">
-                        <span class="weight-label">🏋️</span>
-                        <input type="number" class="weight-input-sm" value="${weight}"
-                          onchange="updateHistoryWeight('${record.id}','${group.id}','${escapeHtml(ex.name)}',this.value)"
-                          onfocus="this.select()" step="5" min="0" max="500">
-                        <span class="weight-unit">kg</span>
-                      </div>` : ''}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            `;
-          } else {
-            html += `
-              <div class="card group-exercise-card ${isCompleted ? 'completed' : ''}" style="opacity:${isCompleted ? '1' : '0.45'};">
-                <div class="card-header">
-                  <div style="display:flex;align-items:center;gap:10px;">
-                    <div class="checkbox-custom ${isCompleted ? 'checked' : ''}" style="width:22px;height:22px;font-size:12px;">${isCompleted ? '✓' : ''}</div>
-                    <div style="flex:1;">
-                      <div class="card-title" style="font-size:14px;${isCompleted ? '' : 'text-decoration:line-through;opacity:0.5;'}">${ex.name}</div>
-                      <div class="card-meta">${ex.sets}${weight ? ' · ' + weight + 'kg' : ''}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            `;
+          const recEx = record.exercises.find(e => e.name===ex.name && e.groupId===group.id);
+          const isDone = recEx ? recEx.completed : false;
+          const w = recEx ? (recEx.weight||'') : '';
+          if(historyEditMode){
+            h += '<div class="card group-exercise-card '+(isDone?'completed':'')+'" style="margin-bottom:6px;"><div style="display:flex;align-items:center;gap:8px;"><div class="checkbox-custom '+(isDone?'checked':'')+'" onclick="toggleHistEx(\''+record.id+'\',\''+group.id+'\',\''+escapeHtml(ex.name)+'\',this)" style="cursor:pointer;">'+(isDone?'✓':'')+'</div><div style="flex:1;"><div class="card-title" style="font-size:14px;">'+ex.name+'</div><div class="card-meta">'+ex.sets+'</div>'+(section.type==='main'&&ex.equipment?'<div class="weight-row"><input type="number" class="weight-input-sm" value="'+w+'" onchange="updateHistWeight(\''+record.id+'\',\''+group.id+'\',\''+escapeHtml(ex.name)+'\',this.value)" onfocus="this.select()" step="5"> <span class="weight-unit">kg</span></div>':'')+'</div><button class="history-delete-ex" onclick="deleteHistEx(\''+record.id+'\',\''+group.id+'\',\''+escapeHtml(ex.name)+'\')" title="删除">🗑️</button></div></div>';
+          }else{
+            h += '<div class="card group-exercise-card '+(isDone?'completed':'')+'" style="opacity:'+(isDone?'1':'0.45')+';margin-bottom:6px;"><div style="display:flex;align-items:center;gap:8px;"><div class="checkbox-custom '+(isDone?'checked':'')+'" style="width:22px;height:22px;font-size:12px;">'+(isDone?'✓':'')+'</div><div><div class="card-title" style="font-size:14px;'+(isDone?'':'text-decoration:line-through;opacity:0.5;')+'">'+ex.name+'</div><div class="card-meta">'+ex.sets+(w?' · '+w+'kg':'')+'</div></div></div></div>';
           }
         });
       });
-      html += `</div>`;
+      h += '</div>';
     });
   } else {
-    html += `<div class="empty-state mt-24"><span class="empty-icon">📋</span><p>该日无训练记录</p></div>`;
+    h += '<p class="text-muted mt-16">该日无训练数据</p>';
   }
-
-  html += `
-    <button class="btn btn-danger mt-16" onclick="deleteHistoryRecord('${record.id}')">🗑️ 删除此记录</button>
-  `;
-
-  container.innerHTML = html;
+  h += '<button class="btn btn-danger mt-16" onclick="deleteHistoryRecord(\''+record.id+'\')">🗑️ 删除此记录</button>';
+  container.innerHTML = h;
 }
 
-function toggleHistoryEdit() {
+function toggleHistEdit(id) {
   historyEditMode = !historyEditMode;
-  const records = getRecords();
-  const record = records.find(r => r.date === historyDetailDate);
-  if (record) renderHistoryDetail(record);
+  const r = getRecords().find(r=>r.id===id);
+  if(r) renderHistoryDetail(r);
 }
 
-function toggleHistoryExercise(recordId, groupId, exName, idx) {
-  const records = getRecords();
-  const record = records.find(r => r.id === recordId);
-  if (!record) return;
-
-  let recEx = record.exercises.find(e => e.name === exName && e.groupId === groupId);
-  if (!recEx) {
-    recEx = { name: exName, groupId: groupId, completed: false };
-    record.exercises.push(recEx);
-  }
+function toggleHistEx(recordId, groupId, exName, el) {
+  const records = getRecords(); const r = records.find(r=>r.id===recordId); if(!r) return;
+  let recEx = r.exercises.find(e=>e.name===exName && e.groupId===groupId);
+  if(!recEx){ recEx = {name:exName,groupId:groupId,completed:false}; r.exercises.push(recEx); }
   recEx.completed = !recEx.completed;
-
-  // 更新整体完成状态
-  const plan = getTrainingPlan(record.type);
-  const allEx = getAllExercisesFlat(plan);
-  record.completed = allEx.every(ex => {
-    const re = record.exercises.find(e => e.name === ex.name && e.groupId === ex.groupId);
-    return re && re.completed;
-  });
-
+  r.completed = getAllExercisesFlat(getTrainingPlan(r.type)).every(ex=>{const re=r.exercises.find(e=>e.name===ex.name&&e.groupId===ex.groupId);return re&&re.completed;});
   saveRecords(records);
-
-  // 更新UI
-  const checkbox = document.getElementById(`hist-check-${idx}`);
-  const card = document.getElementById(`hist-card-${idx}`);
-  if (checkbox) {
-    if (recEx.completed) { checkbox.classList.add('checked'); checkbox.textContent = '✓'; }
-    else { checkbox.classList.remove('checked'); checkbox.textContent = ''; }
-  }
-  if (card) {
-    if (recEx.completed) card.classList.add('completed');
-    else card.classList.remove('completed');
-  }
+  if(el){ if(recEx.completed){el.classList.add('checked');el.textContent='✓';}else{el.classList.remove('checked');el.textContent='';} }
 }
 
-function updateHistoryWeight(recordId, groupId, exName, value) {
-  const records = getRecords();
-  const record = records.find(r => r.id === recordId);
-  if (!record) return;
-  let recEx = record.exercises.find(e => e.name === exName && e.groupId === groupId);
-  if (!recEx) {
-    recEx = { name: exName, groupId: groupId, completed: false };
-    record.exercises.push(recEx);
-  }
-  recEx.weight = parseFloat(value) || 0;
+function updateHistWeight(recordId, groupId, exName, value) {
+  const records = getRecords(); const r = records.find(r=>r.id===recordId); if(!r) return;
+  let recEx = r.exercises.find(e=>e.name===exName && e.groupId===groupId);
+  if(!recEx){ recEx = {name:exName,groupId:groupId,completed:false}; r.exercises.push(recEx); }
+  recEx.weight = parseFloat(value)||0; saveRecords(records);
+}
+
+function deleteHistEx(recordId, groupId, exName) {
+  const records = getRecords(); const r = records.find(r=>r.id===recordId); if(!r) return;
+  r.exercises = r.exercises.filter(e=>!(e.name===exName && e.groupId===groupId));
   saveRecords(records);
+  historyEditMode = true;
+  renderHistoryDetail(r);
 }
 
 function deleteHistoryRecord(id) {
-  if (!confirm('确定删除这条训练记录吗？此操作不可恢复。')) return;
-  deleteRecord(id);
-  showToast('已删除', 'success');
-  showHistory();
+  if(!confirm('确定删除？不可恢复。')) return;
+  deleteRecord(id); showToast('已删除','success'); showHistory();
+}
+
+function escapeHtml(str) {
+  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }

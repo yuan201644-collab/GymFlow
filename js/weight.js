@@ -41,15 +41,15 @@ function renderWeightPage() {
     <div class="card mb-16" style="border-left: 3px solid ${bmi ? category.color : 'var(--border)'};">
       <div class="flex-between mb-8">
         <div>
-          <div style="font-size:13px;color:var(--text-muted);">BMI（身体质量指数）</div>
-          <div style="font-size:32px;font-weight:800;color:${bmi ? category.color : 'var(--text-muted)'};margin-top:4px;">
+          <div style="font-size:13px;color:var(--muted);">BMI（身体质量指数）</div>
+          <div style="font-size:32px;font-weight:800;color:${bmi ? category.color : 'var(--muted)'};margin-top:4px;">
             ${bmi ? bmi.toFixed(1) : '--'}
           </div>
-          <div style="font-size:13px;color:${bmi ? category.color : 'var(--text-muted)'};margin-top:2px;">
+          <div style="font-size:13px;color:${bmi ? category.color : 'var(--muted)'};margin-top:2px;">
             ${bmi ? category.label : '暂无数据'}
           </div>
         </div>
-        <div style="text-align:right;font-size:12px;color:var(--text-muted);line-height:1.6;">
+        <div style="text-align:right;font-size:12px;color:var(--muted);line-height:1.6;">
           偏瘦 &lt;18.5<br>
           正常 18.5-23.9<br>
           偏胖 24.0-27.9<br>
@@ -60,7 +60,7 @@ function renderWeightPage() {
       <div style="position:relative;height:8px;background:linear-gradient(to right,#40c4ff 0%,#00e676 37%,#ffab40 56%,#ff5252 100%);border-radius:4px;margin-top:8px;">
         ${bmi ? `<div style="position:absolute;top:-3px;width:14px;height:14px;background:#fff;border:2px solid ${category.color};border-radius:50%;left:${getBMIProgress(bmi)}%;transform:translateX(-50%);transition:left 0.4s;"></div>` : ''}
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:6px;">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:6px;">
         <span>15</span><span>18.5</span><span>24</span><span>28</span><span>35</span>
       </div>
     </div>
@@ -77,7 +77,7 @@ function renderWeightPage() {
           <input type="number" class="form-input" id="weight-value" placeholder="80.0" step="0.1" min="30" max="300" inputmode="decimal">
         </div>
       </div>
-      <div id="bmi-preview" class="text-center mt-8" style="font-size:13px;color:var(--text-muted);">
+      <div id="bmi-preview" class="text-center mt-8" style="font-size:13px;color:var(--muted);">
         输入体重后实时预览 BMI
       </div>
       <button class="btn btn-accent mt-16" onclick="handleAddWeight()">添加记录</button>
