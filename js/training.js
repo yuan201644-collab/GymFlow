@@ -669,6 +669,16 @@ function renderTrainingPage() {
 
   let html = '';
 
+  // 方案提示
+  const activePlanId = getActivePlanId();
+  if (activePlanId !== 'default') {
+    const plans = getPlans();
+    const ap = plans.find(p => p.id === activePlanId);
+    if (ap) {
+      html += `<div style="font-size:11px;color:var(--accent);margin-bottom:8px;">📋 当前方案：${ap.name}</div>`;
+    }
+  }
+
   html += `<div class="day-switcher mb-8">`;
   ['push','pull','legs','rest'].forEach(type => {
     const p = getTrainingPlan(type);

@@ -301,6 +301,39 @@ function resetAllData() {
   localStorage.removeItem('fitness_version');
 }
 
+// ========== 训练方案库 ==========
+
+function getPlans() {
+  return loadJSON('fitness_plans') || [];
+}
+
+function savePlans(plans) {
+  saveJSON('fitness_plans', plans);
+}
+
+function getActivePlanId() {
+  return localStorage.getItem('fitness_active_plan') || 'default';
+}
+
+function setActivePlan(id) {
+  localStorage.setItem('fitness_active_plan', id);
+}
+
+function addPlan(plan) {
+  const plans = getPlans();
+  plan.id = 'plan_' + Date.now().toString(36);
+  plan.createdAt = todayStr();
+  plans.push(plan);
+  savePlans(plans);
+  return plan;
+}
+
+function deletePlan(id) {
+  const plans = getPlans().filter(p => p.id !== id);
+  savePlans(plans);
+  if (getActivePlanId() === id) setActivePlan('default');
+}
+
 // ========== 版本管理 ==========
 
 const APP_VERSION = '1.2';

@@ -101,6 +101,16 @@ const FEATURE_MODULES = [
     render: renderStatsModule,
   },
   {
+    id: 'plans', icon: '📋', label: '方案库',
+    desc: () => {
+      const plans = getPlans();
+      const active = getActivePlanId();
+      const activePlan = plans.find(p => p.id === active);
+      return activePlan ? `当前：${activePlan.name}` : `当前：默认三分化 · ${plans.length}套方案`;
+    },
+    render: renderPlanLib,
+  },
+  {
     id: 'ai-coach', icon: '🧠', label: 'AI训练方案',
     desc: () => '定制化三分化/五分化训练',
     render: renderAICoach,
@@ -268,6 +278,34 @@ function renderWeightModule(container) {
     ]}, options: { responsive: true, interaction: { mode: 'index', intersect: false }, plugins: { legend: { labels: { color: '#868686', usePointStyle: true, padding: 16, font: { size: 11 } } } }, scales: { x: { grid: { color: 'rgba(128,128,128,.06)' }, ticks: { color: '#868686', font: { size: 10 } } }, y: { position: 'left', grid: { color: 'rgba(128,128,128,.06)' }, ticks: { color: '#868686', font: { size: 10 }, callback: v => v + ' kg' } }, y1: { position: 'right', grid: { display: false }, ticks: { color: '#ffb74d', font: { size: 10 } } } } } });
   }, 100);
 }
+// ── 方案库 ──
+function renderPlanLib(container) {
+  const plans = getPlans();
+  const activeId = getActivePlanId();
+  let h = '';
+
+  // 默认方案
+  const isDefault = activeId === 'default';
+  h += `<div class="card ${isDefault?'completed':''}" style="cursor:pointer;" onclick="setActivePlan('default');openFeatureModule('plans')">`;
+  h += `<div class="flex-between"><div><span class="card-target">📌 默认</span><div class="card-title mt-8">三分化训练（推/拉/臀腿）</div><div class="card-meta">系统内置 · 4天轮转含休息日</div></div>`;
+  h += `${isDefault?'<span style="color:var(--accent);font-weight:700;">✓ 当前</span>':''}</div></div>`;
+
+  // 自定义方案
+  if (plans.length === 0) {
+    h += '<p class="text-muted text-center mt-16">暂无自定义方案<br>去「AI训练方案」生成你的专属计划</p>';
+  } else {
+    plans.forEach(p => {
+      const isActive = p.id === activeId;
+      h += `<div class="card ${isActive?'completed':''}" style="cursor:pointer;">`;
+      h += `<div class="flex-between" onclick="setActivePlan('${p.id}');openFeatureModule('plans')"><div><span class="card-target">${p.type==='5day'?'5分化':'3分化'}</span><div class="card-title mt-8">${p.name}</div><div class="card-meta">${p.description||''} · ${p.createdAt}</div></div>`;
+      h += `${isActive?'<span style="color:var(--accent);font-weight:700;">✓ 当前</span>':''}</div>`;
+      h += `<button class="btn btn-sm btn-outline mt-8" onclick="event.stopPropagation();deletePlan('${p.id}');openFeatureModule('plans')" style="width:auto;">🗑️ 删除</button>`;
+      h += '</div>';
+    });
+  }
+  container.innerHTML += h;
+}
+
 // ── AI 定制训练方案 ──
 let coachMessages = [];
 let coachLoading = false;
@@ -399,9 +437,28 @@ async function coachGeneratePlan() {
     });
     const data = await resp.json();
     if (data.success) {
-      coachMessages.push({ role: 'ai', content: '✅ 方案已生成！\n\n' + data.answer.replace(/\{/g,'<br>{').replace(/\}/g,'}<br>') });
-      coachPlanGenerated = data.answer;
-      if (status) status.textContent = '方案已生成 · 可保存到方案库';
+      // 尝试解析JSON
+      let plan = null;
+      try {
+        const json = JSON.parse(data.answer.replace(/```json|```/g,'').trim());
+        if (json.name && json.days) {
+          plan = addPlan(json);
+        }
+      } catch(e) {}
+
+      let resultText = '✅ 方案已生成！\n\n';
+      if (plan) {
+        resultText += `📋 "${plan.name}" 已保存到方案库\n`;
+        resultText += `类型：${plan.type === '5day' ? '五分化' : '三分化'} · ${plan.days.length}天训练\n`;
+        setActivePlan(plan.id);
+        coachPlanGenerated = plan;
+        if (status) status.textContent = `方案"${plan.name}"已设为当前方案`;
+      } else {
+        resultText += data.answer;
+        coachPlanGenerated = data.answer;
+        if (status) status.textContent = '方案已生成（JSON解析失败，请重新生成）';
+      }
+      coachMessages.push({ role: 'ai', content: resultText });
     } else {
       coachMessages.push({ role: 'ai', content: '⚠️ 生成失败：' + data.error });
       if (status) status.textContent = '';
