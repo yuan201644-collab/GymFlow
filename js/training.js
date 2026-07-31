@@ -1076,7 +1076,7 @@ function addHistoryRecord() {
   h += '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:400;" onclick="document.getElementById(\'hist-add-sheet\').remove()"></div>';
   h += '<div style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);z-index:401;background:var(--surface);width:100%;max-width:680px;border-radius:14px 14px 0 0;padding:20px;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));">';
   h += '<h3 style="margin-bottom:12px;">补录训练</h3>';
-  h += '<input type="date" class="form-input mb-8" id="hist-date" value="' + todayStr() + '">';
+  h += '<input type="date" class="form-input mb-8" id="hist-date" value="' + todayStr() + '" max="' + todayStr() + '">';
   h += '<div class="day-switcher mb-8" id="hist-type">';
   Object.entries(typeMap).forEach(([k, v], i) => { h += '<button class="day-switch-btn' + (i===0?' active':'') + '" onclick="selectHistType(this,\'' + k + '\')">' + v + '</button>'; });
   h += '</div>';

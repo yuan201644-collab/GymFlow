@@ -21,6 +21,13 @@ function renderAIPage() {
   let h = '<div style="display:flex;flex-direction:column;height:calc(100dvh - 105px);">';
   h += '<div><h1 class="section-title" style="margin-bottom:2px;">🤖 AI 健身顾问</h1>';
   h += '<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">GLM-4-Flash · 专注健身问答</div></div>';
+
+  // 首次使用引导：检测到默认隧道地址未修改
+  const srv = getAIServer();
+  if (srv.includes('trycloudflare.com')) {
+    h += '<div class="fresh-install-banner" style="margin-bottom:8px;"><div class="fresh-install-icon">⚙️</div><div class="fresh-install-text"><b>AI 服务未配置</b><br>当前使用临时隧道地址可能已过期。去「我的→AI服务」填入你的后端地址</div></div>';
+  }
+
   h += '<div class="chat-box" id="chat-box">';
 
   if (aiMessages.length === 0) {

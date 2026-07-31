@@ -354,6 +354,7 @@ function addPlan(plan) {
 }
 
 function deletePlan(id) {
+  if (!confirm('确定删除这套方案吗？')) return;
   const plans = getPlans().filter(p => p.id !== id);
   savePlans(plans);
   if (getActivePlanId() === id) setActivePlan('default');
