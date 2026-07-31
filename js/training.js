@@ -717,6 +717,27 @@ function renderTrainingPage() {
   });
   html += `</div></div>`;
 
+  // 今日建议（基于最近训练数据本地计算）
+  const recentRecords = getRecords().filter(r => r.completed).slice(-3);
+  if (recentRecords.length > 0) {
+    let tip = '';
+    const lastType = recentRecords[recentRecords.length-1].type;
+    if (lastType === 'legs' || (lastType && lastType.startsWith('custom_'))) {
+      const lastDate = new Date(recentRecords[recentRecords.length-1].date);
+      const daysSince = Math.floor((new Date() - lastDate) / 86400000);
+      if (daysSince >= 2) tip = '💪 上次训练已过' + daysSince + '天，今天适合上强度';
+      else if (daysSince === 0) tip = '⚠️ 今天已训练过，注意休息恢复';
+      else tip = '✅ 状态良好，按计划推进';
+    }
+    if (recentRecords.length >= 2) {
+      const lastTwo = recentRecords.slice(-2);
+      if (lastTwo.every(r => r.completed)) tip = '🔥 连续' + recentRecords.length + '天完成训练，势头很好！';
+    }
+    if (tip) {
+      html += `<div class="card" style="border-left:3px solid var(--accent);padding:10px 14px;margin-bottom:10px;font-size:13px;">${tip}</div>`;
+    }
+  }
+
   html += `<div class="day-switcher mb-8">`;
   // 检查是否有自定义方案
   const activePid = getActivePlanId();
@@ -744,7 +765,7 @@ function renderTrainingPage() {
   }
   html += `</div>`;
 
-  html += `<div class="progress-section"><div class="progress-header"><div><div class="day-label" style="font-size:17px;">${plan.emoji} ${plan.label}</div><div class="day-subtitle" style="font-size:12px;color:var(--muted);">${plan.subtitle} · <span class="history-link" onclick="showHistory()">📋 历史</span></div></div><div class="progress-count"><span id="completed-count">${completedGroups}</span>/<span>${totalGroups}</span> 部位</div></div><div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:${totalGroups?(completedGroups/totalGroups*100):0}%"></div></div></div>`;
+  html += `<div class="progress-section"><div class="progress-header"><div><div class="day-label" style="font-size:17px;">${plan.emoji} ${plan.label}</div><div class="day-subtitle" style="font-size:12px;color:var(--muted);">${plan.subtitle} · <span class="history-link" onclick="showHistory()">📋 历史</span> · <span class="history-link" onclick="generateWeeklyReport()">📊 周报</span></div></div><div class="progress-count"><span id="completed-count">${completedGroups}</span>/<span>${totalGroups}</span> 部位</div></div><div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:${totalGroups?(completedGroups/totalGroups*100):0}%"></div></div></div>`;
 
   plan.sections.forEach((section, secIdx) => {
     html += `<div class="mb-8"><span class="${section.badgeClass||'section-badge'}" style="opacity:0.7;">${section.badge}</span>`;
@@ -996,14 +1017,14 @@ async function submitForRating() {
   report += '\n\n部位完成率：'+completed.length+'/'+allGroups.length;
   if(cardio.done) report += '\n\n### 🏃 有氧（附加项）\n✅ '+ (cardio.duration||0) +'分钟 · 坡度'+(cardio.incline||0)+'% · '+(cardio.distance||0)+'km';
   else report += '\n\n### 🏃 有氧（附加项）\n⬜ 未进行';
-  report += '\n\n请评分（满分100）并简短评价。有氧为附加项不扣分。格式：【评分】XX分 【评价】... 【建议】...';
+  report += '\n\n请输出3行训练小结（每行不超过30字）：\n✅ 完成度与亮点\n📊 与近期对比\n💡 明日建议\n然后给出评分（满分100）和简短评价。格式：【小结】... 【评分】XX分 【评价】...';
 
   try{
     const resp = await fetch(getAIServer()+'/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:getAIPassword(),deviceId:getDeviceId(),content:report})});
     const d = await resp.json();
     if(d.success){
-      record.aiRating = d.answer; saveTodayRecord(record);
-      if(rs) rs.innerHTML = '<div class="rating-card"><div class="rating-card-header"><span>📊 AI 训练评分</span><span class="rating-refresh" onclick="submitForRating()">🔄 重新评估</span></div><div class="rating-card-body">'+d.answer.replace(/\n/g,'<br>')+'</div></div>';
+      record.aiRating = d.answer; record.aiSummary = d.answer; saveTodayRecord(record);
+      if(rs) rs.innerHTML = '<div class="rating-card"><div class="rating-card-header"><span>📊 AI 复盘小结</span><span class="rating-refresh" onclick="submitForRating()">🔄 重评</span></div><div class="rating-card-body">'+d.answer.replace(/\n/g,'<br>')+'</div></div>';
     }else{
       if(rs) rs.innerHTML = '<div class="rating-card" style="border-color:var(--danger);"><div class="rating-card-header">⚠️ 评分失败</div><div class="rating-card-body">'+d.error+'</div><button class="btn btn-outline mt-8" onclick="submitForRating()">重试</button></div>';
     }
@@ -1187,6 +1208,56 @@ function deleteHistEx(recordId, groupId, exName) {
 function deleteHistoryRecord(id) {
   if(!confirm('确定删除？不可恢复。')) return;
   deleteRecord(id); showToast('已删除','success'); showHistory();
+}
+
+// ===== 周记 =====
+async function generateWeeklyReport() {
+  const rs = document.getElementById('rating-section');
+  if (rs) rs.innerHTML = '<div class="rating-card rating-loading"><div class="rating-card-header">📊 生成周报中...</div><div class="rating-card-body text-center">🧠 AI正在汇总本周训练...</div></div>';
+
+  // 获取本周训练
+  const now = new Date();
+  const dayOfWeek = now.getDay() || 7; // 周日=7
+  const monday = new Date(now); monday.setDate(now.getDate() - dayOfWeek + 1);
+  const weekRecords = getRecords().filter(r => {
+    const d = new Date(r.date);
+    return d >= monday && d <= now && r.completed;
+  });
+
+  if (weekRecords.length === 0) {
+    if (rs) rs.innerHTML = '<div class="rating-card"><div class="rating-card-header">📊 本周报告</div><div class="rating-card-body">本周暂无完成的训练记录</div></div>';
+    return;
+  }
+
+  let report = '## 本周训练数据\n';
+  weekRecords.forEach(r => {
+    const plan = getTrainingPlan(r.type);
+    report += `- ${r.date} ${plan.label}：${r.exercises.filter(e=>e.completed).length}个动作完成\n`;
+  });
+  const weights = getWeights().filter(w => new Date(w.date) >= monday);
+  if (weights.length > 0) report += `\n体重变化：${weights[0].weight}kg → ${weights[weights.length-1].weight}kg`;
+
+  report += '\n\n请生成本周训练周报，包含：部位覆盖分析、总训练量评估、体重趋势、下周训练建议。简洁凝练。';
+
+  try {
+    const resp = await fetch(getAIServer()+'/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:getAIPassword(),deviceId:getDeviceId(),content:report})});
+    const d = await resp.json();
+    if (d.success) {
+      const log = getCoachLog(); log.push({ week: monday.toISOString().slice(0,10), summary: d.answer }); saveCoachLog(log);
+      if (rs) rs.innerHTML = '<div class="rating-card"><div class="rating-card-header"><span>📊 本周训练周报</span></div><div class="rating-card-body">'+d.answer.replace(/\n/g,'<br>')+'</div></div>';
+    } else {
+      if (rs) rs.innerHTML = '<div class="rating-card" style="border-color:var(--danger);"><div class="rating-card-header">⚠️ 生成失败</div><div class="rating-card-body">'+d.error+'</div></div>';
+    }
+  } catch(e) {
+    if (rs) rs.innerHTML = '<div class="rating-card" style="border-color:var(--danger);"><div class="rating-card-header">⚠️ 无法连接</div><div class="rating-card-body">请确认后端已启动</div></div>';
+  }
+}
+
+function getCoachLog() {
+  try { return JSON.parse(localStorage.getItem('fitness_coach_log') || '[]'); } catch { return []; }
+}
+function saveCoachLog(log) {
+  localStorage.setItem('fitness_coach_log', JSON.stringify(log.slice(-12)));
 }
 
 function escapeHtml(str) {
