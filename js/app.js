@@ -124,6 +124,14 @@ const FEATURE_MODULES = [
     render: renderExerciseLib,
   },
   {
+    id: 'posture', icon: '🩻', label: '体态矫正',
+    desc: () => {
+      const p = getBodyProfile();
+      return p ? `${p.postureTags.length||0}项标签 · 点击查看` : '自测评估 · 定制矫正';
+    },
+    render: renderPostureModule,
+  },
+  {
     id: 'weight', icon: '⚖️', label: '体重追踪',
     desc: () => {
       const ws = getWeights();
@@ -515,7 +523,11 @@ async function coachGeneratePlan() {
   let prompt = `## 用户信息\n性别：${s.userInfo.gender} · 年龄：${s.userInfo.age} · 身高：${s.userInfo.height}cm\n`;
   prompt += `## 训练问卷\n`;
   COACH_STEPS.forEach(st => { prompt += `${st.question} → ${coachProfile[st.key]}\n`; });
-  prompt += `\n## 要求\n根据以上信息定制训练方案。\n用户选择的分化方式：${coachProfile.split}`;
+  // 注入体态信息
+  const bp = getBodyProfile();
+  prompt += `\n## 体态信息\n`;
+  prompt += bp && bp.postureTags.length > 0 ? `体态问题：${bp.postureTags.join('、')}\n注意：方案需考虑体态矫正需求，对相关部位动作做安全替换或增加矫正动作。` : '体态正常，无特殊限制。';
+  prompt += `\n\n## 要求\n根据以上信息定制训练方案。\n用户选择的分化方式：${coachProfile.split}`;
   prompt += `\n如选"由你推荐"则根据训练天数(${coachProfile.days})判断：≤3天→三分化，4-5天→五分化`;
   prompt += `\n当前体重：${(getWeights().slice(-1)[0]||{}).weight||'未知'}kg\n每次训练时长：${coachProfile.time}`;
   prompt += `\n\n生成纯JSON（不要markdown代码块）：{"name":"方案名","type":"3day或5day","description":"简介","days":[{"label":"训练日名","groups":[{"label":"肌群","exercises":[{"name":"动作","sets":"组数×次数"}]}]}]}\n每个训练日4-6个肌群组，动作名常见易懂。`;
