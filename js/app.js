@@ -14,6 +14,9 @@ function initApp() {
     if (splash) splash.classList.add('hide');
   }, 2000);
 
+  // 新手教程（首次启动或重置后显示）
+  setTimeout(() => showAppTutorial(), 2500);
+
   const s = getSettings();
   if (!s.lastWorkoutType) { s.lastWorkoutType = null; saveSettings(s); }
 

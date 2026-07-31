@@ -324,6 +324,8 @@ function resetAllData() {
   localStorage.removeItem('fitness_ai_password');
   localStorage.removeItem('fitness_theme');
   localStorage.removeItem('fitness_device_id');
+  localStorage.removeItem('app_tutorial_done');
+  localStorage.removeItem('ai_tutorial_done');
 }
 
 // ========== 训练方案库 ==========
