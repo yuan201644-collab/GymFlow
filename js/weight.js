@@ -180,7 +180,9 @@ function handleDeleteWeight(id) {
   if (!confirm('确定删除这条记录吗？')) return;
   deleteWeight(id);
   showToast('已删除', 'success');
-  renderWeightPage();
+  if (typeof openFeatureModule === 'function') {
+    openFeatureModule('weight');
+  }
 }
 
 function renderWeightChart(weights) {

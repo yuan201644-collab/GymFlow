@@ -269,11 +269,15 @@ function deleteWeight(id) {
 
 function exportAllData() {
   const data = {
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     settings: getSettings(),
     records: getRecords(),
     weights: getWeights(),
+    plans: getPlans(),
+    activePlan: getActivePlanId(),
+    aiServer: localStorage.getItem('fitness_ai_server') || '',
+    aiPassword: localStorage.getItem('fitness_ai_password') || '',
   };
   return JSON.stringify(data, null, 2);
 }
@@ -287,6 +291,10 @@ function importAllData(jsonStr) {
     saveSettings(data.settings || DEFAULT_SETTINGS);
     saveRecords(data.records);
     saveWeights(data.weights);
+    if (data.plans) savePlans(data.plans);
+    if (data.activePlan) setActivePlan(data.activePlan);
+    if (data.aiServer) localStorage.setItem('fitness_ai_server', data.aiServer);
+    if (data.aiPassword) localStorage.setItem('fitness_ai_password', data.aiPassword);
     return true;
   } catch (e) {
     console.error('Import failed:', e);
@@ -299,6 +307,12 @@ function resetAllData() {
   localStorage.removeItem(STORAGE_KEYS.records);
   localStorage.removeItem(STORAGE_KEYS.weights);
   localStorage.removeItem('fitness_version');
+  localStorage.removeItem('fitness_plans');
+  localStorage.removeItem('fitness_active_plan');
+  localStorage.removeItem('fitness_ai_server');
+  localStorage.removeItem('fitness_ai_password');
+  localStorage.removeItem('fitness_theme');
+  localStorage.removeItem('fitness_device_id');
 }
 
 // ========== 训练方案库 ==========

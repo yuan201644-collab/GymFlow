@@ -73,7 +73,7 @@ function renderMePage() {
 
   h += `<div class="me-section"><h3>AI 服务</h3>`;
   h += `<input type="text" class="form-input mb-8" id="ai-server-me" value="${localStorage.getItem('fitness_ai_server')||DEFAULT_AI_SERVER}" onchange="saveAIMe()" placeholder="API 地址">`;
-  h += `<input type="text" class="form-input mb-8" id="ai-pwd-me" value="${localStorage.getItem('fitness_ai_password')||'gymflow2024'}" onchange="saveAIMe()" placeholder="访问密码"></div>`;
+  h += `<input type="text" class="form-input mb-8" id="ai-pwd-me" type="password" value="${localStorage.getItem('fitness_ai_password')||'gymflow2024'}" onchange="saveAIMe()" placeholder="访问密码"></div>`;
 
   h += `<div class="me-section"><h3>数据管理</h3><div style="display:flex;flex-direction:column;gap:8px;">`;
   h += `<button class="btn btn-outline btn-sm" onclick="exportData()">📤 导出数据</button>`;
@@ -164,7 +164,7 @@ function renderStatsModule(container) {
   h += `<div class="chart-container"><h3 style="font-size:14px;margin-bottom:10px;">推拉腿分布</h3><canvas id="chart-type"></canvas></div>`;
   h += `<div class="chart-container"><h3 style="font-size:14px;margin-bottom:10px;">体重变化</h3><canvas id="chart-weight"></canvas></div>`;
   h += `<div class="card"><div class="calendar-header"><span class="calendar-month" id="cal-month"></span><div class="calendar-nav"><button onclick="calNav(-1)">◀</button><button onclick="calNav(1)">▶</button></div></div><div class="calendar-grid" id="cal-grid"></div><div class="cal-legend" id="cal-legend"></div></div>`;
-  fc.innerHTML = h;
+  container.innerHTML += h;
 
   // 构建区域数据
   const records = getRecords().filter(r => r.completed);
@@ -268,7 +268,7 @@ function renderWeightModule(container) {
       h += `<div class="weight-list-item"><div><div class="weight-date">${formatDate(w.date)}</div><div style="font-size:12px;color:${cat.color};">BMI ${b.toFixed(1)} · ${cat.label}</div></div><div class="weight-value">${w.weight}<span>kg</span></div><button class="btn-delete" onclick="handleDeleteWeight('${w.id}');openFeatureModule('weight')">🗑️</button></div>`;
     });
   } else h += `<div class="empty-state"><span class="empty-icon">📋</span><p>暂无体重记录</p></div>`;
-  fc.innerHTML = h;
+  container.innerHTML += h;
   if (ws.length >= 2) setTimeout(() => {
     const ws2 = getWeights(); const cv = document.getElementById('chart-weight-dual'); if (!cv || ws2.length < 2) return;
     const wV = ws2.map(w => w.weight); const bV = ws2.map(w => calcBMI(w.weight));
@@ -303,7 +303,7 @@ function renderPlanLib(container) {
       h += '</div>';
     });
   }
-  fc.innerHTML = h;
+  container.innerHTML += h;
 }
 
 // ── AI 定制训练方案 ──
@@ -505,7 +505,7 @@ function renderExerciseLib(container) {
   });
   h += `</div>`;
   h += `<div id="ex-list" class="ex-list"></div>`;
-  fc.innerHTML = h;
+  container.innerHTML += h;
   filterExercises();
 }
 

@@ -875,8 +875,6 @@ function toggleCardio() {
   const record = getTodayRecord();
   if (!record.cardio) record.cardio = {};
   record.cardio.done = !record.cardio.done;
-  if (!record.cardio.duration) record.cardio.duration = 30;
-  if (!record.cardio.incline) record.cardio.incline = 10;
   saveTodayRecord(record);
   renderTrainingPage();
 }
@@ -994,6 +992,9 @@ function switchToPlan(id) {
 }
 
 function switchTrainingDay(type) {
+  const record = getTodayRecord();
+  const hasProgress = record.exercises && record.exercises.some(e => e.completed);
+  if (hasProgress && !confirm('切换训练日会清空当前勾选进度，确定吗？')) return;
   switchTodayWorkoutType(type);
   renderTrainingPage();
   window.scrollTo({ top: 0, behavior: 'smooth' });
