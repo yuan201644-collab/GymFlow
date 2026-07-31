@@ -59,12 +59,16 @@ function navigateTo(page) {
 function renderMePage() {
   const c = document.getElementById('me-content');
   const s = getSettings(); const u = s.userInfo;
+  const infoMissing = !u.gender || !u.age || !u.height;
   let h = '<h1 class="section-title">👤 我的</h1>';
-  h += `<div class="me-section"><h3>基本信息</h3><div class="user-info-grid">`;
-  h += `<div class="user-info-item" onclick="editUserInfo('gender')"><div class="label">性别</div><div class="value">${u.gender}</div></div>`;
-  h += `<div class="user-info-item" onclick="editUserInfo('age')"><div class="label">年龄</div><div class="value">${u.age}<span style="font-size:14px;color:var(--muted);">岁</span></div></div>`;
-  h += `<div class="user-info-item" onclick="editUserInfo('height')"><div class="label">身高</div><div class="value">${u.height}<span style="font-size:14px;color:var(--muted);">cm</span></div></div>`;
-  h += `<div class="user-info-item" onclick="editUserInfo('goal')"><div class="label">目标</div><div class="value" style="font-size:14px;">${u.goal||'减脂塑形'}</div></div>`;
+  if (infoMissing) {
+    h += `<div class="fresh-install-banner" style="margin-bottom:12px;"><div class="fresh-install-icon">🤖</div><div class="fresh-install-text"><b>信息未完善</b><br>让 AI 帮你了解自己，完善基础资料</div><button class="btn btn-sm btn-outline" onclick="startInfoWizard()" style="width:auto;flex-shrink:0;">AI 填写</button></div>`;
+  }
+  h += `<div class="me-section"><h3>基本信息${infoMissing?' <span style="font-size:11px;color:#ffb74d;">未完善</span>':''}</h3><div class="user-info-grid">`;
+  h += `<div class="user-info-item" onclick="editUserInfo('gender')"><div class="label">性别</div><div class="value">${u.gender||'点击设置'}</div></div>`;
+  h += `<div class="user-info-item" onclick="editUserInfo('age')"><div class="label">年龄</div><div class="value">${u.age ? u.age + '<span style="font-size:14px;color:var(--muted);">岁</span>' : '点击设置'}</div></div>`;
+  h += `<div class="user-info-item" onclick="editUserInfo('height')"><div class="label">身高</div><div class="value">${u.height ? u.height + '<span style="font-size:14px;color:var(--muted);">cm</span>' : '点击设置'}</div></div>`;
+  h += `<div class="user-info-item" onclick="editUserInfo('goal')"><div class="label">目标</div><div class="value" style="font-size:14px;">${u.goal||'点击设置'}</div></div>`;
   h += `</div></div>`;
 
   h += `<div class="me-section"><h3>主题外观</h3><div class="theme-switcher mb-16">`;
@@ -79,12 +83,59 @@ function renderMePage() {
   h += `<input type="password" class="form-input mb-8" id="ai-pwd-me" value="${localStorage.getItem('fitness_ai_password')||'gymflow2024'}" onchange="saveAIMe()" placeholder="访问密码"></div>`;
 
   h += `<div class="me-section"><h3>数据管理</h3><div style="display:flex;flex-direction:column;gap:8px;">`;
-  h += `<button class="btn btn-outline btn-sm" onclick="exportData()">📤 导出数据</button>`;
+  h += `<button class="btn btn-outline btn-sm" onclick="exportData()">📤 导出数据</button><div style="font-size:10px;color:var(--muted);">↓ 保存到「下载」文件夹</div>`;
   h += `<button class="btn btn-outline btn-sm" onclick="importData()">📥 导入数据</button>`;
   h += `<button class="btn btn-danger btn-sm" onclick="resetData()">⚠️ 重置全部数据</button></div></div>`;
   h += `<p class="about-text mt-16">GymFlow v${APP_VERSION} · 本地存储 · 三分化训练追踪</p>`;
   h += `<input type="file" id="import-file-input" accept=".json" style="display:none" onchange="handleImportFile(event)">`;
   c.innerHTML = h;
+}
+
+async function startInfoWizard() {
+  const s = getSettings();
+  const prompt = `请帮我完善个人健身资料。我是新用户，请用友好的方式依次问我以下问题（一次问一个，等我回答）：1. 性别？2. 年龄？3. 身高(cm)？4. 当前体重(kg)？5. 健身目标？问完后请总结并输出JSON格式：{"gender":"男/女","age":25,"height":175,"goal":"增肌减脂"}，不要markdown，只输出最后的JSON。`;
+  showToast('🤖 AI正在准备问题...', 'success');
+
+  try {
+    const resp = await fetch(getAIServer()+'/api/ask', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({password:getAIPassword(),deviceId:getDeviceId(),content:prompt})
+    });
+    const data = await resp.json();
+    if (data.success) {
+      // 尝试从回复中提取信息
+      const raw = data.answer.replace(/```json|```/g,'').trim();
+      const jsonMatch = raw.match(/\{[\s\S]*"gender"[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          const info = JSON.parse(jsonMatch[0]);
+          s.userInfo.gender = info.gender || '';
+          s.userInfo.age = parseInt(info.age) || 0;
+          s.userInfo.height = parseInt(info.height) || 0;
+          if (info.goal) s.userInfo.goal = info.goal;
+          saveSettings(s);
+          showToast('✅ 信息已完善', 'success');
+          renderMePage();
+          return;
+        } catch(e) {}
+      }
+      // JSON 解析失败，用对话提取
+      const answer = data.answer;
+      if (answer.includes('男')) s.userInfo.gender = '男';
+      else if (answer.includes('女')) s.userInfo.gender = '女';
+      const ageMatch = answer.match(/(\d+)\s*岁/);
+      if (ageMatch) s.userInfo.age = parseInt(ageMatch[1]);
+      const heightMatch = answer.match(/(\d+)\s*cm/);
+      if (heightMatch) s.userInfo.height = parseInt(heightMatch[1]);
+      saveSettings(s);
+      showToast('✅ AI 已帮你填写基本信息', 'success');
+      renderMePage();
+    } else {
+      showToast('AI 暂时不可用，请手动填写', 'error');
+    }
+  } catch(e) {
+    showToast('AI 服务未连接，请手动填写', 'error');
+  }
 }
 
 function saveAIMe() {
@@ -122,6 +173,14 @@ const FEATURE_MODULES = [
     id: 'exercises', icon: '📚', label: '动作库',
     desc: () => `${EXERCISE_DB.length}+ 动作 · 8维标签`,
     render: renderExerciseLib,
+  },
+  {
+    id: 'coach-log', icon: '📝', label: '教练日志',
+    desc: () => {
+      const log = getCoachLog();
+      return log.length > 0 ? `${log.length} 篇周报 · 最近：${log[log.length-1].week}` : '复盘小结 · 周报回顾';
+    },
+    render: renderCoachLogModule,
   },
   {
     id: 'posture', icon: '🩻', label: '体态矫正',
@@ -314,6 +373,40 @@ function renderPlanLib(container) {
       h += '</div>';
     });
   }
+  container.innerHTML += h;
+}
+
+// ── 教练日志 ──
+function renderCoachLogModule(container) {
+  const log = getCoachLog();
+  let h = '';
+  // 最近训练复盘
+  const recentRecords = getRecords().filter(r => r.completed && r.aiSummary).slice(-5).reverse();
+  if (recentRecords.length > 0) {
+    h += '<div class="card mb-8"><div class="card-title">📊 最近复盘</div>';
+    recentRecords.forEach(r => {
+      h += `<div class="card-meta" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);"><b>${formatDate(r.date)} · ${getTrainingPlan(r.type).label}</b><br>${r.aiSummary.replace(/\n/g,'<br>')}</div>`;
+    });
+    h += '</div>';
+  } else {
+    h += '<div class="card mb-8"><div class="card-title">📊 最近复盘</div><div class="card-meta">暂无复盘记录<br>完成训练后点「📝 评分」即可生成</div></div>';
+  }
+  // 周报列表
+  if (log.length > 0) {
+    h += '<div class="card mb-8"><div class="card-title">📋 周报记录</div>';
+    log.slice().reverse().forEach(l => {
+      h += `<div class="card-meta" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);"><b>📅 ${l.week} 起</b><br>${l.summary.replace(/\n/g,'<br>')}</div>`;
+    });
+    h += '</div>';
+  } else {
+    h += '<div class="card mb-8"><div class="card-title">📋 周报记录</div><div class="card-meta">暂无周报<br>训练页标题栏点「📊 周报」生成</div></div>';
+  }
+  // 今日建议
+  const bp = getBodyProfile();
+  if (bp && bp.postureTags.length > 0) {
+    h += `<div class="card"><div class="card-title">🎯 体态提醒</div><div class="card-meta">当前标签：${bp.postureTags.join('、')}<br>训练时注意相关动作选择和安全提示</div></div>`;
+  }
+  if (h === '') h = '<div class="empty-state"><span class="empty-icon">📝</span><p>暂无教练记录<br>完成训练并生成小结后这里会有内容</p></div>';
   container.innerHTML += h;
 }
 
@@ -530,17 +623,20 @@ async function coachGeneratePlan() {
   prompt += `\n\n## 要求\n根据以上信息定制训练方案。\n用户选择的分化方式：${coachProfile.split}`;
   prompt += `\n如选"由你推荐"则根据训练天数(${coachProfile.days})判断：≤3天→三分化，4-5天→五分化`;
   prompt += `\n当前体重：${(getWeights().slice(-1)[0]||{}).weight||'未知'}kg\n每次训练时长：${coachProfile.time}`;
-  // 附上动作库参考
-  const sampleEx = EXERCISE_DB.filter(e => e.type === '复合' || e.difficulty !== '高级').slice(0, 100).map(e => e.name).join('、');
-  prompt += `\n\n## 动作库参考（请从中选用，确保动作名完全一致以便匹配详情）\n${sampleEx}`;
-  prompt += `\n\n生成纯JSON（训练日最后加1个休息日，不要重复）：`;
-  prompt += `\n{"name":"方案名","type":"3day或5day","days":[`;
-  prompt += `\n  {"label":"训练日1","groups":[...每组2-3动作]},`;
-  prompt += `\n  {"label":"训练日2","groups":[...]},`;
-  prompt += `\n  {"label":"休息日","groups":[{"label":"核心训练","pickHint":"2选1","exercises":[{"name":"平板支撑"},{"name":"死虫式"}]},{"label":"体态拉伸","pickHint":"2选1","exercises":[{"name":"胸肌门框拉伸"},{"name":"鸽子式"}]}]}`;
-  prompt += `\n]}`;
-  prompt += `\n规则：每个肌群组exercises数组包含2-3个备选动作（必须从动作库中选），pickHint如"3选1-2"；动作名必须与动作库完全一致。`;
-  prompt += `\n重要：在训练日最后额外追加1个休息日（共仅1个），格式{"label":"休息日","groups":[{"label":"核心训练","pickHint":"2选1","exercises":[{"name":"平板支撑","sets":"3组×30秒"},{"name":"死虫式","sets":"3组×10次"}]},{"label":"体态拉伸","pickHint":"2选1","exercises":[{"name":"胸肌门框拉伸","sets":"每侧30秒"},{"name":"鸽子式","sets":"每侧30秒"}]}]}`;
+  // 动作库参考（取代表性动作，控制token）
+  const sampleEx = EXERCISE_DB.filter(e => e.type === '复合' || e.difficulty !== '高级').slice(0, 80).map(e => e.name).join('、');
+  // 强制规范（3+1或5+1结构）
+  const splitType = (coachProfile.split && coachProfile.split.includes('五')) ? '5day' : '3day';
+  const dayCount = splitType === '5day' ? 5 : 3;
+  prompt += `\n\n## 强制规范 — 必须严格遵守`;
+  prompt += `\n- 方案类型：${splitType}（${dayCount}个训练日+1个休息日）`;
+  prompt += `\n- 每个训练日必须包含3个section：warmup(热身)/main(正式)/stretch(拉伸)`;
+  prompt += `\n- warmup固定2组(各2选1)：有氧预热(跑步机快走/跳绳)、关节激活(肩髋动态拉伸/泡沫轴滚动)`;
+  prompt += `\n- main每组2-3个备选动作(必须从动作库选)，pickHint如"3选1-2"`;
+  prompt += `\n- stretch固定2组(各2选1)：上肢拉伸(胸肌门框拉伸/背阔肌拉伸)、下肢拉伸(股四头肌拉伸/腘绳肌拉伸)`;
+  prompt += `\n- 休息日：1个main section，含核心训练(2选1:平板支撑/死虫式)+体态拉伸(2选1:胸肌门框拉伸/鸽子式)`;
+  prompt += `\n- 严禁自创动作名，所有名称必须完全匹配以下动作库:\n${sampleEx}`;
+  prompt += `\n- 输出纯JSON(无markdown)，格式:\n{"name":"方案名","type":"${splitType}","description":"简介","days":[{"label":"训练日1","sections":[{"type":"warmup","title":"热身","groups":[...]},{"type":"main","title":"正式","groups":[...]},{"type":"stretch","title":"拉伸","groups":[...]}]},{"label":"休息日","sections":[{"type":"main","title":"休息日","groups":[...]}]}]}`;
 
   try {
     const resp = await fetch(getAIServer()+'/api/ask', {
@@ -560,7 +656,17 @@ async function coachGeneratePlan() {
         try {
           const json = JSON.parse(jsonMatch[0]);
           if (json.name && json.days && Array.isArray(json.days)) {
-            plan = json; // 仅暂存，等用户确认后再 addPlan
+            // 清洗数据：确保 groups/exercises 为数组，过滤 null
+            json.days = json.days.filter(d => d && typeof d === 'object').map(d => {
+              const sections = (d.sections || []).map(s => ({
+                type: s.type || 'main', title: s.title || '', groups: (s.groups || []).filter(g => g && Array.isArray(g.exercises)).map(g => ({
+                  label: g.label || '', pickHint: g.pickHint || '1选1',
+                  exercises: (g.exercises || []).filter(ex => ex && ex.name).map(ex => ({ name: ex.name, sets: ex.sets || '3组×10-12次' }))
+                }))
+              }));
+              return { label: d.label || '训练', sections };
+            });
+            plan = json;
           }
         } catch(e) { console.log('JSON parse error:', e.message); }
       }
@@ -568,11 +674,14 @@ async function coachGeneratePlan() {
       let resultText = '';
       if (plan) {
         pendingPlan = plan; // 暂存，等用户确认
-        resultText = `✅ 方案预览：\n\n📋 ${plan.type === '5day' ? '五分化' : '三分化'} · ${plan.days.length}天训练\n`;
+        resultText = `✅ 方案预览：\n\n📋 ${plan.type === '5day' ? '五分化' : '三分化'} · ${plan.days.length}天\n`;
         plan.days.forEach(d => {
           resultText += `\n▸ ${d.label}`;
-          if (d.groups) d.groups.forEach(g => {
-            if (g.exercises) g.exercises.forEach(ex => {
+          // 新格式：sections[].groups[]
+          const groups = d.sections ? d.sections.flatMap(s => s.groups || []) : (d.groups || []);
+          const mainGroups = d.sections ? d.sections.filter(s => s.type === 'main' || !s.type).flatMap(s => s.groups || []) : groups;
+          mainGroups.forEach(g => {
+            if (g.exercises) g.exercises.slice(0, 4).forEach(ex => {
               resultText += `\n  · ${ex.name}  ${ex.sets||''}`;
             });
           });
@@ -811,7 +920,7 @@ function renderSettingsInMe(sub) {
   h += `<input type="text" class="form-input mb-8" id="ai-password-input-s" value="${localStorage.getItem('fitness_ai_password')||'gymflow2024'}" onchange="saveAIConfigS()" placeholder="密码">`;
   // Data
   h += `<h3 style="font-size:12px;color:var(--muted);margin-bottom:6px;">数据管理</h3><div style="display:flex;flex-direction:column;gap:8px;">`;
-  h += `<button class="btn btn-outline btn-sm" onclick="exportData()">📤 导出数据</button>`;
+  h += `<button class="btn btn-outline btn-sm" onclick="exportData()">📤 导出数据</button><div style="font-size:10px;color:var(--muted);">↓ 保存到「下载」文件夹</div>`;
   h += `<button class="btn btn-outline btn-sm" onclick="importData()">📥 导入数据</button>`;
   h += `<button class="btn btn-danger btn-sm" onclick="resetData()">⚠️ 重置数据</button></div>`;
   h += `<p class="about-text mt-16">GymFlow v${APP_VERSION} · 三分化训练追踪 · 本地存储</p>`;
@@ -854,7 +963,25 @@ function renderWeightChartCanvas(id){
 }
 
 // ── Export / Import ──
-function exportData(){const j=exportAllData();const b=new Blob([j],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=`gymflow-backup-${todayStr()}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);showToast('已导出','success')}
+function exportData(){
+  const j=exportAllData();
+  const filename=`GymFlow-备份-${todayStr()}.json`;
+  // 尝试下载，失败则复制到剪贴板
+  const b=new Blob([j],{type:'application/json'});
+  const u=URL.createObjectURL(b);
+  const a=document.createElement('a');
+  a.href=u;a.download=filename;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);
+  // 备用：复制到剪贴板（APK/WebView 可能不支持下载）
+  setTimeout(() => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(j).then(() => {
+        showToast('📋 已复制到剪贴板（APK可能不支持直接下载，请粘贴保存）','success');
+      }).catch(() => {});
+    }
+  }, 500);
+  showToast('✅ 桌面端已下载 · APK端已复制到剪贴板\n📄 '+filename,'success');
+}
 function importData(){document.getElementById('import-file-input')?.click()}
 function handleImportFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=function(ev){if(importAllData(ev.target.result)){showToast('导入成功','success');renderMePage();renderTrainingPage()}else showToast('格式错误','error')};r.readAsText(f);e.target.value=''}
 function resetData(){if(!confirm('确定删除所有数据？不可恢复！'))return;if(!confirm('再次确认'))return;resetAllData();const s=getSettings();s.lastWorkoutType=null;saveSettings(s);showToast('已重置','success');renderMePage();renderTrainingPage()}

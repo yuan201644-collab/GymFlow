@@ -33,12 +33,12 @@ function saveJSON(key, data) {
 
 const DEFAULT_SETTINGS = {
   userInfo: {
-    gender: '男',
-    age: 20,
-    height: 175,
-    goal: '减脂塑形',
+    gender: '',
+    age: 0,
+    height: 0,
+    goal: '',
   },
-  lastWorkoutType: null, // null 表示首次使用
+  lastWorkoutType: null,
 };
 
 function getSettings() {

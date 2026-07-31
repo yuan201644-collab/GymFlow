@@ -617,58 +617,71 @@ function getTrainingPlan(type) {
           emoji: '📋',
           sections: (() => {
             const dayIdx = idx;
-            const sections = [
-            {
-              type: 'warmup', title: '热身（5-10分钟）', badge: '热身', badgeClass: 'warmup-badge',
-              groups: [
-                { id: 'cust_w' + dayIdx + '_cardio', label: '有氧预热', pickHint: '2选1', region: '全身', exercises: [
-                  { name: '跑步机快走', sets: '5分钟', equipment: '跑步机', tip: '心率提升至110-120，微微出汗即可', default: true },
-                  { name: '跳绳', sets: '3分钟×2组', equipment: '跳绳', tip: '轻跳，不要过度消耗体力', default: false },
+            // 数据防御：清洗可能畸形的 day 数据
+            if (!day || typeof day !== 'object') return [{ type:'main',title:'训练',badge:'正式',badgeClass:'section-badge',groups:[] }];
+            // 优先使用 AI 返回的 sections（新格式），否则用旧格式 groups 构造
+            if (day.sections && Array.isArray(day.sections)) {
+              return day.sections.map((sec, si) => ({
+                type: sec.type || 'main',
+                title: sec.title || day.label,
+                badge: sec.type === 'warmup' ? '热身' : sec.type === 'stretch' ? '拉伸' : '正式',
+                badgeClass: sec.type === 'warmup' ? 'warmup-badge' : sec.type === 'stretch' ? 'stretch-badge' : 'section-badge',
+                groups: (sec.groups || []).map((g, gi) => ({
+                  id: 'cust_' + dayIdx + '_' + si + '_' + gi,
+                  label: g.label || '训练组',
+                  region: g.label || '',
+                  pickHint: g.pickHint || (g.exercises && g.exercises.length > 1 ? g.exercises.length + '选1-2' : '1选1'),
+                  exercises: (g.exercises || []).map((ex, ei) => {
+                    let dbEx = null;
+                    if (typeof EXERCISE_DB !== 'undefined') {
+                      dbEx = EXERCISE_DB.find(e => e.name === ex.name || e.name.includes(ex.name) || ex.name.includes(e.name));
+                    }
+                    return {
+                      name: ex.name,
+                      sets: ex.sets || '3组×10-12次',
+                      equipment: dbEx ? dbEx.equipment : '',
+                      tip: dbEx ? dbEx.name + ' · ' + dbEx.mechanics + ' · ' + dbEx.difficulty + '级 · ' + (dbEx.risk==='高'?'注意⚠️高风险':'标准动作') : '💡 AI推荐动作，请根据实际情况调整重量和姿势',
+                      default: ei === 0
+                    };
+                  })
+                }))
+              }));
+            }
+            // 旧格式兼容：硬编码warmup+main+stretch
+            return [
+              { type:'warmup',title:'热身',badge:'热身',badgeClass:'warmup-badge',groups:[
+                { id:'cust_w'+dayIdx+'_0',label:'有氧预热',pickHint:'2选1',region:'全身',exercises:[
+                  { name:'跑步机快走',sets:'5分钟',equipment:'跑步机',tip:'心率110-120微汗即可',default:true },
+                  { name:'跳绳',sets:'3分钟×2组',equipment:'跳绳',tip:'轻跳不耗体力',default:false }
                 ]},
-                { id: 'cust_w' + dayIdx + '_mobil', label: '关节激活', pickHint: '2选1', region: '全身', exercises: [
-                  { name: '肩髋动态拉伸', sets: '5分钟', equipment: '', tip: '肩绕环+髋绕环+体转，全面激活', default: true },
-                  { name: '泡沫轴滚动', sets: '3分钟', equipment: '泡沫轴', tip: '重点滚胸椎和髋部', default: false },
+                { id:'cust_w'+dayIdx+'_1',label:'关节激活',pickHint:'2选1',region:'全身',exercises:[
+                  { name:'肩髋动态拉伸',sets:'5分钟',equipment:'',tip:'肩绕环+髋绕环+体转',default:true },
+                  { name:'泡沫轴滚动',sets:'3分钟',equipment:'泡沫轴',tip:'滚胸椎和髋部',default:false }
+                ]}
+              ]},
+              { type:'main',title:day.label,badge:'正式',badgeClass:'section-badge',
+                groups:(day.groups||[]).map((g,gi)=>({
+                  id:'cust_m'+dayIdx+'_'+gi,label:g.label||'训练组',region:g.label||'',
+                  pickHint:g.pickHint||(g.exercises&&g.exercises.length>1?g.exercises.length+'选1-2':'1选1'),
+                  exercises:(g.exercises||[]).map((ex,ei)=>{
+                    let dbEx=null;
+                    if(typeof EXERCISE_DB!=='undefined') dbEx=EXERCISE_DB.find(e=>e.name===ex.name||e.name.includes(ex.name)||ex.name.includes(e.name));
+                    return {name:ex.name,sets:ex.sets||'3组×10-12次',equipment:dbEx?dbEx.equipment:'',tip:dbEx?dbEx.name+' · '+dbEx.mechanics+' · '+dbEx.difficulty+'级':'💡 AI推荐动作',default:ei===0};
+                  })
+                }))
+              },
+              { type:'stretch',title:'拉伸',badge:'拉伸',badgeClass:'stretch-badge',groups:[
+                { id:'cust_s'+dayIdx+'_0',label:'上肢拉伸',pickHint:'2选1',region:'全身',exercises:[
+                  { name:'胸肌门框拉伸',sets:'每侧30秒',equipment:'',tip:'手肘90°放门框',default:true },
+                  { name:'背阔肌拉伸',sets:'每侧30秒',equipment:'',tip:'双手抓固定物后坐',default:false }
                 ]},
-              ]
-            },
-            {
-            type: 'main', title: day.label, badge: '正式', badgeClass: 'section-badge',
-            groups: (day.groups || []).map((g, gi) => ({
-              id: 'cust_m' + dayIdx + '_' + gi,
-              label: g.label || '训练组',
-              region: g.label || '',
-              pickHint: g.pickHint || (g.exercises && g.exercises.length > 1 ? g.exercises.length + '选1-2' : '1选1'),
-              exercises: (g.exercises || []).map((ex, ei) => {
-                let dbEx = null;
-                if (typeof EXERCISE_DB !== 'undefined') {
-                  dbEx = EXERCISE_DB.find(e => e.name === ex.name || e.name.includes(ex.name) || ex.name.includes(e.name));
-                }
-                return {
-                  name: ex.name,
-                  sets: ex.sets || '3组×10-12次',
-                  equipment: dbEx ? dbEx.equipment : '',
-                  tip: dbEx ? dbEx.name + ' · ' + dbEx.mechanics + ' · ' + dbEx.difficulty + '级 · ' + (dbEx.risk==='高'?'注意⚠️高风险':'标准动作') : '💡 AI推荐动作，请根据实际情况调整重量和姿势',
-                  default: ei === 0
-                };
-              })
-            }))
-          },
-          {
-            type: 'stretch', title: '收尾拉伸（5分钟）', badge: '拉伸', badgeClass: 'stretch-badge',
-            groups: [
-              { id: 'cust_s' + dayIdx + '_upper', label: '上肢拉伸', pickHint: '2选1', region: '全身', exercises: [
-                { name: '胸肌门框拉伸', sets: '每侧30秒', equipment: '', tip: '手肘90°放门框，身体前移感受拉伸', default: true },
-                { name: '背阔肌拉伸', sets: '每侧30秒', equipment: '', tip: '双手抓固定物，身体后坐', default: false },
-              ]},
-              { id: 'cust_s' + dayIdx + '_lower', label: '下肢拉伸', pickHint: '2选1', region: '全身', exercises: [
-                { name: '股四头肌拉伸', sets: '每侧30秒', equipment: '', tip: '单腿站，手抓脚踝后拉', default: true },
-                { name: '腘绳肌拉伸', sets: '每侧30秒', equipment: '', tip: '坐姿体前屈，够脚尖', default: false },
-              ]},
-            ]
-          }
-        ];
-        return sections;
-      })()
+                { id:'cust_s'+dayIdx+'_1',label:'下肢拉伸',pickHint:'2选1',region:'全身',exercises:[
+                  { name:'股四头肌拉伸',sets:'每侧30秒',equipment:'',tip:'单腿站抓脚踝后拉',default:true },
+                  { name:'腘绳肌拉伸',sets:'每侧30秒',equipment:'',tip:'坐姿体前屈',default:false }
+                ]}
+              ]}
+            ];
+          })()
         };
       }
     }
@@ -797,7 +810,10 @@ function renderTrainingPage() {
         const dayType = 'custom_' + i;
         html += `<button class="day-switch-btn ${record.type===dayType?'active':''}" onclick="switchTrainingDay('${dayType}')">${d.label}</button>`;
       });
-      html += `<button class="day-switch-btn ${record.type==='rest'?'active':''}" onclick="switchTrainingDay('rest')">🧘 休息</button>`;
+      const hasRestDay = ap.days.some(d => d.label && d.label.includes('休息'));
+      if (!hasRestDay) {
+        html += `<button class="day-switch-btn ${record.type==='rest'?'active':''}" onclick="switchTrainingDay('rest')">🧘 休息</button>`;
+      }
     } else {
       // fallback to default
       ['push','pull','legs','rest'].forEach(type => {
