@@ -73,7 +73,7 @@ function renderMePage() {
 
   h += `<div class="me-section"><h3>AI 服务</h3>`;
   h += `<input type="text" class="form-input mb-8" id="ai-server-me" value="${localStorage.getItem('fitness_ai_server')||DEFAULT_AI_SERVER}" onchange="saveAIMe()" placeholder="API 地址">`;
-  h += `<input type="text" class="form-input mb-8" id="ai-pwd-me" type="password" value="${localStorage.getItem('fitness_ai_password')||'gymflow2024'}" onchange="saveAIMe()" placeholder="访问密码"></div>`;
+  h += `<input type="password" class="form-input mb-8" id="ai-pwd-me" value="${localStorage.getItem('fitness_ai_password')||'gymflow2024'}" onchange="saveAIMe()" placeholder="访问密码"></div>`;
 
   h += `<div class="me-section"><h3>数据管理</h3><div style="display:flex;flex-direction:column;gap:8px;">`;
   h += `<button class="btn btn-outline btn-sm" onclick="exportData()">📤 导出数据</button>`;
@@ -478,9 +478,9 @@ async function coachGeneratePlan() {
         coachPlanGenerated = plan;
         if (status) status.textContent = `✅ 方案"${plan.name}"已设为当前 → 去训练页查看`;
       } else {
-        resultText = '⚠️ AI返回了方案但格式无法解析\n\n原始回复：\n' + data.answer.substring(0, 300) + '...';
-        coachPlanGenerated = data.answer;
-        if (status) status.textContent = 'JSON解析失败，请重试';
+        resultText = '⚠️ AI返回了方案但格式无法解析，请重试\n\n原始回复：\n' + data.answer.substring(0, 200) + '...';
+        coachPlanGenerated = null; // 不标记成功，走重试分支
+        if (status) status.textContent = 'JSON解析失败，点击重试';
       }
       coachMessages.push({ role: 'ai', content: resultText, options: ['🔄 重新生成'] });
     } else {
