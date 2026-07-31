@@ -314,18 +314,22 @@ let coachMessages = [];
 let coachLoading = false;
 let coachProfile = {};
 let coachPlanGenerated = null;
+let pendingPlan = null; // 待确认的方案
 
 const COACH_STEPS = [
-  { key: 'experience', question: '你健身多久了？', options: ['刚开始(0-3个月)','训练半年左右','训练1-2年','2年以上老手'] },
-  { key: 'days', question: '每周能去健身房几天？', options: ['2-3天','3-4天','4-5天','5-6天'] },
-  { key: 'split', question: '倾向哪种训练分化方式？', options: ['三分化(推/拉/腿轮转)','五分化(每天一个部位)','由你根据我的情况推荐'] },
-  { key: 'time', question: '每次训练大约多长时间？', options: ['30-45分钟','45-60分钟','60-90分钟','90分钟以上'] },
-  { key: 'goal', question: '当前最主要的目标是什么？', options: ['增肌增维度','减脂塑形','提升绝对力量','体态矫正优先'] },
-  { key: 'equipment', question: '你所在健身房有哪些器械？', options: ['商业健身房(器械齐全)','小型工作室(基础器械)','家庭训练(哑铃弹力带)','自重为主'] },
-  { key: 'focus', question: '最想强化哪个大肌群？', options: ['胸肌优先','背部优先','肩部优先','臀腿优先','全身均衡发展'] },
-  { key: 'weakness', question: '觉得哪个部位相对薄弱？', options: ['上肢偏弱','下肢偏弱','核心偏弱','都比较均衡'] },
-  { key: 'intensity', question: '训练强度偏好？', options: ['保守渐进(安全第一)','中等强度(常规训练)','高强度(每组力竭)','根据身体状态灵活调整'] },
-  { key: 'issues', question: '有无体态问题或伤病需注意？', options: ['无特殊问题','圆肩/溜肩/肱骨前移','肩峰撞击风险','膝盖/下背不适','多种问题叠加'] },
+  { key: 'experience', question: '你系统健身多久了？', options: ['纯新手(0-3个月)','入门级(3-6个月)','有一定基础(6个月-1年)','中级(1-2年)','老手(2年以上)'] },
+  { key: 'days', question: '每周能稳定去健身房几天？', options: ['2天(比较少)','3天(标准三分化)','4天','5天','6天(几乎每天)'] },
+  { key: 'split', question: '倾向哪种训练分化方式？', options: ['三分化(推/拉/腿)','五分化(胸背腿肩臂)','上下肢分化(上/下轮转)','由你根据情况推荐'] },
+  { key: 'time', question: '每次训练实际能投入多长时间？', options: ['30分钟以内(紧凑高效)','45分钟左右','60分钟(标准时长)','75-90分钟(较充裕)','90分钟以上(很充裕)'] },
+  { key: 'goal', question: '当前最核心的目标是什么？', options: ['增肌增维度(变大变壮)','减脂塑形(瘦下来显线条)','提升绝对力量(三大项突破)','体态矫正优先(改善圆肩驼背)','综合体能(全面发展)'] },
+  { key: 'experience_detail', question: '你对三大项(深蹲/卧推/硬拉)的掌握程度？', options: ['还没练过三大项','刚开始学动作模式','能规范完成中等重量','接近或超过自重','远超自重(进阶选手)'] },
+  { key: 'equipment', question: '你所在健身房器械条件如何？', options: ['商业健身房(器械很全)','社区健身房(基础器械够用)','家庭健身(哑铃+弹力带+引体架)','纯自重训练(无器械)'] },
+  { key: 'like', question: '有没有特别喜欢的训练动作或风格？', options: ['喜欢自由重量(杠铃哑铃为主)','喜欢固定器械(安全稳定)','喜欢功能性训练(壶铃战绳)','都可以(均衡搭配)'] },
+  { key: 'dislike', question: '有没有特别不想练或做不了的动作？', options: ['没有特别排斥的','不想练硬拉(腰部担心)','不想练深蹲(膝盖担心)','不想练杠铃卧推(肩膀担心)','跑步/有氧不想做'] },
+  { key: 'focus', question: '最想优先强化哪个大肌群？', options: ['胸肌(饱满有形)','背部(宽度厚度)','肩部(宽肩衣架)','手臂(粗壮有力)','臀腿(下肢力量)','全身均衡发展'] },
+  { key: 'weakness', question: '自我感觉哪个部位相对较弱？', options: ['上肢偏弱(推拉都不行)','下肢偏弱(腿细无力)','核心偏弱(腰腹不稳定)','后侧链偏弱(背+臀+腘绳)','比较均衡没有明显短板'] },
+  { key: 'intensity', question: '训练时喜欢什么强度风格？', options: ['稳健保守(安全第一不冒险)','中等强度(常规力竭即可)','高强度(每组必须力竭)','灵活调整(看当天状态)'] },
+  { key: 'issues', question: '有无体态问题或伤病需特别注意？', options: ['无特殊问题很健康','圆肩/溜肩/肱骨前移(上交叉)','肩峰撞击风险(肩膀弹响疼痛)','膝盖不适(弹响/酸痛)','下背容易不舒服','多种问题叠加比较复杂'] },
 ];
 
 function renderAICoach(_unused) { const fc = document.getElementById('features-content');
@@ -377,15 +381,33 @@ function coachReset() {
   coachMessages = [];
   coachProfile = {};
   coachPlanGenerated = null;
+  pendingPlan = null;
   coachLoading = false;
   openFeatureModule('ai-coach');
 }
 
 function coachAnswer(answer) {
-  if (answer === '🔄 重试' || answer === '🔄 重新生成') {
-    // 重试：去掉最后一条AI错误消息，重新生成
-    coachMessages.pop();
-    coachGeneratePlan();
+  if (answer === '💾 保存方案' && pendingPlan) {
+    const plan = addPlan(pendingPlan);
+    coachPlanGenerated = plan;
+    pendingPlan = null;
+    coachMessages.push({ role: 'ai', content: `✅ 方案"${plan.name}"已保存到方案库！可前往「方案库」设为当前方案`, options: ['🔄 重新定制'] });
+    renderAICoach();
+    return;
+  }
+  if (answer === '🗑️ 放弃' && pendingPlan) {
+    pendingPlan = null;
+    coachMessages.push({ role: 'ai', content: '已放弃该方案。你可以重新定制或退出。', options: ['🔄 重新定制'] });
+    renderAICoach();
+    return;
+  }
+  if (answer === '🔄 重试' || answer === '🔄 重新生成' || answer === '🔄 重新定制') {
+    coachMessages = [];
+    coachProfile = {};
+    coachPlanGenerated = null;
+    pendingPlan = null;
+    coachLoading = false;
+    renderAICoach();
     return;
   }
   coachMessages.push({ role: 'user', content: answer });
@@ -393,7 +415,7 @@ function coachAnswer(answer) {
   if (done) {
     coachGeneratePlan();
   } else {
-    renderAICoach(document.getElementById('features-content'));
+    renderAICoach();
   }
 }
 
@@ -465,27 +487,26 @@ async function coachGeneratePlan() {
 
       let resultText = '';
       if (plan) {
-        // 显示方案预览
-        resultText = `✅ 方案"${plan.name}"已生成并保存！\n\n`;
-        resultText += `📋 ${plan.type === '5day' ? '五分化' : '三分化'} · ${plan.days.length}天训练\n\n`;
+        pendingPlan = plan; // 暂存，等用户确认
+        resultText = `✅ 方案预览：\n\n📋 ${plan.type === '5day' ? '五分化' : '三分化'} · ${plan.days.length}天训练\n`;
         plan.days.forEach(d => {
-          resultText += `▸ ${d.label}\n`;
+          resultText += `\n▸ ${d.label}`;
           if (d.groups) d.groups.forEach(g => {
             if (g.exercises) g.exercises.forEach(ex => {
-              resultText += `  · ${ex.name}  ${ex.sets||''}\n`;
+              resultText += `\n  · ${ex.name}  ${ex.sets||''}`;
             });
           });
         });
-        coachPlanGenerated = plan;
-        // 不自动覆盖，提示用户确认
-        resultText += `\n\n💡 方案已保存到方案库，可前往「方案库」设为当前方案`;
-        if (status) status.textContent = `✅ 方案"${plan.name}"已保存，去方案库切换`;
+        resultText += `\n\n──────────────`;
+        coachPlanGenerated = null; // 等用户决定
+        if (status) status.textContent = '请选择保存或放弃';
       } else {
         resultText = '⚠️ AI返回了方案但格式无法解析，请重试\n\n原始回复：\n' + data.answer.substring(0, 200) + '...';
-        coachPlanGenerated = null; // 不标记成功，走重试分支
+        coachPlanGenerated = null;
         if (status) status.textContent = 'JSON解析失败，点击重试';
       }
-      coachMessages.push({ role: 'ai', content: resultText, options: ['🔄 重新生成'] });
+      const msgOpts = pendingPlan ? ['💾 保存方案', '🗑️ 放弃', '🔄 重新生成'] : ['🔄 重新生成'];
+      coachMessages.push({ role: 'ai', content: resultText, options: msgOpts });
     } else {
       coachMessages.push({ role: 'ai', content: '⚠️ 生成失败：' + data.error, options: ['🔄 重试'] });
       if (status) status.textContent = '';
