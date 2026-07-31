@@ -387,6 +387,18 @@ function coachReset() {
 }
 
 function coachAnswer(answer) {
+  if (answer === '✏️ 修改调整' && pendingPlan) {
+    // 弹出输入框让用户描述想要的修改
+    const note = prompt('想怎么调整这个方案？\n\n例如：\n- 把深蹲换成腿举\n- 增加一个腹部训练日\n- 减少胸肌动作，增加背部\n- 改成每周5天', '');
+    if (!note || !note.trim()) return;
+    coachMessages.push({ role: 'user', content: '修改要求：' + note.trim() });
+    coachLoading = true;
+    renderAICoach();
+    // 在原有方案基础上追加修改要求重新生成
+    const origPrompt = `原方案JSON：\n${JSON.stringify(pendingPlan, null, 2)}\n\n修改要求：${note.trim()}\n\n请根据修改要求调整方案，返回完整的新JSON。`;
+    coachRegenerate(origPrompt);
+    return;
+  }
   if (answer === '💾 保存方案' && pendingPlan) {
     const plan = addPlan(pendingPlan);
     coachPlanGenerated = plan;
@@ -443,6 +455,52 @@ function coachProcessStep(answer) {
     return false;
   }
   return true; // All steps done
+}
+
+async function coachRegenerate(customPrompt) {
+  const status = document.getElementById('coach-status');
+  if (status) status.textContent = '🧠 AI正在修改方案...';
+  try {
+    const resp = await fetch(getAIServer()+'/api/ask', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({password:getAIPassword(),deviceId:getDeviceId(),content:customPrompt})
+    });
+    const data = await resp.json();
+    coachLoading = false;
+    if (data.success) {
+      let raw = data.answer.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+      const jsonMatch = raw.match(/\{[\s\S]*"name"[\s\S]*"days"[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          const json = JSON.parse(jsonMatch[0]);
+          if (json.name && json.days && Array.isArray(json.days)) {
+            pendingPlan = json;
+            let resultText = '✅ 方案已更新：\n\n📋 ' + (json.type==='5day'?'五分化':'三分化') + ' · ' + json.days.length + '天训练\n';
+            json.days.forEach(d => {
+              resultText += '\n▸ ' + d.label;
+              if(d.groups) d.groups.forEach(g => {
+                if(g.exercises) g.exercises.forEach(ex => {
+                  resultText += '\n  · ' + ex.name + '  ' + (ex.sets||'');
+                });
+              });
+            });
+            resultText += '\n\n──────────────';
+            coachMessages.push({ role: 'ai', content: resultText, options: ['💾 保存方案', '✏️ 修改调整', '🗑️ 放弃', '🔄 重新生成'] });
+            if(status) status.textContent = '修改完成，请选择';
+            renderAICoach();
+            return;
+          }
+        } catch(e) {}
+      }
+    }
+    coachMessages.push({ role: 'ai', content: '⚠️ 修改失败，请重试', options: ['🔄 重新生成'] });
+    if(status) status.textContent = '';
+  } catch(e) {
+    coachMessages.push({ role: 'ai', content: '⚠️ 无法连接AI服务', options: ['🔄 重试'] });
+    if(status) status.textContent = '';
+  }
+  coachLoading = false;
+  renderAICoach();
 }
 
 async function coachGeneratePlan() {
@@ -505,7 +563,7 @@ async function coachGeneratePlan() {
         coachPlanGenerated = null;
         if (status) status.textContent = 'JSON解析失败，点击重试';
       }
-      const msgOpts = pendingPlan ? ['💾 保存方案', '🗑️ 放弃', '🔄 重新生成'] : ['🔄 重新生成'];
+      const msgOpts = pendingPlan ? ['💾 保存方案', '✏️ 修改调整', '🗑️ 放弃', '🔄 重新生成'] : ['🔄 重新生成'];
       coachMessages.push({ role: 'ai', content: resultText, options: msgOpts });
     } else {
       coachMessages.push({ role: 'ai', content: '⚠️ 生成失败：' + data.error, options: ['🔄 重试'] });
