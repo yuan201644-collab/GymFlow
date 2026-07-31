@@ -2,3 +2,7 @@
 *.apk
 .DS_Store
 Thumbs.db
+
+# Server — 密钥和本地数据
+server/config.js
+server/data.json
