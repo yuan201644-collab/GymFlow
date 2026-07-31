@@ -37,7 +37,7 @@ GymFlow 是一个**手机端 H5 健身追踪工具**，专为三分化训练设�
 
 ### 手机使用
 
-从 [Releases]() 下载 `健身助手.apk` 安装，或：
+从 [Releases](https://github.com/yuan201644-collab/GymFlow/releases) 下载 `健身助手.apk` 安装，或：
 
 1. 下载 `健身助手.zip` 解压
 2. 手机文件管理器找到 `index.html`
