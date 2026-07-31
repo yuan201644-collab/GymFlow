@@ -179,6 +179,11 @@ h1{font-size:22px;font-weight:700;letter-spacing:-.3px}h2{font-size:18px;font-we
 .chart-container{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 16px;margin-bottom:14px}
 .chart-container canvas{max-height:220px}
 
+/* Exercise Library */
+.ex-list { max-height: 60vh; overflow-y: auto; }
+.ex-card { padding: 12px 14px; margin-bottom: 6px; }
+.ex-card .card-title { font-size: 14px !important; margin-top: 2px !important; }
+
 /* Region Drill */
 .region-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:all .2s}
 .region-card:hover{border-color:var(--accent)}.region-card:active{background:var(--bg)}

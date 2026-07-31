@@ -101,6 +101,16 @@ const FEATURE_MODULES = [
     render: renderStatsModule,
   },
   {
+    id: 'ai-coach', icon: '🧠', label: 'AI训练方案',
+    desc: () => '定制化三分化/五分化训练',
+    render: renderAICoach,
+  },
+  {
+    id: 'exercises', icon: '📚', label: '动作库',
+    desc: () => `${EXERCISE_DB.length}+ 动作 · 8维标签`,
+    render: renderExerciseLib,
+  },
+  {
     id: 'weight', icon: '⚖️', label: '体重追踪',
     desc: () => {
       const ws = getWeights();
@@ -258,6 +268,191 @@ function renderWeightModule(container) {
     ]}, options: { responsive: true, interaction: { mode: 'index', intersect: false }, plugins: { legend: { labels: { color: '#868686', usePointStyle: true, padding: 16, font: { size: 11 } } } }, scales: { x: { grid: { color: 'rgba(128,128,128,.06)' }, ticks: { color: '#868686', font: { size: 10 } } }, y: { position: 'left', grid: { color: 'rgba(128,128,128,.06)' }, ticks: { color: '#868686', font: { size: 10 }, callback: v => v + ' kg' } }, y1: { position: 'right', grid: { display: false }, ticks: { color: '#ffb74d', font: { size: 10 } } } } } });
   }, 100);
 }
+// ── AI 定制训练方案 ──
+let coachMessages = [];
+let coachLoading = false;
+let coachProfile = {};
+let coachPlanGenerated = null;
+
+const COACH_STEPS = [
+  { key: 'experience', question: '你健身多久了？', options: ['刚开始(0-3个月)','半年左右','1-2年','2年以上'] },
+  { key: 'days', question: '每周能训练几天？', options: ['2-3天','3-4天','4-5天','5-6天'] },
+  { key: 'goal', question: '当前主要目标是？', options: ['增肌增重','减脂塑形','提升力量','体态矫正'] },
+  { key: 'equipment', question: '你能用的器械有哪些？', options: ['商业健身房(全器械)','家庭哑铃+弹力带','自重为主'] },
+  { key: 'focus', question: '想重点改善哪些部位？', options: ['胸+肩','背+手臂','臀腿','全身均衡'] },
+  { key: 'issues', question: '有无体态问题或伤病？', options: ['无','圆肩/溜肩','肩峰撞击','膝盖不适','下背不适'] },
+];
+
+function renderAICoach(container) {
+  // 已有方案 → 显示总结 + 重新开始按钮
+  if (coachPlanGenerated) {
+    let h = '<div class="chat-box" id="coach-chat"><div class="chat-msg ai"><div class="chat-bubble">✅ 你的定制方案已生成！<br><br>方案会保存在方案库中供你随时切换使用。</div></div></div>';
+    h += '<button class="btn btn-accent mt-16" onclick="coachReset()">🔄 重新定制</button>';
+    container.innerHTML += h;
+    return;
+  }
+
+  let h = '<div class="chat-box" id="coach-chat" style="padding-bottom:60px;max-height:58vh;min-height:350px;">';
+
+  if (coachMessages.length === 0) {
+    const s = getSettings();
+    const name = s.userInfo.gender === '女' ? '姐妹' : '兄弟';
+    h += `<div class="chat-msg ai"><div class="chat-bubble">嗨${name}！我是你的AI教练 🧠<br><br>我来帮你定制一套专属训练方案。先了解一下你的情况——<br><br>${COACH_STEPS[0].question}</div></div>`;
+    h += `<div class="chat-suggestions" style="padding:0 0 12px 0;">`;
+    COACH_STEPS[0].options.forEach(o => {
+      h += `<button class="chat-sugg-btn" onclick="coachAnswer('${o}')">${o}</button>`;
+    });
+    h += '</div>';
+  } else {
+    coachMessages.forEach((msg, i) => {
+      h += `<div class="chat-msg ${msg.role}"><div class="chat-bubble">${msg.content.replace(/\n/g,'<br>')}</div></div>`;
+      // Show quick replies after last AI message
+      if (msg.options && i === coachMessages.length-1 && !coachLoading) {
+        h += '<div class="chat-suggestions" style="padding:0 0 8px 8px;">';
+        msg.options.forEach(o => {
+          h += `<button class="chat-sugg-btn" onclick="coachAnswer('${o}')">${o}</button>`;
+        });
+        h += '</div>';
+      }
+    });
+    if (coachLoading) {
+      h += '<div class="chat-msg ai"><div class="chat-bubble typing-dots"><span></span><span></span><span></span></div></div>';
+    }
+  }
+
+  h += '</div>';
+
+  // 自由输入 + 发送按钮（固定底部）
+  h += '<div class="chat-input-row"><input class="chat-input" id="coach-input" placeholder="输入回答..." onkeydown="if(event.key===\'Enter\')coachSendFree()"><button class="chat-send-btn" id="coach-send" onclick="coachSendFree()">➤</button></div>';
+  h += '<div class="chat-status" id="coach-status"></div>';
+
+  container.innerHTML += h;
+  setTimeout(() => { const box = document.getElementById('coach-chat'); if(box) box.scrollTop = box.scrollHeight; }, 100);
+}
+
+function coachReset() {
+  coachMessages = [];
+  coachProfile = {};
+  coachPlanGenerated = null;
+  coachLoading = false;
+  openFeatureModule('ai-coach');
+}
+
+function coachAnswer(answer) {
+  coachMessages.push({ role: 'user', content: answer });
+  const done = coachProcessStep(answer);
+  if (done) {
+    coachGeneratePlan();
+  } else {
+    renderAICoach(document.getElementById('features-content'));
+  }
+}
+
+function coachSendFree() {
+  const input = document.getElementById('coach-input');
+  const text = (input?.value || '').trim();
+  if (!text || coachLoading) return;
+  input.value = '';
+  coachAnswer(text);
+}
+
+function coachProcessStep(answer) {
+  // Find which step we're on
+  const answered = Object.keys(coachProfile).length;
+  const step = COACH_STEPS[answered];
+  if (step) {
+    coachProfile[step.key] = answer;
+  }
+
+  const nextStep = COACH_STEPS[Object.keys(coachProfile).length];
+  if (nextStep) {
+    coachMessages.push({ role: 'ai', content: `${nextStep.question}` });
+    // Add quick reply buttons via a special marker
+    coachMessages[coachMessages.length-1].options = nextStep.options;
+    return false;
+  }
+  return true; // All steps done
+}
+
+async function coachGeneratePlan() {
+  coachLoading = true;
+  renderAICoach(document.getElementById('features-content'));
+
+  const status = document.getElementById('coach-status');
+  if (status) status.textContent = '🧠 AI正在为你定制训练方案...';
+
+  // Build comprehensive prompt
+  const s = getSettings();
+  let prompt = `## 用户信息\n性别：${s.userInfo.gender} · 年龄：${s.userInfo.age} · 身高：${s.userInfo.height}cm\n`;
+  prompt += `## 训练问卷\n`;
+  COACH_STEPS.forEach(st => { prompt += `${st.question} → ${coachProfile[st.key]}\n`; });
+  prompt += `\n## 要求\n根据以上信息，从动作数据库中为ta定制一套训练方案。`;
+  prompt += `\n当前重量：${(getWeights().slice(-1)[0]||{}).weight||'未知'}kg`;
+  prompt += `\n\n请生成JSON格式的训练方案（不要markdown代码块）：`;
+  prompt += `\n{"name":"方案名称","type":"3day或5day","description":"简短描述","days":[{"label":"训练日名称","groups":[{"label":"肌群名","exercises":[{"name":"动作名","sets":"组数×次数"}]}]}]}`;
+  prompt += `\n每个训练日4-6个肌群组，每组选1个合适动作。方案要结合ta的器械条件。`;
+
+  try {
+    const resp = await fetch(getAIServer()+'/api/ask', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({password:getAIPassword(),deviceId:getDeviceId(),content:prompt})
+    });
+    const data = await resp.json();
+    if (data.success) {
+      coachMessages.push({ role: 'ai', content: '✅ 方案已生成！\n\n' + data.answer.replace(/\{/g,'<br>{').replace(/\}/g,'}<br>') });
+      coachPlanGenerated = data.answer;
+      if (status) status.textContent = '方案已生成 · 可保存到方案库';
+    } else {
+      coachMessages.push({ role: 'ai', content: '⚠️ 生成失败：' + data.error });
+      if (status) status.textContent = '';
+    }
+  } catch(e) {
+    coachMessages.push({ role: 'ai', content: '⚠️ 无法连接AI服务' });
+    if (status) status.textContent = '';
+  }
+  coachLoading = false;
+  renderAICoach(document.getElementById('features-content'));
+}
+
+// ── 动作库浏览 ──
+function renderExerciseLib(container) {
+  let h = `<div class="form-row mb-8"><div class="form-group"><input type="text" class="form-input" id="ex-search" placeholder="搜索动作..." oninput="filterExercises()" style="font-size:14px;"></div></div>`;
+  h += `<div class="day-switcher mb-8" id="ex-region-filter">`;
+  h += `<button class="day-switch-btn active" onclick="filterByRegion(this,'全部')">全部</button>`;
+  Object.keys(REGION_TREE).forEach(r => {
+    h += `<button class="day-switch-btn" onclick="filterByRegion(this,'${r}')">${REGION_TREE[r].icon} ${r}</button>`;
+  });
+  h += `</div>`;
+  h += `<div id="ex-list" class="ex-list"></div>`;
+  container.innerHTML += h;
+  filterExercises();
+}
+
+let exFilter = { search: '', region: '全部' };
+function filterByRegion(btn, r) {
+  exFilter.region = r;
+  document.querySelectorAll('#ex-region-filter .day-switch-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterExercises();
+}
+function filterExercises() {
+  const s = (document.getElementById('ex-search')?.value || '').toLowerCase();
+  exFilter.search = s;
+  const list = document.getElementById('ex-list');
+  if (!list) return;
+  let filtered = EXERCISE_DB;
+  if (exFilter.region !== '全部') filtered = filtered.filter(e => e.region.startsWith(exFilter.region));
+  if (s) filtered = filtered.filter(e => e.name.includes(s) || e.equipment.includes(s) || e.region.includes(s));
+  if (filtered.length === 0) { list.innerHTML = '<p class="text-muted text-center mt-16">无匹配动作</p>'; return; }
+  let h = `<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">${filtered.length} 个动作</div>`;
+  filtered.forEach(e => {
+    const parts = e.region.split('.');
+    const ri = REGION_TREE[parts[0]];
+    h += `<div class="card ex-card"><div class="flex-between"><div><span style="font-size:12px;color:${ri?.color||'var(--accent)'};">${ri?.icon||''} ${e.region}</span><div class="card-title" style="font-size:14px;margin-top:2px;">${e.name}</div><div class="card-meta">${e.equipment} · ${e.mechanics} · ${e.difficulty} · ${e.type}</div></div></div></div>`;
+  });
+  list.innerHTML = h;
+}
+
 function addWeightFromFeatures() {
   const v = parseFloat(document.getElementById('w-val')?.value);
   if (!v || v <= 0) { showToast('请输入有效体重', 'error'); return; }
