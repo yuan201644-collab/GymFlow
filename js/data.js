@@ -303,7 +303,7 @@ function resetAllData() {
 
 // ========== 版本管理 ==========
 
-const APP_VERSION = '1.1';
+const APP_VERSION = '1.2';
 
 function getStoredVersion() {
   return localStorage.getItem('fitness_version') || '0';
