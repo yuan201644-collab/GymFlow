@@ -533,7 +533,9 @@ async function coachGeneratePlan() {
   // 附上动作库参考
   const sampleEx = EXERCISE_DB.filter(e => e.type === '复合' || e.difficulty !== '高级').slice(0, 100).map(e => e.name).join('、');
   prompt += `\n\n## 动作库参考（请从中选用，确保动作名完全一致以便匹配详情）\n${sampleEx}`;
-  prompt += `\n\n生成纯JSON：{"name":"方案名","type":"3day或5day","description":"简介","days":[{"label":"训练日名","groups":[{"label":"肌群","exercises":[{"name":"动作(必须与动作库一致)","sets":"组数×次数"}]}]}]}\n每个训练日4-6个肌群组。`;
+  prompt += `\n\n生成纯JSON（每个肌群组提供2-3个可选动作，让用户自由选择）：`;
+  prompt += `\n{"name":"方案名","type":"3day或5day","description":"简介","days":[{"label":"训练日名","groups":[{"label":"肌群名","pickHint":"3选1-2","exercises":[{"name":"动作1","sets":"4组×10-12次"},{"name":"动作2","sets":"4组×10-12次"},{"name":"动作3","sets":"3组×12-15次"}]}]}]}`;
+  prompt += `\n规则：每个肌群组exercises数组包含2-3个备选动作（必须从动作库中选），pickHint如"3选1-2"；动作名必须与动作库完全一致。`;
 
   try {
     const resp = await fetch(getAIServer()+'/api/ask', {
