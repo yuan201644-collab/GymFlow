@@ -669,15 +669,24 @@ function renderTrainingPage() {
 
   let html = '';
 
-  // 方案提示
+  // 方案选择器
   const activePlanId = getActivePlanId();
-  if (activePlanId !== 'default') {
-    const plans = getPlans();
-    const ap = plans.find(p => p.id === activePlanId);
-    if (ap) {
-      html += `<div style="font-size:11px;color:var(--accent);margin-bottom:8px;">📋 当前方案：${ap.name}</div>`;
-    }
-  }
+  const plans = getPlans();
+  const ap = plans.find(p => p.id === activePlanId);
+  html += `<div class="plan-selector" onclick="switchPlan()">`;
+  html += `<span>📋 ${ap ? ap.name : '默认三分化'}</span>`;
+  html += `<span style="font-size:11px;color:var(--muted);">${plans.length > 0 ? '点击切换方案 →' : '去AI定制方案 →'}</span>`;
+  html += `</div>`;
+
+  // 方案切换弹层
+  html += `<div id="plan-switcher" class="plan-switcher-hidden">`;
+  html += `<div class="plan-switcher-backdrop" onclick="closePlanSwitcher()"></div>`;
+  html += `<div class="plan-switcher-sheet"><h3 style="margin-bottom:10px;">切换训练方案</h3>`;
+  html += `<div class="card ${activePlanId==='default'?'completed':''}" onclick="switchToPlan('default')"><div class="flex-between"><div><div class="card-title">📌 默认三分化</div><div class="card-meta">推/拉/臀腿 · 4天轮转</div></div>${activePlanId==='default'?'<span style=\"color:var(--accent);\">✓</span>':''}</div></div>`;
+  plans.forEach(p => {
+    html += `<div class="card ${p.id===activePlanId?'completed':''}" onclick="switchToPlan('${p.id}')"><div class="flex-between"><div><div class="card-title">${p.name}</div><div class="card-meta">${p.type==='5day'?'五分化':'三分化'} · ${p.days.length}天</div></div>${p.id===activePlanId?'<span style=\"color:var(--accent);\">✓</span>':''}</div></div>`;
+  });
+  html += `</div></div>`;
 
   html += `<div class="day-switcher mb-8">`;
   ['push','pull','legs','rest'].forEach(type => {
@@ -966,6 +975,21 @@ function showCelebration() {
 
 function closeCelebration() {
   document.getElementById('celebration').classList.add('celebration-hidden');
+  renderTrainingPage();
+}
+
+function switchPlan() {
+  const el = document.getElementById('plan-switcher');
+  if (el) el.classList.remove('plan-switcher-hidden');
+}
+function closePlanSwitcher() {
+  const el = document.getElementById('plan-switcher');
+  if (el) el.classList.add('plan-switcher-hidden');
+}
+function switchToPlan(id) {
+  setActivePlan(id);
+  closePlanSwitcher();
+  showToast(id === 'default' ? '已切换到默认三分化' : '已切换方案', 'success');
   renderTrainingPage();
 }
 

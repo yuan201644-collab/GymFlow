@@ -445,26 +445,42 @@ async function coachGeneratePlan() {
     });
     const data = await resp.json();
     if (data.success) {
-      // 尝试解析JSON
+      // 尝试解析JSON（多种格式兼容）
       let plan = null;
-      try {
-        const json = JSON.parse(data.answer.replace(/```json|```/g,'').trim());
-        if (json.name && json.days) {
-          plan = addPlan(json);
-        }
-      } catch(e) {}
+      let raw = data.answer;
+      // 去掉markdown代码块
+      raw = raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+      // 尝试提取JSON对象
+      const jsonMatch = raw.match(/\{[\s\S]*"name"[\s\S]*"days"[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          const json = JSON.parse(jsonMatch[0]);
+          if (json.name && json.days && Array.isArray(json.days)) {
+            plan = addPlan(json);
+          }
+        } catch(e) { console.log('JSON parse error:', e.message); }
+      }
 
-      let resultText = '✅ 方案已生成！\n\n';
+      let resultText = '';
       if (plan) {
-        resultText += `📋 "${plan.name}" 已保存到方案库\n`;
-        resultText += `类型：${plan.type === '5day' ? '五分化' : '三分化'} · ${plan.days.length}天训练\n`;
+        // 显示方案预览
+        resultText = `✅ 方案"${plan.name}"已生成并保存！\n\n`;
+        resultText += `📋 ${plan.type === '5day' ? '五分化' : '三分化'} · ${plan.days.length}天训练\n\n`;
+        plan.days.forEach(d => {
+          resultText += `▸ ${d.label}\n`;
+          if (d.groups) d.groups.forEach(g => {
+            if (g.exercises) g.exercises.forEach(ex => {
+              resultText += `  · ${ex.name}  ${ex.sets||''}\n`;
+            });
+          });
+        });
         setActivePlan(plan.id);
         coachPlanGenerated = plan;
-        if (status) status.textContent = `方案"${plan.name}"已设为当前方案`;
+        if (status) status.textContent = `✅ 方案"${plan.name}"已设为当前 → 去训练页查看`;
       } else {
-        resultText += data.answer;
+        resultText = '⚠️ AI返回了方案但格式无法解析\n\n原始回复：\n' + data.answer.substring(0, 300) + '...';
         coachPlanGenerated = data.answer;
-        if (status) status.textContent = '方案已生成（JSON解析失败，请重新生成）';
+        if (status) status.textContent = 'JSON解析失败，请重试';
       }
       coachMessages.push({ role: 'ai', content: resultText, options: ['🔄 重新生成'] });
     } else {

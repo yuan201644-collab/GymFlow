@@ -94,6 +94,14 @@ h1{font-size:22px;font-weight:700;letter-spacing:-.3px}h2{font-size:18px;font-we
 .checkbox-custom{width:28px;height:28px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .25s var(--ease-in-out);font-size:14px;color:transparent;background:transparent}
 .checkbox-custom.checked{animation:popIn .3s var(--ease-out);background:var(--accent);border-color:var(--accent);color:#000}
 
+/* Plan Selector */
+.plan-selector{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:border-color .2s;font-size:14px;font-weight:600}
+.plan-selector:hover{border-color:var(--accent)}
+.plan-switcher-hidden{display:none!important}
+#plan-switcher{position:fixed;inset:0;z-index:400;display:flex;align-items:flex-end}
+.plan-switcher-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.6)}
+.plan-switcher-sheet{position:relative;background:var(--surface);width:100%;max-width:680px;margin:0 auto;border-radius:var(--radius) var(--radius) 0 0;padding:20px 16px;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));max-height:60vh;overflow-y:auto;animation:fadeUp .3s var(--ease-out)}
+
 /* Day Switcher (dropdown style) */
 .day-switcher{display:flex;background:var(--surface);border-radius:var(--radius-sm);padding:3px;gap:2px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .day-switch-btn{flex:1 0 auto;display:flex;align-items:center;justify-content:center;gap:4px;padding:8px 12px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s var(--ease-in-out);white-space:nowrap;min-height:40px}

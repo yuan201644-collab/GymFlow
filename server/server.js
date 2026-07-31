@@ -38,7 +38,7 @@ function callAI(userContent) {
         { role: 'user', content: userContent },
       ],
       temperature: 0.7,
-      max_tokens: 500,
+      max_tokens: 1500,
     });
 
     const req = https.request('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
@@ -47,7 +47,7 @@ function callAI(userContent) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      timeout: 25000,
+      timeout: 60000,
     }, (res) => {
       let data = '';
       res.on('data', c => data += c);
