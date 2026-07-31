@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="健身助手">
+  <title>健身助手</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- ========== 主内容区 ========== -->
+  <main id="app">
+    <!-- 今日训练页 -->
+    <section id="page-training" class="page active">
+      <div id="training-content"></div>
+    </section>
+
+    <!-- 统计页 -->
+    <section id="page-stats" class="page">
+      <div id="stats-content"></div>
+    </section>
+
+    <!-- 体重页 -->
+    <section id="page-weight" class="page">
+      <div id="weight-content"></div>
+    </section>
+
+    <!-- 我的页 -->
+    <section id="page-settings" class="page">
+      <div id="settings-content"></div>
+    </section>
+  </main>
+
+  <!-- ========== 底部导航 ========== -->
+  <nav id="bottom-nav">
+    <button class="nav-btn active" data-page="training">
+      <span class="nav-icon">🏋️</span>
+      <span class="nav-label">今日训练</span>
+    </button>
+    <button class="nav-btn" data-page="stats">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">统计</span>
+    </button>
+    <button class="nav-btn" data-page="weight">
+      <span class="nav-icon">⚖️</span>
+      <span class="nav-label">体重</span>
+    </button>
+    <button class="nav-btn" data-page="settings">
+      <span class="nav-icon">👤</span>
+      <span class="nav-label">我的</span>
+    </button>
+  </nav>
+
+  <!-- ========== Toast 容器 ========== -->
+  <div id="toast"></div>
+
+  <!-- ========== 庆祝弹窗 ========== -->
+  <div id="celebration" class="celebration-hidden">
+    <div class="celebration-content">
+      <span class="celebration-emoji">🎉</span>
+      <h2>训练完成！</h2>
+      <p>太棒了，继续保持！</p>
+      <button class="btn btn-accent" onclick="closeCelebration()">确定</button>
+    </div>
+  </div>
+
+  <!-- Chart.js (本地) -->
+  <script src="js/chart.min.js"></script>
+
+  <!-- App Scripts -->
+  <script src="js/utils.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/training.js"></script>
+  <script src="js/weight.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
