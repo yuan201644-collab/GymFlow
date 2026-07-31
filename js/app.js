@@ -164,7 +164,7 @@ function renderStatsModule(container) {
   h += `<div class="chart-container"><h3 style="font-size:14px;margin-bottom:10px;">推拉腿分布</h3><canvas id="chart-type"></canvas></div>`;
   h += `<div class="chart-container"><h3 style="font-size:14px;margin-bottom:10px;">体重变化</h3><canvas id="chart-weight"></canvas></div>`;
   h += `<div class="card"><div class="calendar-header"><span class="calendar-month" id="cal-month"></span><div class="calendar-nav"><button onclick="calNav(-1)">◀</button><button onclick="calNav(1)">▶</button></div></div><div class="calendar-grid" id="cal-grid"></div><div class="cal-legend" id="cal-legend"></div></div>`;
-  container.innerHTML += h;
+  fc.innerHTML = h;
 
   // 构建区域数据
   const records = getRecords().filter(r => r.completed);
@@ -268,7 +268,7 @@ function renderWeightModule(container) {
       h += `<div class="weight-list-item"><div><div class="weight-date">${formatDate(w.date)}</div><div style="font-size:12px;color:${cat.color};">BMI ${b.toFixed(1)} · ${cat.label}</div></div><div class="weight-value">${w.weight}<span>kg</span></div><button class="btn-delete" onclick="handleDeleteWeight('${w.id}');openFeatureModule('weight')">🗑️</button></div>`;
     });
   } else h += `<div class="empty-state"><span class="empty-icon">📋</span><p>暂无体重记录</p></div>`;
-  container.innerHTML += h;
+  fc.innerHTML = h;
   if (ws.length >= 2) setTimeout(() => {
     const ws2 = getWeights(); const cv = document.getElementById('chart-weight-dual'); if (!cv || ws2.length < 2) return;
     const wV = ws2.map(w => w.weight); const bV = ws2.map(w => calcBMI(w.weight));
@@ -303,7 +303,7 @@ function renderPlanLib(container) {
       h += '</div>';
     });
   }
-  container.innerHTML += h;
+  fc.innerHTML = h;
 }
 
 // ── AI 定制训练方案 ──
@@ -321,16 +321,18 @@ const COACH_STEPS = [
   { key: 'issues', question: '有无体态问题或伤病？', options: ['无','圆肩/溜肩','肩峰撞击','膝盖不适','下背不适'] },
 ];
 
-function renderAICoach(container) {
+function renderAICoach(_unused) { const fc = document.getElementById('features-content');
   // 已有方案 → 显示总结 + 重新开始按钮
   if (coachPlanGenerated) {
-    let h = '<div class="chat-box" id="coach-chat"><div class="chat-msg ai"><div class="chat-bubble">✅ 你的定制方案已生成！<br><br>方案会保存在方案库中供你随时切换使用。</div></div></div>';
+    let h = '<div class="sub-page-header"><button class="history-back-btn" onclick="renderFeaturesPage()">← 功能</button><span class="history-title">🧠 AI训练方案</span><span></span></div>';
+    h += '<div class="chat-box"><div class="chat-msg ai"><div class="chat-bubble">✅ 你的定制方案已生成！<br><br>方案已保存到方案库供你随时切换使用。</div></div></div>';
     h += '<button class="btn btn-accent mt-16" onclick="coachReset()">🔄 重新定制</button>';
-    container.innerHTML += h;
+    fc.innerHTML = h;
     return;
   }
 
-  let h = '<div class="chat-box" id="coach-chat" style="padding-bottom:60px;max-height:58vh;min-height:350px;">';
+  let h = '<div class="sub-page-header"><button class="history-back-btn" onclick="renderFeaturesPage()">← 功能</button><span class="history-title">🧠 AI训练方案</span><span></span></div>';
+  h += '<div class="chat-box" id="coach-chat" style="padding-bottom:60px;max-height:58vh;min-height:350px;">';
 
   if (coachMessages.length === 0) {
     const s = getSettings();
@@ -364,7 +366,7 @@ function renderAICoach(container) {
   h += '<div class="chat-input-row"><input class="chat-input" id="coach-input" placeholder="输入回答..." onkeydown="if(event.key===\'Enter\')coachSendFree()"><button class="chat-send-btn" id="coach-send" onclick="coachSendFree()">➤</button></div>';
   h += '<div class="chat-status" id="coach-status"></div>';
 
-  container.innerHTML += h;
+  fc.innerHTML = h;
   setTimeout(() => { const box = document.getElementById('coach-chat'); if(box) box.scrollTop = box.scrollHeight; }, 100);
 }
 
@@ -481,7 +483,7 @@ function renderExerciseLib(container) {
   });
   h += `</div>`;
   h += `<div id="ex-list" class="ex-list"></div>`;
-  container.innerHTML += h;
+  fc.innerHTML = h;
   filterExercises();
 }
 
