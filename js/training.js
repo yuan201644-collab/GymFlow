@@ -771,7 +771,6 @@ function renderTrainingPage() {
         const isSelected = ex.name === currentEx.name;
         const uid = secIdx + '-' + grpIdx + '-' + exIdx;
 
-        const fav = typeof isFavorite === 'function' && isFavorite(ex.name);
         html += `<div class="card group-exercise-card ${exDone?'completed':''}" style="margin-bottom:6px;${!isSelected?'opacity:0.55;':''}" id="card-${uid}">`;
         html += `<div class="card-header"><div class="checkbox-wrapper" onclick="selectAndToggle('${secIdx}','${grpIdx}','${exIdx}','${groupId}','${escapeHtml(ex.name)}')">`;
         html += `<div class="checkbox-custom ${exDone?'checked':''}" id="check-${uid}">${exDone?'✓':''}</div>`;
@@ -781,7 +780,7 @@ function renderTrainingPage() {
         if(section.type==='main'&&ex.equipment){
           html += `<div class="weight-row" onclick="stopPropagation(event)"><span class="weight-label">🏋️</span><input type="number" class="weight-input-sm" value="${exWeight}" onchange="updateExerciseWeight('${groupId}','${escapeHtml(ex.name)}',this.value)" onfocus="this.select()" step="5" min="0" max="500"><span class="weight-unit">kg</span></div>`;
         }
-        html += `</div><button style="background:none;border:none;font-size:16px;cursor:pointer;padding:0 2px;flex-shrink:0;" onclick="event.stopPropagation();toggleFavorite('${escapeHtml(ex.name)}');this.textContent=isFavorite('${escapeHtml(ex.name)}')?'☆':'⭐'">${fav?'⭐':'☆'}</button></div></div>`;
+        html += `</div><button class="fav-star-btn" data-ex="${escapeHtml(ex.name)}" onclick="event.stopPropagation();var el=this;try{toggleFavorite(this.getAttribute('data-ex'));el.textContent=isFavorite(this.getAttribute('data-ex'))?'⭐':'☆';}catch(e){}">☆</button></div></div>`;
         if(ex.tip) html += `<div class="card-tip">💡 ${ex.tip}</div>`;
         html += `</div>`;
       });
@@ -806,6 +805,15 @@ function renderTrainingPage() {
   html += `<div style="height:80px;"></div>`;
   container.innerHTML = html;
   renderBottomBar(completedGroups, totalGroups);
+  // 初始化收藏星标状态
+  if (typeof isFavorite === 'function') {
+    setTimeout(() => {
+      document.querySelectorAll('.fav-star-btn').forEach(btn => {
+        const name = btn.getAttribute('data-ex') || '';
+        if (name && isFavorite(name)) btn.textContent = '⭐';
+      });
+    }, 50);
+  }
 }
 
 function renderBottomBar(completedGroups, totalGroups) {
