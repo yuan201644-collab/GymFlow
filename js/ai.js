@@ -16,7 +16,40 @@ function getDeviceId() {
 }
 
 // ===== 主页渲染 =====
+// AI 新手教程（只显示一次）
+function showAITutorial() {
+  if (localStorage.getItem('ai_tutorial_done')) return;
+  const fc = document.getElementById('ai-content');
+  let h = '<div style="text-align:center;padding:20px;">';
+  h += '<div style="font-size:48px;margin-bottom:12px;">🤖</div>';
+  h += '<h2 style="margin-bottom:8px;">AI 健身顾问</h2>';
+  h += '<p style="margin-bottom:16px;">基于智谱 GLM-4-Flash 免费模型</p>';
+  h += '<div class="card" style="text-align:left;margin-bottom:10px;"><b>💡 我能帮你什么</b><br><span style="font-size:13px;color:var(--muted);">训练动作推荐 · 饮食建议 · 体态矫正 · 伤病注意事项 · 训练计划优化</span></div>';
+  h += '<div class="card" style="text-align:left;margin-bottom:10px;"><b>⚙️ 需要配置</b><br><span style="font-size:13px;color:var(--muted);">去「我的 → AI服务」填入你的后端地址和密码。默认地址是临时隧道，可能已过期。</span></div>';
+  h += '<div class="card" style="text-align:left;margin-bottom:16px;"><b>🔒 数据安全</b><br><span style="font-size:13px;color:var(--muted);">API密钥仅存电脑，手机端不暴露。每次对话不保存服务器。</span></div>';
+  h += '<button class="btn btn-accent mb-8" onclick="dismissAITutorial()">知道了，开始使用</button>';
+  h += '<button class="btn btn-outline btn-sm" onclick="skipAITutorial()" style="width:auto;">跳过教程</button>';
+  h += '</div>';
+  fc.innerHTML = h;
+}
+
+function dismissAITutorial() {
+  localStorage.setItem('ai_tutorial_done', '1');
+  renderAIPage();
+}
+
+function skipAITutorial() {
+  localStorage.setItem('ai_tutorial_done', '1');
+  renderAIPage();
+}
+
 function renderAIPage() {
+  // 首次使用显示教程
+  if (!localStorage.getItem('ai_tutorial_done') && aiMessages.length === 0) {
+    showAITutorial();
+    return;
+  }
+
   const c = document.getElementById('ai-content');
   let h = '<div style="display:flex;flex-direction:column;height:calc(100dvh - 105px);">';
   h += '<div><h1 class="section-title" style="margin-bottom:2px;">🤖 AI 健身顾问</h1>';
