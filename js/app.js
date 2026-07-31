@@ -514,12 +514,33 @@ function renderExerciseLib(container) {
   h += `<button class="chat-sugg-btn active" onclick="filterExTag(this,'type','全部')">类型:全</button>`;
   ['复合','孤立'].forEach(t => { h += `<button class="chat-sugg-btn" onclick="filterExTag(this,'type','${t}')">${t}</button>`; });
   h += `</div>`;
+  h += `<button class="chat-sugg-btn" id="fav-filter" style="margin-left:auto;" onclick="toggleFavFilter(this)">⭐ 收藏</button></div>`;
   h += `<div id="ex-list" class="ex-list"></div>`;
   container.innerHTML += h;
   filterExercises();
 }
 
-let exFilter = { search: '', region: '全部', difficulty: '全部', type: '全部' };
+// 收藏功能
+function getFavorites() {
+  try { return JSON.parse(localStorage.getItem('fitness_favorites') || '[]'); }
+  catch { return []; }
+}
+function saveFavorites(arr) { localStorage.setItem('fitness_favorites', JSON.stringify(arr)); }
+function isFavorite(name) { return getFavorites().includes(name); }
+function toggleFavorite(name) {
+  const favs = getFavorites();
+  const idx = favs.indexOf(name);
+  if (idx >= 0) favs.splice(idx, 1); else favs.push(name);
+  saveFavorites(favs);
+  filterExercises();
+}
+
+let exFilter = { search: '', region: '全部', difficulty: '全部', type: '全部', fav: false };
+function toggleFavFilter(btn) {
+  exFilter.fav = !exFilter.fav;
+  btn.classList.toggle('active', exFilter.fav);
+  filterExercises();
+}
 function filterByRegion(btn, r) {
   exFilter.region = r;
   document.querySelectorAll('#ex-region-filter .day-switch-btn').forEach(b => b.classList.remove('active'));
@@ -539,16 +560,18 @@ function filterExercises() {
   const list = document.getElementById('ex-list');
   if (!list) return;
   let filtered = EXERCISE_DB;
+  if (exFilter.fav) filtered = filtered.filter(e => isFavorite(e.name));
   if (exFilter.region !== '全部') filtered = filtered.filter(e => e.region.startsWith(exFilter.region));
   if (exFilter.difficulty !== '全部') filtered = filtered.filter(e => e.difficulty === exFilter.difficulty);
   if (exFilter.type !== '全部') filtered = filtered.filter(e => e.type === exFilter.type);
   if (s) filtered = filtered.filter(e => e.name.includes(s) || e.equipment.includes(s) || e.region.includes(s) || e.mechanics.includes(s));
   if (filtered.length === 0) { list.innerHTML = '<p class="text-muted text-center mt-16">无匹配动作</p>'; return; }
-  let h = `<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">${filtered.length} 个动作</div>`;
+  let h = `<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">${filtered.length} 个动作${exFilter.fav?' · 已收藏':''}</div>`;
   filtered.forEach(e => {
     const parts = e.region.split('.');
     const ri = REGION_TREE[parts[0]];
-    h += `<div class="card ex-card"><div class="flex-between"><div><span style="font-size:12px;color:${ri?.color||'var(--accent)'};">${ri?.icon||''} ${e.region}</span><div class="card-title" style="font-size:14px;margin-top:2px;">${e.name}</div><div class="card-meta">${e.equipment} · ${e.mechanics} · ${e.difficulty} · ${e.type} · ${e.posture} · ${e.focus}</div></div></div></div>`;
+    const fav = isFavorite(e.name);
+    h += `<div class="card ex-card"><div class="flex-between"><div style="flex:1;"><span style="font-size:12px;color:${ri?.color||'var(--accent)'};">${ri?.icon||''} ${e.region}</span><div class="card-title" style="font-size:14px;margin-top:2px;">${e.name}</div><div class="card-meta">${e.equipment} · ${e.mechanics} · ${e.difficulty} · ${e.type} · ${e.posture} · ${e.focus}</div></div><button style="background:none;border:none;font-size:18px;cursor:pointer;padding:0 4px;" onclick="event.stopPropagation();toggleFavorite('${e.name.replace(/'/g,"\\'")}')">${fav?'⭐':'☆'}</button></div></div>`;
   });
   list.innerHTML = h;
 }
