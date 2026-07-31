@@ -553,7 +553,7 @@ async function coachGeneratePlan() {
         try {
           const json = JSON.parse(jsonMatch[0]);
           if (json.name && json.days && Array.isArray(json.days)) {
-            plan = addPlan(json);
+            plan = json; // 仅暂存，等用户确认后再 addPlan
           }
         } catch(e) { console.log('JSON parse error:', e.message); }
       }

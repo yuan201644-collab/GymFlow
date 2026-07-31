@@ -58,17 +58,16 @@ function renderPostureModule(container) {
   const hasHistory = profile && profile.history && profile.history.length > 1;
 
   let h = '';
-  if (profile && !hasHistory) {
-    // 已完成自测，显示结果
+  if (profile) {
+    // 显示画像
     h += '<div class="card completed" style="margin-bottom:12px;"><div class="card-title">✅ 体态画像</div><div class="card-meta">首次评估：' + profile.createdAt + '</div>';
-    h += '<div style="margin-top:8px;">' + profile.postureTags.map(t => '<span class="card-equipment" style="background:rgba(255,183,77,.15);color:#ffb74d;">' + t + '</span>').join(' ') + '</div>';
-    if (profile.postureTags.length === 0) h += '<div class="card-meta">🎉 未发现明显体态问题</div>';
-    h += '</div>';
-    // 复测提示
+    h += '<div style="margin-top:8px;">' + (profile.postureTags.length > 0 ? profile.postureTags.map(t => '<span class="card-equipment" style="background:rgba(255,183,77,.15);color:#ffb74d;">' + t + '</span>').join(' ') : '🎉 未发现明显体态问题') + '</div></div>';
+    // 复测入口
     const daysSince = Math.floor((Date.now() - new Date(profile.createdAt).getTime()) / 86400000);
-    h += `<div class="card"><div class="card-title">🔄 复测提醒</div><div class="card-meta">距上次测试 ${daysSince} 天 · 建议每4周复测一次</div>`;
+    h += `<div class="card"><div class="card-title">🔄 复测</div><div class="card-meta">距上次 ${daysSince} 天 · 每4周复测一次</div>`;
     h += `<button class="btn btn-outline btn-sm mt-8" onclick="startPostureRetest()" style="width:auto;">开始复测</button></div>`;
-    if (hasHistory) {
+    // 进展时间线
+    if (profile.history && profile.history.length > 1) {
       h += '<div class="card mt-8"><div class="card-title">📈 矫正进展</div>';
       profile.history.forEach(entry => {
         h += '<div class="card-meta">' + entry.date + '：' + (entry.tags.length > 0 ? entry.tags.join('、') : '🎉 已改善') + '</div>';
@@ -98,7 +97,7 @@ function selectPostureOption(el, qi, oi) {
   postureAnswers[POSTURE_QUESTIONS[qi].id] = oi;
   // 检查是否全部回答
   const allAnswered = POSTURE_QUESTIONS.every(q => postureAnswers[q.id] !== undefined);
-  const btn = document.getElementById('posture-submit');
+  const btn = document.getElementById('posture-submit') || document.getElementById('retest-submit');
   if (btn) btn.disabled = !allAnswered;
 }
 

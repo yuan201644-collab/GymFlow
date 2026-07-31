@@ -741,8 +741,14 @@ function renderTrainingPage() {
       else tip = '✅ 状态良好，按计划推进';
     }
     if (recentRecords.length >= 2) {
-      const lastTwo = recentRecords.slice(-2);
-      if (lastTwo.every(r => r.completed)) tip = '🔥 连续' + recentRecords.length + '天完成训练，势头很好！';
+      // 检查是否真的连续天数
+      let consecutive = 1;
+      for (let i = recentRecords.length - 1; i > 0; i--) {
+        const d1 = new Date(recentRecords[i].date);
+        const d2 = new Date(recentRecords[i-1].date);
+        if ((d1 - d2) / 86400000 <= 2) consecutive++; else break;
+      }
+      if (consecutive >= 2) tip = '🔥 连续' + consecutive + '天完成训练，势头很好！';
     }
     if (tip) {
       html += `<div class="card" style="border-left:3px solid var(--accent);padding:10px 14px;margin-bottom:10px;font-size:13px;">${tip}</div>`;
