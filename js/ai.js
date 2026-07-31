@@ -55,12 +55,6 @@ function renderAIPage() {
   h += '<div><h1 class="section-title" style="margin-bottom:2px;">🤖 AI 健身顾问</h1>';
   h += '<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">GLM-4-Flash · 专注健身问答</div></div>';
 
-  // 首次使用引导：检测到默认隧道地址未修改
-  const srv = getAIServer();
-  if (srv.includes('trycloudflare.com')) {
-    h += '<div class="fresh-install-banner" style="margin-bottom:8px;"><div class="fresh-install-icon">⚙️</div><div class="fresh-install-text"><b>AI 服务未配置</b><br>当前使用临时隧道地址可能已过期。去「我的→AI服务」填入你的后端地址</div></div>';
-  }
-
   h += '<div class="chat-box" id="chat-box">';
 
   if (aiMessages.length === 0) {
@@ -136,8 +130,8 @@ async function sendAIMessage() {
     }
   } catch (e) {
     clearInterval(statusInterval);
-    aiMessages.push({ role: 'ai', content: '⚠️ 无法连接 AI 服务，请确认后端已启动' });
-    if (statusEl) statusEl.textContent = '连接失败';
+    aiMessages.push({ role: 'ai', content: '⚠️ 无法连接 AI 服务\n\n请确认：\n1. 电脑上已启动后端 (cd server && node server.js)\n2. 已启动隧道 (cloudflared tunnel --url http://localhost:3000)\n3. 「我的→AI服务」地址正确' });
+    if (statusEl) statusEl.textContent = '连接失败 · 检查AI服务配置';
   }
 
   aiLoading = false;
