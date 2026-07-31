@@ -622,9 +622,20 @@ function getTrainingPlan(type) {
               label: g.label || '训练组',
               region: g.label || '',
               pickHint: '1选1',
-              exercises: (g.exercises || []).map(ex => ({
-                name: ex.name, sets: ex.sets || '3组×10-12次', equipment: '', tip: '', default: true
-              }))
+              exercises: (g.exercises || []).map(ex => {
+                // 从动作库中查找匹配的动作详情
+                let dbEx = null;
+                if (typeof EXERCISE_DB !== 'undefined') {
+                  dbEx = EXERCISE_DB.find(e => e.name === ex.name || e.name.includes(ex.name) || ex.name.includes(e.name));
+                }
+                return {
+                  name: ex.name,
+                  sets: ex.sets || '3组×10-12次',
+                  equipment: dbEx ? dbEx.equipment : '',
+                  tip: dbEx ? dbEx.name + ' · ' + dbEx.mechanics + ' · ' + dbEx.difficulty + '级 · 注意' + (dbEx.risk==='高'?'⚠️高风险':'标准动作') : '💡 AI推荐动作，请根据实际情况调整重量和姿势',
+                  default: true
+                };
+              })
             }))
           }]
         };

@@ -530,7 +530,10 @@ async function coachGeneratePlan() {
   prompt += `\n\n## 要求\n根据以上信息定制训练方案。\n用户选择的分化方式：${coachProfile.split}`;
   prompt += `\n如选"由你推荐"则根据训练天数(${coachProfile.days})判断：≤3天→三分化，4-5天→五分化`;
   prompt += `\n当前体重：${(getWeights().slice(-1)[0]||{}).weight||'未知'}kg\n每次训练时长：${coachProfile.time}`;
-  prompt += `\n\n生成纯JSON（不要markdown代码块）：{"name":"方案名","type":"3day或5day","description":"简介","days":[{"label":"训练日名","groups":[{"label":"肌群","exercises":[{"name":"动作","sets":"组数×次数"}]}]}]}\n每个训练日4-6个肌群组，动作名常见易懂。`;
+  // 附上动作库参考
+  const sampleEx = EXERCISE_DB.filter(e => e.type === '复合' || e.difficulty !== '高级').slice(0, 100).map(e => e.name).join('、');
+  prompt += `\n\n## 动作库参考（请从中选用，确保动作名完全一致以便匹配详情）\n${sampleEx}`;
+  prompt += `\n\n生成纯JSON：{"name":"方案名","type":"3day或5day","description":"简介","days":[{"label":"训练日名","groups":[{"label":"肌群","exercises":[{"name":"动作(必须与动作库一致)","sets":"组数×次数"}]}]}]}\n每个训练日4-6个肌群组。`;
 
   try {
     const resp = await fetch(getAIServer()+'/api/ask', {
