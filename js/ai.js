@@ -20,7 +20,7 @@ function renderAIPage() {
   const c = document.getElementById('ai-content');
   let h = '<h1 class="section-title">🤖 AI 健身顾问</h1>';
   h += '<div style="font-size:12px;color:var(--muted);margin-bottom:16px;">GLM-4-Flash 免费模型 · 专注健身问答</div>';
-  h += '<div class="chat-box" id="chat-box">';
+  h += '<div class="chat-box" id="chat-box" style="padding-bottom:70px;">';
 
   if (aiMessages.length === 0) {
     h += '<div class="chat-empty"><div class="chat-empty-icon">💬</div><p>问我任何健身相关问题</p><div class="chat-suggestions">';
