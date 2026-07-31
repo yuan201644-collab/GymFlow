@@ -18,9 +18,10 @@ function getDeviceId() {
 // ===== 主页渲染 =====
 function renderAIPage() {
   const c = document.getElementById('ai-content');
-  let h = '<h1 class="section-title">🤖 AI 健身顾问</h1>';
-  h += '<div style="font-size:12px;color:var(--muted);margin-bottom:16px;">GLM-4-Flash 免费模型 · 专注健身问答</div>';
-  h += '<div class="chat-box" id="chat-box" style="padding-bottom:70px;">';
+  let h = '<div style="display:flex;flex-direction:column;height:calc(100dvh - 105px);">';
+  h += '<div><h1 class="section-title" style="margin-bottom:2px;">🤖 AI 健身顾问</h1>';
+  h += '<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">GLM-4-Flash · 专注健身问答</div></div>';
+  h += '<div class="chat-box" id="chat-box">';
 
   if (aiMessages.length === 0) {
     h += '<div class="chat-empty"><div class="chat-empty-icon">💬</div><p>问我任何健身相关问题</p><div class="chat-suggestions">';
@@ -40,16 +41,14 @@ function renderAIPage() {
     h += '<div class="chat-msg ai"><div class="chat-bubble typing-dots"><span></span><span></span><span></span></div></div>';
   }
 
-  h += '</div>';
+  h += '</div>'; // close chat-box
+  h += '</div>'; // close flex wrapper
 
   h += '<div class="chat-input-row"><input type="text" class="chat-input" id="chat-input" placeholder="输入健身问题..." onkeydown="if(event.key===\'Enter\')sendAIMessage()" maxlength="500" autocomplete="off"><button class="chat-send-btn" id="chat-send-btn" onclick="sendAIMessage()"' + (aiLoading?' disabled':'') + '>➤</button></div>';
   h += '<div class="chat-status" id="chat-status">' + (aiMessages.length > 0 ? aiMessages.length + ' 条消息' : '') + '</div>';
 
   c.innerHTML = h;
-  setTimeout(scrollChatBottom, 150);
-}
-
-function scrollChatBottom() {
+  // 瞬间滚到底部（不用动画避免跳跃）
   const box = document.getElementById('chat-box');
   if (box) box.scrollTop = box.scrollHeight;
 }
