@@ -56,6 +56,17 @@ function saveSettings(settings) {
  */
 function getNextWorkoutType() {
   const settings = getSettings();
+  const pid = localStorage.getItem('fitness_active_plan') || 'default';
+  if (pid !== 'default') {
+    const plans = loadJSON('fitness_plans') || [];
+    const ap = plans.find(p => p.id === pid);
+    if (ap && ap.days) {
+      const order = ap.days.map((_, i) => 'custom_' + i).concat(['rest']);
+      if (!settings.lastWorkoutType || !order.includes(settings.lastWorkoutType)) return order[0];
+      const idx = order.indexOf(settings.lastWorkoutType);
+      return order[(idx + 1) % order.length];
+    }
+  }
   const order = ['push', 'pull', 'legs', 'rest'];
   if (!settings.lastWorkoutType) return 'push';
   const idx = order.indexOf(settings.lastWorkoutType);

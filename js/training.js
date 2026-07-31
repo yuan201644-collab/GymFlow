@@ -602,6 +602,35 @@ const TRAINING_PLANS = {
 // ========== 工具函数 ==========
 
 function getTrainingPlan(type) {
+  // 自定义方案日
+  if (type && type.startsWith('custom_')) {
+    const idx = parseInt(type.replace('custom_', ''));
+    const pid = getActivePlanId();
+    if (pid !== 'default') {
+      const plans = getPlans();
+      const ap = plans.find(p => p.id === pid);
+      if (ap && ap.days && ap.days[idx]) {
+        const day = ap.days[idx];
+        return {
+          label: day.label,
+          subtitle: ap.name,
+          emoji: '📋',
+          sections: [{
+            type: 'main', title: day.label, badge: '正式', badgeClass: 'section-badge',
+            groups: (day.groups || []).map(g => ({
+              id: 'custom_' + idx + '_' + Math.random().toString(36).slice(2,6),
+              label: g.label || '训练组',
+              region: g.label || '',
+              pickHint: '1选1',
+              exercises: (g.exercises || []).map(ex => ({
+                name: ex.name, sets: ex.sets || '3组×10-12次', equipment: '', tip: '', default: true
+              }))
+            }))
+          }]
+        };
+      }
+    }
+  }
   return TRAINING_PLANS[type] || TRAINING_PLANS.push;
 }
 
@@ -689,10 +718,30 @@ function renderTrainingPage() {
   html += `</div></div>`;
 
   html += `<div class="day-switcher mb-8">`;
-  ['push','pull','legs','rest'].forEach(type => {
-    const p = getTrainingPlan(type);
-    html += `<button class="day-switch-btn ${record.type===type?'active':''}" onclick="switchTrainingDay('${type}')">${p.emoji} ${p.label}</button>`;
-  });
+  // 检查是否有自定义方案
+  const activePid = getActivePlanId();
+  if (activePid !== 'default') {
+    const plans = getPlans();
+    const ap = plans.find(p => p.id === activePid);
+    if (ap && ap.days) {
+      ap.days.forEach((d, i) => {
+        const dayType = 'custom_' + i;
+        html += `<button class="day-switch-btn ${record.type===dayType?'active':''}" onclick="switchTrainingDay('${dayType}')">${d.label}</button>`;
+      });
+      html += `<button class="day-switch-btn ${record.type==='rest'?'active':''}" onclick="switchTrainingDay('rest')">🧘 休息</button>`;
+    } else {
+      // fallback to default
+      ['push','pull','legs','rest'].forEach(type => {
+        const p = getTrainingPlan(type);
+        html += `<button class="day-switch-btn ${record.type===type?'active':''}" onclick="switchTrainingDay('${type}')">${p.emoji} ${p.label}</button>`;
+      });
+    }
+  } else {
+    ['push','pull','legs','rest'].forEach(type => {
+      const p = getTrainingPlan(type);
+      html += `<button class="day-switch-btn ${record.type===type?'active':''}" onclick="switchTrainingDay('${type}')">${p.emoji} ${p.label}</button>`;
+    });
+  }
   html += `</div>`;
 
   html += `<div class="progress-section"><div class="progress-header"><div><div class="day-label" style="font-size:17px;">${plan.emoji} ${plan.label}</div><div class="day-subtitle" style="font-size:12px;color:var(--muted);">${plan.subtitle} · <span class="history-link" onclick="showHistory()">📋 历史</span></div></div><div class="progress-count"><span id="completed-count">${completedGroups}</span>/<span>${totalGroups}</span> 部位</div></div><div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:${totalGroups?(completedGroups/totalGroups*100):0}%"></div></div></div>`;

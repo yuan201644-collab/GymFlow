@@ -313,12 +313,16 @@ let coachProfile = {};
 let coachPlanGenerated = null;
 
 const COACH_STEPS = [
-  { key: 'experience', question: '你健身多久了？', options: ['刚开始(0-3个月)','半年左右','1-2年','2年以上'] },
-  { key: 'days', question: '每周能训练几天？', options: ['2-3天','3-4天','4-5天','5-6天'] },
-  { key: 'goal', question: '当前主要目标是？', options: ['增肌增重','减脂塑形','提升力量','体态矫正'] },
-  { key: 'equipment', question: '你能用的器械有哪些？', options: ['商业健身房(全器械)','家庭哑铃+弹力带','自重为主'] },
-  { key: 'focus', question: '想重点改善哪些部位？', options: ['胸+肩','背+手臂','臀腿','全身均衡'] },
-  { key: 'issues', question: '有无体态问题或伤病？', options: ['无','圆肩/溜肩','肩峰撞击','膝盖不适','下背不适'] },
+  { key: 'experience', question: '你健身多久了？', options: ['刚开始(0-3个月)','训练半年左右','训练1-2年','2年以上老手'] },
+  { key: 'days', question: '每周能去健身房几天？', options: ['2-3天','3-4天','4-5天','5-6天'] },
+  { key: 'split', question: '倾向哪种训练分化方式？', options: ['三分化(推/拉/腿轮转)','五分化(每天一个部位)','由你根据我的情况推荐'] },
+  { key: 'time', question: '每次训练大约多长时间？', options: ['30-45分钟','45-60分钟','60-90分钟','90分钟以上'] },
+  { key: 'goal', question: '当前最主要的目标是什么？', options: ['增肌增维度','减脂塑形','提升绝对力量','体态矫正优先'] },
+  { key: 'equipment', question: '你所在健身房有哪些器械？', options: ['商业健身房(器械齐全)','小型工作室(基础器械)','家庭训练(哑铃弹力带)','自重为主'] },
+  { key: 'focus', question: '最想强化哪个大肌群？', options: ['胸肌优先','背部优先','肩部优先','臀腿优先','全身均衡发展'] },
+  { key: 'weakness', question: '觉得哪个部位相对薄弱？', options: ['上肢偏弱','下肢偏弱','核心偏弱','都比较均衡'] },
+  { key: 'intensity', question: '训练强度偏好？', options: ['保守渐进(安全第一)','中等强度(常规训练)','高强度(每组力竭)','根据身体状态灵活调整'] },
+  { key: 'issues', question: '有无体态问题或伤病需注意？', options: ['无特殊问题','圆肩/溜肩/肱骨前移','肩峰撞击风险','膝盖/下背不适','多种问题叠加'] },
 ];
 
 function renderAICoach(_unused) { const fc = document.getElementById('features-content');
@@ -432,11 +436,10 @@ async function coachGeneratePlan() {
   let prompt = `## 用户信息\n性别：${s.userInfo.gender} · 年龄：${s.userInfo.age} · 身高：${s.userInfo.height}cm\n`;
   prompt += `## 训练问卷\n`;
   COACH_STEPS.forEach(st => { prompt += `${st.question} → ${coachProfile[st.key]}\n`; });
-  prompt += `\n## 要求\n根据以上信息，从动作数据库中为ta定制一套训练方案。`;
-  prompt += `\n当前重量：${(getWeights().slice(-1)[0]||{}).weight||'未知'}kg`;
-  prompt += `\n\n请生成JSON格式的训练方案（不要markdown代码块）：`;
-  prompt += `\n{"name":"方案名称","type":"3day或5day","description":"简短描述","days":[{"label":"训练日名称","groups":[{"label":"肌群名","exercises":[{"name":"动作名","sets":"组数×次数"}]}]}]}`;
-  prompt += `\n每个训练日4-6个肌群组，每组选1个合适动作。方案要结合ta的器械条件。`;
+  prompt += `\n## 要求\n根据以上信息定制训练方案。\n用户选择的分化方式：${coachProfile.split}`;
+  prompt += `\n如选"由你推荐"则根据训练天数(${coachProfile.days})判断：≤3天→三分化，4-5天→五分化`;
+  prompt += `\n当前体重：${(getWeights().slice(-1)[0]||{}).weight||'未知'}kg\n每次训练时长：${coachProfile.time}`;
+  prompt += `\n\n生成纯JSON（不要markdown代码块）：{"name":"方案名","type":"3day或5day","description":"简介","days":[{"label":"训练日名","groups":[{"label":"肌群","exercises":[{"name":"动作","sets":"组数×次数"}]}]}]}\n每个训练日4-6个肌群组，动作名常见易懂。`;
 
   try {
     const resp = await fetch(getAIServer()+'/api/ask', {
