@@ -1022,13 +1022,35 @@ function renderHistoryList() {
 }
 
 function addHistoryRecord() {
-  const date = prompt('训练日期 (YYYY-MM-DD)：', todayStr());
-  if(!date) return;
-  const type = prompt('类型 (push/pull/legs/rest)：', 'push');
-  if(!['push','pull','legs','rest'].includes(type)) { showToast('类型无效','error'); return; }
+  const typeMap = { 'push': '🏋️ 推日', 'pull': '🏋️ 拉日', 'legs': '🏋️ 臀腿日', 'rest': '🧘 休息日' };
+  let h = '<div class="plan-switcher-hidden" id="hist-add-sheet" style="display:block;">';
+  h += '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:400;" onclick="document.getElementById(\'hist-add-sheet\').remove()"></div>';
+  h += '<div style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);z-index:401;background:var(--surface);width:100%;max-width:680px;border-radius:14px 14px 0 0;padding:20px;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));">';
+  h += '<h3 style="margin-bottom:12px;">补录训练</h3>';
+  h += '<input type="date" class="form-input mb-8" id="hist-date" value="' + todayStr() + '">';
+  h += '<div class="day-switcher mb-8" id="hist-type">';
+  Object.entries(typeMap).forEach(([k, v], i) => { h += '<button class="day-switch-btn' + (i===0?' active':'') + '" onclick="selectHistType(this,\'' + k + '\')">' + v + '</button>'; });
+  h += '</div>';
+  h += '<input type="hidden" id="hist-type-val" value="push">';
+  h += '<button class="btn btn-accent mb-8" onclick="confirmAddHistory()">确认添加</button>';
+  h += '<button class="btn btn-outline" onclick="document.getElementById(\'hist-add-sheet\').remove()">取消</button></div></div>';
+  document.getElementById('training-content').insertAdjacentHTML('beforeend', h);
+}
+
+function selectHistType(btn, type) {
+  document.getElementById('hist-type-val').value = type;
+  document.querySelectorAll('#hist-type .day-switch-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function confirmAddHistory() {
+  const date = document.getElementById('hist-date').value;
+  const type = document.getElementById('hist-type-val').value;
+  document.getElementById('hist-add-sheet').remove();
+  if (!date) { showToast('请选择日期', 'error'); return; }
   const record = { id: generateId(), date, type, completed: false, exercises: [], groupSelections: {} };
   const records = getRecords(); records.push(record); saveRecords(records);
-  showToast('已创建记录','success');
+  showToast('已创建记录', 'success');
   historyDetailDate = date; historyView = 'detail'; historyEditMode = true;
   renderHistoryDetail(record);
 }

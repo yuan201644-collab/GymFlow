@@ -172,7 +172,7 @@ function renderStatsModule(container) {
   records.forEach(r => {
     const plan = getTrainingPlan(r.type);
     plan.sections.forEach(s => {
-      if (!s.groups) return;
+      if (!s.groups || s.type === 'warmup' || s.type === 'stretch') return;
       s.groups.forEach(g => {
         if (!g.region) return;
         const done = isGroupCompleted(g, r);
@@ -474,9 +474,10 @@ async function coachGeneratePlan() {
             });
           });
         });
-        setActivePlan(plan.id);
         coachPlanGenerated = plan;
-        if (status) status.textContent = `✅ 方案"${plan.name}"已设为当前 → 去训练页查看`;
+        // 不自动覆盖，提示用户确认
+        resultText += `\n\n💡 方案已保存到方案库，可前往「方案库」设为当前方案`;
+        if (status) status.textContent = `✅ 方案"${plan.name}"已保存，去方案库切换`;
       } else {
         resultText = '⚠️ AI返回了方案但格式无法解析，请重试\n\n原始回复：\n' + data.answer.substring(0, 200) + '...';
         coachPlanGenerated = null; // 不标记成功，走重试分支
@@ -504,15 +505,29 @@ function renderExerciseLib(container) {
     h += `<button class="day-switch-btn" onclick="filterByRegion(this,'${r}')">${REGION_TREE[r].icon} ${r}</button>`;
   });
   h += `</div>`;
+  h += `<div style="display:flex;gap:6px;margin-bottom:8px;" id="ex-diff-filter">`;
+  h += `<button class="chat-sugg-btn active" onclick="filterExTag(this,'difficulty','全部')">难度:全</button>`;
+  ['初级','中级','高级'].forEach(d => { h += `<button class="chat-sugg-btn" onclick="filterExTag(this,'difficulty','${d}')">${d}</button>`; });
+  h += `</div><div style="display:flex;gap:6px;margin-bottom:8px;" id="ex-type-filter">`;
+  h += `<button class="chat-sugg-btn active" onclick="filterExTag(this,'type','全部')">类型:全</button>`;
+  ['复合','孤立'].forEach(t => { h += `<button class="chat-sugg-btn" onclick="filterExTag(this,'type','${t}')">${t}</button>`; });
+  h += `</div>`;
   h += `<div id="ex-list" class="ex-list"></div>`;
   container.innerHTML += h;
   filterExercises();
 }
 
-let exFilter = { search: '', region: '全部' };
+let exFilter = { search: '', region: '全部', difficulty: '全部', type: '全部' };
 function filterByRegion(btn, r) {
   exFilter.region = r;
   document.querySelectorAll('#ex-region-filter .day-switch-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterExercises();
+}
+function filterExTag(btn, key, val) {
+  exFilter[key] = val;
+  const gid = key === 'difficulty' ? 'ex-diff-filter' : 'ex-type-filter';
+  document.querySelectorAll('#' + gid + ' .chat-sugg-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   filterExercises();
 }
@@ -523,20 +538,22 @@ function filterExercises() {
   if (!list) return;
   let filtered = EXERCISE_DB;
   if (exFilter.region !== '全部') filtered = filtered.filter(e => e.region.startsWith(exFilter.region));
-  if (s) filtered = filtered.filter(e => e.name.includes(s) || e.equipment.includes(s) || e.region.includes(s));
+  if (exFilter.difficulty !== '全部') filtered = filtered.filter(e => e.difficulty === exFilter.difficulty);
+  if (exFilter.type !== '全部') filtered = filtered.filter(e => e.type === exFilter.type);
+  if (s) filtered = filtered.filter(e => e.name.includes(s) || e.equipment.includes(s) || e.region.includes(s) || e.mechanics.includes(s));
   if (filtered.length === 0) { list.innerHTML = '<p class="text-muted text-center mt-16">无匹配动作</p>'; return; }
   let h = `<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">${filtered.length} 个动作</div>`;
   filtered.forEach(e => {
     const parts = e.region.split('.');
     const ri = REGION_TREE[parts[0]];
-    h += `<div class="card ex-card"><div class="flex-between"><div><span style="font-size:12px;color:${ri?.color||'var(--accent)'};">${ri?.icon||''} ${e.region}</span><div class="card-title" style="font-size:14px;margin-top:2px;">${e.name}</div><div class="card-meta">${e.equipment} · ${e.mechanics} · ${e.difficulty} · ${e.type}</div></div></div></div>`;
+    h += `<div class="card ex-card"><div class="flex-between"><div><span style="font-size:12px;color:${ri?.color||'var(--accent)'};">${ri?.icon||''} ${e.region}</span><div class="card-title" style="font-size:14px;margin-top:2px;">${e.name}</div><div class="card-meta">${e.equipment} · ${e.mechanics} · ${e.difficulty} · ${e.type} · ${e.posture} · ${e.focus}</div></div></div></div>`;
   });
   list.innerHTML = h;
 }
 
 function addWeightFromFeatures() {
   const v = parseFloat(document.getElementById('w-val')?.value);
-  if (!v || v <= 0) { showToast('请输入有效体重', 'error'); return; }
+  if (!v || v < 20 || v > 300) { showToast('体重需在20-300kg范围内', 'error'); return; }
   addWeight({ date: document.getElementById('w-date')?.value || todayStr(), weight: v });
   showToast(`已记录 ${v} kg`, 'success');
   openFeatureModule('weight');
