@@ -379,6 +379,12 @@ function coachReset() {
 }
 
 function coachAnswer(answer) {
+  if (answer === '🔄 重试' || answer === '🔄 重新生成') {
+    // 重试：去掉最后一条AI错误消息，重新生成
+    coachMessages.pop();
+    coachGeneratePlan();
+    return;
+  }
   coachMessages.push({ role: 'user', content: answer });
   const done = coachProcessStep(answer);
   if (done) {
@@ -460,13 +466,13 @@ async function coachGeneratePlan() {
         coachPlanGenerated = data.answer;
         if (status) status.textContent = '方案已生成（JSON解析失败，请重新生成）';
       }
-      coachMessages.push({ role: 'ai', content: resultText });
+      coachMessages.push({ role: 'ai', content: resultText, options: ['🔄 重新生成'] });
     } else {
-      coachMessages.push({ role: 'ai', content: '⚠️ 生成失败：' + data.error });
+      coachMessages.push({ role: 'ai', content: '⚠️ 生成失败：' + data.error, options: ['🔄 重试'] });
       if (status) status.textContent = '';
     }
   } catch(e) {
-    coachMessages.push({ role: 'ai', content: '⚠️ 无法连接AI服务' });
+    coachMessages.push({ role: 'ai', content: '⚠️ 无法连接AI服务', options: ['🔄 重试'] });
     if (status) status.textContent = '';
   }
   coachLoading = false;
