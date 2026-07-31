@@ -615,7 +615,21 @@ function getTrainingPlan(type) {
           label: day.label,
           subtitle: ap.name,
           emoji: '📋',
-          sections: [{
+          sections: [
+            {
+              type: 'warmup', title: '热身（5-10分钟）', badge: '热身', badgeClass: 'warmup-badge',
+              groups: [
+                { id: 'cust_warm_cardio', label: '有氧预热', pickHint: '2选1', region: '全身', exercises: [
+                  { name: '跑步机快走', sets: '5分钟', equipment: '跑步机', tip: '心率提升至110-120，微微出汗即可', default: true },
+                  { name: '跳绳', sets: '3分钟×2组', equipment: '跳绳', tip: '轻跳，不要过度消耗体力', default: false },
+                ]},
+                { id: 'cust_warm_mobility', label: '关节激活', pickHint: '2选1', region: '全身', exercises: [
+                  { name: '肩髋动态拉伸', sets: '5分钟', equipment: '', tip: '肩绕环+髋绕环+体转，全面激活', default: true },
+                  { name: '泡沫轴滚动', sets: '3分钟', equipment: '泡沫轴', tip: '重点滚胸椎和髋部', default: false },
+                ]},
+              ]
+            },
+            {
             type: 'main', title: day.label, badge: '正式', badgeClass: 'section-badge',
             groups: (day.groups || []).map(g => ({
               id: 'custom_' + idx + '_' + Math.random().toString(36).slice(2,6),
@@ -636,7 +650,21 @@ function getTrainingPlan(type) {
                 };
               })
             }))
-          }]
+          },
+          {
+            type: 'stretch', title: '收尾拉伸（5分钟）', badge: '拉伸', badgeClass: 'stretch-badge',
+            groups: [
+              { id: 'cust_stretch_1', label: '上肢拉伸', pickHint: '2选1', region: '全身', exercises: [
+                { name: '胸肌门框拉伸', sets: '每侧30秒', equipment: '', tip: '手肘90°放门框，身体前移感受拉伸', default: true },
+                { name: '背阔肌拉伸', sets: '每侧30秒', equipment: '', tip: '双手抓固定物，身体后坐', default: false },
+              ]},
+              { id: 'cust_stretch_2', label: '下肢拉伸', pickHint: '2选1', region: '全身', exercises: [
+                { name: '股四头肌拉伸', sets: '每侧30秒', equipment: '', tip: '单腿站，手抓脚踝后拉', default: true },
+                { name: '腘绳肌拉伸', sets: '每侧30秒', equipment: '', tip: '坐姿体前屈，够脚尖', default: false },
+              ]},
+            ]
+          }
+        ]
         };
       }
     }
