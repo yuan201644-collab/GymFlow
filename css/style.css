@@ -48,7 +48,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .page.active{display:block}
 
 /* Top Nav */
-#top-bar{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border);padding:0 16px}
+#top-bar{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border);padding:0 16px;padding-top:env(safe-area-inset-top,0px)}
 .top-bar-inner{display:flex;gap:0;max-width:680px;margin:0 auto;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .top-bar-inner::-webkit-scrollbar{display:none}
 .top-tab{flex:0 0 auto;background:none;border:none;color:var(--muted);font-family:var(--font);font-size:14px;font-weight:600;padding:13px 14px;cursor:pointer;transition:color .2s;position:relative;min-height:48px;white-space:nowrap}
