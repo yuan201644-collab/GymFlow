@@ -702,7 +702,7 @@ function renderTrainingPage() {
   const activePlanId = getActivePlanId();
   const plans = getPlans();
   const ap = plans.find(p => p.id === activePlanId);
-  html += `<div class="plan-selector" onclick="switchPlan()">`;
+  html += `<div class="plan-selector" onclick="${plans.length > 0 ? 'switchPlan()' : "navigateTo('features');setTimeout(function(){openFeatureModule('ai-coach')},100)"}">`;
   html += `<span>📋 ${ap ? ap.name : '默认三分化'}</span>`;
   html += `<span style="font-size:11px;color:var(--muted);">${plans.length > 0 ? '点击切换方案 →' : '去AI定制方案 →'}</span>`;
   html += `</div>`;
