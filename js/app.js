@@ -38,6 +38,10 @@ function navigateTo(page) {
   document.querySelectorAll('.top-tab').forEach(b => b.classList.toggle('active', b.dataset.page === page));
   currentPage = page;
 
+  // 底部评分栏仅在训练页显示
+  const bar = document.getElementById('bottom-bar');
+  if (bar) bar.style.display = (page === 'training') ? 'flex' : 'none';
+
   switch (page) {
     case 'training': renderTrainingPage(); break;
     case 'ai': renderAIPage(); break;

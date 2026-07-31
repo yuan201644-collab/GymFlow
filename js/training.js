@@ -628,21 +628,22 @@ function getAllGroups(plan) {
 }
 
 function isGroupCompleted(group, record) {
-  // 从 pickHint 解析最少需要完成几个动作
-  let minRequired = 1;
-  if (group.pickHint) {
-    const m = group.pickHint.match(/(\d+)选(\d+)/);
-    if (m) minRequired = parseInt(m[2]);
-    else if (group.pickHint.includes('选')) {
-      const n = parseInt(group.pickHint);
-      if (n) minRequired = n;
-    }
-  }
   const completed = group.exercises.filter(ex => {
     const recEx = record.exercises.find(e => e.name === ex.name && e.groupId === group.id);
     return recEx && recEx.completed;
   }).length;
-  return completed >= minRequired;
+  // 自动折叠阈值：取 pickHint 中范围的上限，如 "3选1-2" → 2个才折叠
+  let collapseThreshold = 1;
+  if (group.pickHint) {
+    const rangeMatch = group.pickHint.match(/(\d+)选(\d+)-(\d+)/);
+    if (rangeMatch) {
+      collapseThreshold = parseInt(rangeMatch[3]); // 上限，如 "3选1-2" → 2
+    } else {
+      const singleMatch = group.pickHint.match(/(\d+)选(\d+)/);
+      if (singleMatch) collapseThreshold = parseInt(singleMatch[2]);
+    }
+  }
+  return completed >= collapseThreshold;
 }
 
 function getSelectedExercise(group, record) {
