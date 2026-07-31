@@ -178,15 +178,16 @@ function removeChatLoading() {
 function checkAIIntentAndNavigate(userText) {
   const t = userText.toLowerCase();
   let target = null, label = '';
-  if (t.includes('训练方案') || t.includes('定制') || t.includes('制定') || t.includes('生成计划')) {
+  // 更精确的关键词匹配（避免误触）
+  if (t.includes('训练方案') || t.includes('定制训练') || t.includes('帮我制定') || t.includes('生成一个方案') || t.includes('设计一个计划')) {
     target = 'ai-coach'; label = 'AI训练方案';
-  } else if (t.includes('统计') || t.includes('数据') || t.includes('报告')) {
+  } else if (t.includes('数据统计') || t.includes('统计报告') || t.includes('训练数据') || t.includes('我的报告')) {
     target = 'stats'; label = '数据统计';
-  } else if (t.includes('体重') || t.includes('bmi')) {
+  } else if (t.includes('体重记录') || t.includes('体重追踪') || t.includes('bmi指数') || t.includes('我的体重')) {
     target = 'weight'; label = '体重追踪';
-  } else if (t.includes('方案库') || t.includes('切换方案')) {
+  } else if (t.includes('方案库') || t.includes('切换方案') || t.includes('我的方案')) {
     target = 'plans'; label = '方案库';
-  } else if (t.includes('体态') || t.includes('圆肩') || t.includes('溜肩') || t.includes('肱骨')) {
+  } else if (t.includes('体态矫正') || t.includes('体态自测') || t.includes('体态评估') || (t.includes('圆肩') && t.length < 10) || (t.includes('溜肩') && t.length < 10)) {
     target = 'posture'; label = '体态矫正';
   }
   if (target) {
