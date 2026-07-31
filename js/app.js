@@ -326,15 +326,6 @@ const COACH_STEPS = [
 ];
 
 function renderAICoach(_unused) { const fc = document.getElementById('features-content');
-  // 已有方案 → 显示总结 + 重新开始按钮
-  if (coachPlanGenerated) {
-    let h = '<div class="sub-page-header"><button class="history-back-btn" onclick="renderFeaturesPage()">← 功能</button><span class="history-title">🧠 AI训练方案</span><span></span></div>';
-    h += '<div class="chat-box"><div class="chat-msg ai"><div class="chat-bubble">✅ 你的定制方案已生成！<br><br>方案已保存到方案库供你随时切换使用。</div></div></div>';
-    h += '<button class="btn btn-accent mt-16" onclick="coachReset()">🔄 重新定制</button>';
-    fc.innerHTML = h;
-    return;
-  }
-
   let h = '<div class="sub-page-header"><button class="history-back-btn" onclick="renderFeaturesPage()">← 功能</button><span class="history-title">🧠 AI训练方案</span><span></span></div>';
   h += '<div class="chat-box" id="coach-chat" style="padding-bottom:60px;max-height:58vh;min-height:350px;">';
 
@@ -366,8 +357,13 @@ function renderAICoach(_unused) { const fc = document.getElementById('features-c
 
   h += '</div>';
 
-  // 自由输入 + 发送按钮（固定底部）
-  h += '<div class="chat-input-row"><input class="chat-input" id="coach-input" placeholder="输入回答..." onkeydown="if(event.key===\'Enter\')coachSendFree()"><button class="chat-send-btn" id="coach-send" onclick="coachSendFree()">➤</button></div>';
+  // 已有方案 → 显示重新定制按钮
+  if (coachPlanGenerated) {
+    h += '<button class="btn btn-accent mt-16" onclick="coachReset()">🔄 重新定制</button>';
+  } else {
+    // 自由输入 + 发送按钮
+    h += '<div class="chat-input-row"><input class="chat-input" id="coach-input" placeholder="输入回答..." onkeydown="if(event.key===\'Enter\')coachSendFree()"><button class="chat-send-btn" id="coach-send" onclick="coachSendFree()">➤</button></div>';
+  }
   h += '<div class="chat-status" id="coach-status"></div>';
 
   fc.innerHTML = h;
