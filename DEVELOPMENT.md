@@ -197,11 +197,19 @@ GymFlow/
 - 方案库 → 切换方案 → 训练页自动跳转第一个训练日
 - 训练页 → 勾选打卡 → 折叠动画 → 完成庆祝
 
-### 6.3 AI 后端
-```bash
-cd server && node server.js   # localhost:3000
-# 云端：cloudflared tunnel --url http://localhost:3000
-```
+### 6.3 AI 后端（固定隧道方案，2026-08-01）
+- **一键启动**：双击根目录 `start.bat`（启动后端 + 固定隧道，两个窗口保持打开）
+- **手动启动**：
+  ```bash
+  cd server && node server.js   # localhost:3000（网页端）
+  "C:\Program Files (x86)\cloudflared\cloudflared.exe" tunnel run gymflow   # 固定隧道 ai.gym-flow.xyz
+  ```
+- **固定隧道配置**（已配好，见 `C:\Users\86133\.cloudflared\`）：
+  - Named Tunnel：`gymflow`（ID `cab2e383-2203-492b-8497-ea049d25213a`）
+  - 固定域名：`ai.gym-flow.xyz`（Cloudflare DNS CNAME → 隧道）
+  - `config.yml`：`ai.gym-flow.xyz → http://localhost:3000`
+- **地址不再变化**：免费 trycloudflare 隧道已废弃（每次重启地址变），现用固定域名一劳永逸
+- 域名 `gym-flow.xyz` 托管在 Cloudflare（阿里云购买，实名已过）
 
 ---
 
