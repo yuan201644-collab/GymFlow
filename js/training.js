@@ -1185,12 +1185,13 @@ function openExercisePickerInner(secIdx, grpIdx, groupId, region, eqPref) {
   const cands = EXERCISE_DB.filter(ex => {
     if (ex.phase !== 'main') return false;
     const r = ex.region || '';
-    if (!regionFilter.some(f => f && (r === f || r.startsWith(f + '.') || f.startsWith(r)))) return false;
+    // P3：同子部位精确匹配——组 region 带子部位（如 胸.中胸）只换同子部位；无子部位（如 胸）匹配同大区
+    if (!regionFilter.some(f => f && (r === f || r.startsWith(f + '.')))) return false;
     if (typeof isEquipmentAvailable === 'function' && !isEquipmentAvailable(ex, ctx)) return false;
     return true;
   });
   const renderList = (kw) => {
-    const list = kw ? cands.filter(e => e.name.includes(kw)) : cands;
+    const list = kw ? fuzzySearchExercises(kw, cands) : cands; // 第16节：模糊搜索（候选已是同部位+设备过滤子集）
     return list.slice(0, 50).map(e =>
       `<div class="card ex-card" style="padding:10px 14px;margin-bottom:6px;" onclick="addCustomExercise('${groupId}','${escapeHtml(e.name)}')"><div style="font-size:14px;font-weight:600;">${e.name}</div><div class="card-meta">${e.equipment} · ${e.mechanics} · ${e.difficulty}</div></div>`
     ).join('') || '<p class="text-muted text-center" style="padding:20px;">无可用动作</p>';

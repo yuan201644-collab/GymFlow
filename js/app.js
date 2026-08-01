@@ -765,7 +765,7 @@ function filterExercises() {
   if (exFilter.region !== '全部') filtered = filtered.filter(e => e.region.startsWith(exFilter.region));
   if (exFilter.difficulty !== '全部') filtered = filtered.filter(e => e.difficulty === exFilter.difficulty);
   if (exFilter.type !== '全部') filtered = filtered.filter(e => e.type === exFilter.type);
-  if (s) filtered = filtered.filter(e => e.name.includes(s) || e.equipment.includes(s) || e.region.includes(s) || e.mechanics.includes(s));
+  if (s) filtered = fuzzySearchExercises(s, filtered); // 第16节：模糊搜索（拼音/容错/多关键词/相关性排序）
   if (filtered.length === 0) { list.innerHTML = '<p class="text-muted text-center mt-16">无匹配动作</p>'; return; }
   let h = `<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">${filtered.length} 个动作${exFilter.fav?' · 已收藏':''}</div>`;
   filtered.forEach(e => {

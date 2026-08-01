@@ -389,7 +389,7 @@ function deletePlan(id) {
 
 // ========== 版本管理 ==========
 
-const APP_VERSION = '1.4';
+const APP_VERSION = '1.5';
 
 function getStoredVersion() {
   return localStorage.getItem('fitness_version') || '0';
