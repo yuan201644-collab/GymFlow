@@ -35,7 +35,7 @@ function isEquipmentAvailable(ex, ctx) {
   const ctxEq = ctx.equipment;
   if (ctxEq.includes('商业')) return true; // full gym
   if (ctxEq.includes('家庭') || ctxEq.includes('哑铃')) {
-    const no = ['龙门架','绳索','哈克','腿举机','腿屈伸机','腿弯举机','髋外展','髋内收','提踵','臀推机','弯举机','侧平举机','肩推机','推胸机','坐姿划船','高位下拉','史密斯','蝴蝶机','卷腹机','辅助引体','辅助臂屈伸'];
+    const no = ['龙门架','绳索','哈克','腿举机','腿屈伸机','腿弯举机','髋外展','髋内收','提踵','臀推机','弯举机','侧平举机','肩推机','推胸机','坐姿划船','高位下拉','史密斯','蝴蝶机','卷腹机','辅助引体','辅助臂屈伸','杠铃','深蹲架','六角杠','T杆','下斜凳'];
     for (const n of no) { if (eq.includes(n.toLowerCase())) return false; }
   }
   if (ctxEq.includes('自重')) {
@@ -67,6 +67,8 @@ function injuryPenalty(ex, ctx) {
   if (issues.includes('肩峰') || issues.includes('肩膀')) {
     if (name.includes('推举') || name.includes('直立划船') || name.includes('颈后')) penalty -= 30;
     if (mech === '推' && region.includes('肩')) penalty -= 10;
+    // 杠铃卧推系加重肩峰撞击风险
+    if (name.includes('杠铃') && name.includes('卧推')) penalty -= 25;
   }
   if (issues.includes('膝盖') || issues.includes('膝')) {
     if (name.includes('深蹲') || name.includes('腿举')) penalty -= 15;
@@ -214,39 +216,77 @@ const SPLIT5_TEMPLATE = {
   ],
 };
 
+// 新手全身体模板（3天全身体，每肌群每周3次）
+const FULLBODY_TEMPLATE = {
+  type: '3day-fullbody',
+  days: [
+    { label: '全身A', regions: ['胸.中胸','背.背阔','臀腿.股四头','核心.腹直','手臂.三头'] },
+    { label: '全身B', regions: ['背.中背','臀腿.腘绳','肩.前束','核心.腹横','手臂.二头'] },
+    { label: '全身C', regions: ['胸.上胸','臀腿.臀','肩.中束','背.菱形','核心.腹斜'] },
+  ],
+};
+
 // ===== 从候选池选 Top N =====
 function pickExercises(regionFilter, ctx, n, pickHint) {
   const candidates = EXERCISE_DB.filter(ex => {
     const r = ex.region || '';
+    // 正式训练组排除拉伸/滚动/有氧/热身类动作
+    if (ex.mechanics === '等长' || ex.region === '全身.有氧') return false;
+    if (ex.name.includes('拉伸') || ex.name.includes('滚动') || ex.name.includes('预热')) return false;
     return regionFilter.some(f => r === f || r.startsWith(f + '.') || f.startsWith(r));
   }).map(ex => ({ ex, score: scoreExercise(ex, ctx) }));
   candidates.sort((a, b) => b.score - a.score);
   // 去重（同名不同变体）
   const seen = new Set();
-  const unique = candidates.filter(c => {
+  const valid = candidates.filter(c => c.score > -100);
+  const unique = valid.filter(c => {
     const key = c.ex.name; if (seen.has(key)) return false; seen.add(key); return true;
   });
   const reps = intensityReps(ctx);
   return unique.slice(0, n).map((c, i) => ({
     name: c.ex.name,
-    sets: `${i < 2 ? '4' : '3'}组×${reps}`, // 前2动作4组，后面3组
+    sets: `${c.ex.type === '复合' ? '3-4' : '2-3'}组×${reps}`,
     default: i === 0
   }));
 }
 
+// ===== 目标驱动训练量配置 =====
+function trainingVolume(ctx) {
+  const goal = ctx.goal;
+  const exp = ctx.experience;
+  const isBeginner = exp.includes('新手') || exp.includes('0-3') || exp.includes('刚');
+  const isStrength = goal.includes('力量');
+  const isFatLoss = goal.includes('减脂');
+  // 每组动作数（按目标收缩）
+  let exercisesPerGroup = 2;
+  // 每天肌群组数
+  let groupsPerDay;
+  if (isBeginner) groupsPerDay = 3;
+  else if (isStrength) groupsPerDay = 4;
+  else groupsPerDay = 5;
+  // 组数
+  let compoundSets = '3-4';
+  let isoSets = '2-3';
+  if (isStrength) { compoundSets = '4-5'; isoSets = '3-4'; }
+  return { exercisesPerGroup, groupsPerDay, compoundSets, isoSets, isBeginner };
+}
+
 // ===== 构建方案 =====
 function buildPlan(ctx) {
-  const maxGroups = timeLimit(ctx);
   const is5Day = ctx.split.includes('五');
-  const template = is5Day ? SPLIT5_TEMPLATE : SPLIT3_TEMPLATE;
+  const vol = trainingVolume(ctx);
+  // 新手 → 全身体模板；否则按分化
+  const template = vol.isBeginner ? FULLBODY_TEMPLATE : (is5Day ? SPLIT5_TEMPLATE : SPLIT3_TEMPLATE);
+  const isFullbody = vol.isBeginner;
   const name = (ctx.goal.includes('减脂')?'减脂':ctx.goal.includes('力量')?'力量':ctx.goal.includes('矫正')?'矫正':'增肌')
-    + (is5Day?'五分化':'三分化');
+    + (isFullbody?'全身体':(is5Day?'五分化':'三分化'));
 
   const days = template.days.map(day => {
     const isLowerDay = day.label.includes('腿') || day.label.includes('臀');
-    const mainGroups = day.regions.map((region, ri) => {
-      const n = Math.min(ri < 2 ? 3 : 2, maxGroups);
-      const exercises = pickExercises([region], ctx, n, `${n}选1-${Math.min(n,2)}`);
+    // 每组1-2个动作（收缩训练量），按目标控制组数
+    const mainGroups = day.regions.slice(0, vol.groupsPerDay).map((region, ri) => {
+      const n = vol.exercisesPerGroup;
+      const exercises = pickExercises([region], ctx, n, `${n}选1`);
       if (exercises.length === 0) return null;
       exercises[0].default = true;
       return {
@@ -256,21 +296,28 @@ function buildPlan(ctx) {
         exercises,
       };
     }).filter(Boolean);
-    const stretchUpper = isLowerDay
-      ? { label:'下肢拉伸',pickHint:'2选1',exercises:[{name:'股四头肌拉伸',sets:'每侧30秒',default:true},{name:'腘绳肌拉伸',sets:'每侧30秒',default:false}] }
-      : { label:'上肢拉伸',pickHint:'2选1',exercises:[{name:'胸肌门框拉伸',sets:'每侧30秒',default:true},{name:'背阔肌拉伸',sets:'每侧30秒',default:false}] };
-    const stretchLower = isLowerDay
-      ? { label:'小腿拉伸',pickHint:'1选1',exercises:[{name:'站姿提踵',sets:'每侧30秒',default:true}] }
-      : { label:'下肢拉伸',pickHint:'2选1',exercises:[{name:'股四头肌拉伸',sets:'每侧30秒',default:true},{name:'腘绳肌拉伸',sets:'每侧30秒',default:false}] };
+    // 按训练日肌群匹配热身/拉伸（确定性选择，同输入同输出）
+    const di = template.days.indexOf(day);
+    const pickByRegion = (regions, label, n, fb) => {
+      const pool = EXERCISE_DB.filter(e => regions.some(r => e.region&&e.region.startsWith(r)) && e.mechanics==='等长' && isEquipmentAvailable(e,ctx));
+      const sorted = [...pool].sort((a,b)=>a.name.localeCompare(b.name));
+      const r = []; for (let i=0;i<sorted.length&&r.length<n;i++){const ei=(di*3+i)%sorted.length;if(!r.find(x=>x.name===sorted[ei].name))r.push({name:sorted[ei].name,sets:'每侧30秒',default:r.length===0})}
+      return r.length>=n?r:fb;
+    };
+    const cf = EXERCISE_DB.filter(e=>e.region==='全身.有氧'&&e.type==='复合'&&isEquipmentAvailable(e,ctx)).sort((a,b)=>a.name.localeCompare(b.name));
+    const mf = EXERCISE_DB.filter(e=>(e.region==='全身.功能'||e.name.includes('绕环')||e.name.includes('激活')||e.name.includes('弹力带肩'))&&isEquipmentAvailable(e,ctx)).sort((a,b)=>a.name.localeCompare(b.name));
+    const ci = di*2 % Math.max(1,cf.length); const cii = (di*2+1) % Math.max(1,cf.length);
+    const mi = di*3 % Math.max(1,mf.length); const mii = (di*3+1) % Math.max(1,mf.length);
+    const cG = {label:'有氧预热',pickHint:'2选1',exercises:cf.length>=2?[{name:cf[ci].name,sets:'5分钟',default:true},{name:cf[cii].name,sets:'3分钟',default:false}]:[{name:'跑步机快走',sets:'5分钟',default:true},{name:'跳绳',sets:'3分钟×2组',default:false}]};
+    const mG = {label:'关节激活',pickHint:'2选1',exercises:mf.length>=2?[{name:mf[mi].name,sets:'5分钟',default:true},{name:mf[mii].name,sets:'3分钟',default:false}]:[{name:'肩髋动态拉伸',sets:'5分钟',default:true},{name:'泡沫轴滚动',sets:'3分钟',default:false}]};
+    const uS = {label:isLowerDay?'下肢拉伸':'上肢拉伸',pickHint:'2选1',exercises:isLowerDay?pickByRegion(['臀腿','小腿'],'下肢拉伸',2,[{name:'股四头肌拉伸',sets:'每侧30秒',default:true},{name:'腘绳肌拉伸',sets:'每侧30秒',default:false}]):pickByRegion(['胸','背','肩','手臂'],'上肢拉伸',2,[{name:'胸肌门框拉伸',sets:'每侧30秒',default:true},{name:'背阔肌拉伸',sets:'每侧30秒',default:false}])};
+    const lS = {label:isLowerDay?'小腿拉伸':'下肢拉伸',pickHint:'2选1',exercises:isLowerDay?pickByRegion(['小腿'],'小腿拉伸',2,[{name:'站姿小腿拉伸',sets:'每侧30秒',default:true},{name:'鸽子式',sets:'每侧30秒',default:false}]):pickByRegion(['臀腿','小腿'],'下肢拉伸',2,[{name:'股四头肌拉伸',sets:'每侧30秒',default:true},{name:'腘绳肌拉伸',sets:'每侧30秒',default:false}])};
     return {
       label: day.label,
       sections: [
-        { type:'warmup',title:'热身(5-10分钟)', groups:[
-          { label:'有氧预热',pickHint:'2选1',exercises:[{name:'跑步机快走',sets:'5分钟',default:true},{name:'跳绳',sets:'3分钟×2组',default:false}] },
-          { label:'关节激活',pickHint:'2选1',exercises:[{name:'肩髋动态拉伸',sets:'5分钟',default:true},{name:'泡沫轴滚动',sets:'3分钟',default:false}] }
-        ]},
+        { type:'warmup',title:'热身(5-10分钟)', groups:[cG, mG]},
         { type:'main',title:'正式训练',groups:mainGroups},
-        { type:'stretch',title:'拉伸(5分钟)',groups:[stretchUpper, stretchLower]}
+        { type:'stretch',title:'拉伸(5分钟)',groups:[uS, lS]}
       ]
     };
   });
@@ -286,7 +333,14 @@ function buildPlan(ctx) {
     }]
   });
 
-  return { name, type: is5Day?'5day':'3day', description: ctx.goal + ' · ' + (is5Day?'五分化':'三分化') + ' · 自动生成', days };
+  return {
+    name,
+    type: isFullbody ? '3day' : (is5Day ? '5day' : '3day'),
+    description: ctx.goal + ' · ' + (isFullbody?'全身体':(is5Day?'五分化':'三分化')) + ' · 自动生成',
+    progressNote: '渐进超负荷：完成全部组次后，复合动作下次 +2.5kg，孤立动作 +1.25kg 或 +1次',
+    restSec: 120,
+    days,
+  };
 }
 
 // ===== 每日推荐 =====
