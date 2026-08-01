@@ -471,9 +471,15 @@ function renderAICoach(_unused) { const fc = document.getElementById('features-c
     h += '</div>';
   } else {
     coachMessages.forEach((msg, i) => {
-      h += `<div class="chat-msg ${msg.role}"><div class="chat-bubble">${msg.content.replace(/\n/g,'<br>')}</div></div>`;
+      const isLast = i === coachMessages.length - 1;
+      // 最新一条 AI 消息用打字机效果（空气泡，渲染后逐字填充）
+      if (msg.role === 'ai' && isLast && !msg.skiptype) {
+        h += `<div class="chat-msg ai"><div class="chat-bubble" id="coach-typing-bubble" style="min-height:1.5em;"></div></div>`;
+      } else {
+        h += `<div class="chat-msg ${msg.role}"><div class="chat-bubble">${msg.content.replace(/\n/g,'<br>')}</div></div>`;
+      }
       // Show quick replies after last AI message
-      if (msg.options && i === coachMessages.length-1 && !coachLoading) {
+      if (msg.options && isLast && !coachLoading) {
         h += '<div class="chat-suggestions" style="padding:0 0 8px 8px;">';
         msg.options.forEach(o => {
           h += `<button class="chat-sugg-btn" onclick="coachAnswer('${o}')">${o}</button>`;
@@ -498,7 +504,25 @@ function renderAICoach(_unused) { const fc = document.getElementById('features-c
   h += '<div class="chat-status" id="coach-status"></div>';
 
   fc.innerHTML = h;
-  setTimeout(() => { const box = document.getElementById('coach-chat'); if(box) box.scrollTop = box.scrollHeight; }, 100);
+  const box = document.getElementById('coach-chat');
+  if (box) box.scrollTop = box.scrollHeight;
+  // 打字机效果：最新 AI 消息逐字显示
+  const typingBubble = document.getElementById('coach-typing-bubble');
+  const lastMsg = coachMessages[coachMessages.length - 1];
+  if (typingBubble && lastMsg && lastMsg.role === 'ai' && !lastMsg.typed) {
+    lastMsg.typed = true;
+    const content = lastMsg.content;
+    let i = 0;
+    const timer = setInterval(() => {
+      if (i <= content.length) {
+        typingBubble.innerHTML = content.slice(0, i).replace(/\n/g, '<br>');
+        if (box) box.scrollTop = box.scrollHeight;
+        i++;
+      } else {
+        clearInterval(timer);
+      }
+    }, 15);
+  }
 }
 
 function coachReset() {
@@ -638,6 +662,12 @@ async function coachGeneratePlan() {
     pendingPlan = plan;
     coachLoading = false;
     let resultText = '✅ 方案已生成！\n\n📋 ' + (plan.type==='5day'?'五分化':'三分化') + ' · ' + plan.days.length + '天';
+    // 制定依据
+    if (plan.rationale) {
+      resultText += '\n\n🧠 制定依据：';
+      plan.rationale.forEach(r => { resultText += '\n• ' + r; });
+    }
+    if (plan.progressNote) resultText += '\n📈 ' + plan.progressNote;
     plan.days.forEach(d => {
       resultText += '\n\n▸ ' + d.label;
       const mainSections = (d.sections || []).filter(s => s.type === 'main' || !s.type);
@@ -870,7 +900,7 @@ function renderSettingsInMe(sub) {
   h += `</div>`;
   // AI
   h += `<h3 style="font-size:12px;color:var(--muted);margin-bottom:6px;">AI 服务</h3>`;
-  h += `<input type="text" class="form-input mb-8" id="ai-server-input-s" value="${localStorage.getItem('fitness_ai_server')||'https://fathers-resistance-integral-valves.trycloudflare.com'}" onchange="saveAIConfigS()" placeholder="API地址">`;
+  h += `<input type="text" class="form-input mb-8" id="ai-server-input-s" value="${localStorage.getItem('fitness_ai_server')||(typeof window!=='undefined'&&window.Capacitor?'https://fathers-resistance-integral-valves.trycloudflare.com':'http://localhost:3000')}" onchange="saveAIConfigS()" placeholder="API地址">`;
   h += `<input type="text" class="form-input mb-8" id="ai-password-input-s" value="${localStorage.getItem('fitness_ai_password')||'gymflow2024'}" onchange="saveAIConfigS()" placeholder="密码">`;
   // Data
   h += `<h3 style="font-size:12px;color:var(--muted);margin-bottom:6px;">数据管理</h3><div style="display:flex;flex-direction:column;gap:8px;">`;

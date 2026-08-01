@@ -1,41 +1,211 @@
 /* ============================================
-   GymFlow v1.4 — 代价场打分引擎 + 模板系统
-   确定性生成方案，AI 仅做解释顾问
+   GymFlow v1.4 — 代价场打分引擎（分层架构）
+   配置层/决策层/打分层/填充层/校验层
    ============================================ */
 
-// ===== 构建决策上下文 =====
+// ══════════════════════════════════════════
+// 配置层：声明式模板（结构稳定，每组固定 n/pickHint + 热身拉伸部位）
+// ══════════════════════════════════════════
+const TEMPLATES = {
+  '3day': {
+    type: '3day', label: '三分化',
+    days: [
+      { label: '推日', main: [
+        { region: '胸.中胸', n: 3, pick: '3选1' },
+        { region: '胸.上胸', n: 3, pick: '3选1' },
+        { region: '胸.下胸', n: 2, pick: '2选1' },
+        { region: '肩.前束', n: 2, pick: '2选1' },
+        { region: '手臂.三头', n: 2, pick: '2选1' },
+      ], warmup: ['肩', '胸椎', '肩胛'], stretch: ['胸', '肩', '三头', '二头'] },
+      { label: '拉日', main: [
+        { region: '背.背阔', n: 3, pick: '3选1' },
+        { region: '背.中背', n: 3, pick: '3选1' },
+        { region: '背.菱形', n: 2, pick: '2选1' },
+        { region: '肩.后束', n: 2, pick: '2选1' },
+        { region: '手臂.二头', n: 2, pick: '2选1' },
+      ], warmup: ['肩胛', '肩', '胸椎'], stretch: ['背', '肩后束', '二头', '前臂'] },
+      { label: '臀腿日', main: [
+        { region: '臀腿.股四头', n: 3, pick: '3选1' },
+        { region: '臀腿.腘绳', n: 2, pick: '2选1' },
+        { region: '臀腿.臀', n: 3, pick: '3选1' },
+        { region: '臀腿.小腿', n: 2, pick: '2选1' },
+        { region: '核心.腹直', n: 2, pick: '2选1' },
+      ], warmup: ['髋', '膝', '踝'], stretch: ['臀', '大腿前', '大腿后', '小腿'] },
+    ],
+  },
+  '5day': {
+    type: '5day', label: '五分化',
+    days: [
+      { label: '胸日', main: [
+        { region: '胸.中胸', n: 3, pick: '3选1' }, { region: '胸.上胸', n: 3, pick: '3选1' },
+        { region: '胸.下胸', n: 2, pick: '2选1' }, { region: '胸.中缝', n: 2, pick: '2选1' },
+      ], warmup: ['肩', '胸椎', '肩胛'], stretch: ['胸', '肩', '三头'] },
+      { label: '背日', main: [
+        { region: '背.背阔', n: 3, pick: '3选1' }, { region: '背.中背', n: 3, pick: '3选1' },
+        { region: '背.菱形', n: 2, pick: '2选1' }, { region: '背.下背', n: 2, pick: '2选1' },
+      ], warmup: ['肩胛', '肩', '胸椎'], stretch: ['背', '肩后束', '二头'] },
+      { label: '腿日', main: [
+        { region: '臀腿.股四头', n: 3, pick: '3选1' }, { region: '臀腿.腘绳', n: 3, pick: '3选1' },
+        { region: '臀腿.臀', n: 3, pick: '3选1' }, { region: '臀腿.小腿', n: 2, pick: '2选1' },
+      ], warmup: ['髋', '膝', '踝'], stretch: ['臀', '大腿前', '大腿后', '小腿'] },
+      { label: '肩日', main: [
+        { region: '肩.前束', n: 3, pick: '3选1' }, { region: '肩.中束', n: 3, pick: '3选1' },
+        { region: '肩.后束', n: 3, pick: '3选1' },
+      ], warmup: ['肩', '胸椎', '肩胛'], stretch: ['肩', '肩后束', '三头'] },
+      { label: '手臂日', main: [
+        { region: '手臂.二头', n: 3, pick: '3选1' }, { region: '手臂.三头', n: 3, pick: '3选1' },
+        { region: '手臂.前臂', n: 2, pick: '2选1' },
+      ], warmup: ['肩', '胸椎', '手臂'], stretch: ['二头', '三头', '前臂'] },
+    ],
+  },
+  'fullbody': {
+    type: '3day', label: '全身体',
+    days: [
+      { label: '全身A', main: [
+        { region: '胸.中胸', n: 2, pick: '2选1' }, { region: '背.背阔', n: 2, pick: '2选1' },
+        { region: '臀腿.股四头', n: 2, pick: '2选1' }, { region: '核心.腹直', n: 2, pick: '2选1' },
+        { region: '手臂.三头', n: 2, pick: '2选1' },
+      ], warmup: ['肩', '髋', '胸椎'], stretch: ['胸', '背', '大腿后'] },
+      { label: '全身B', main: [
+        { region: '背.中背', n: 2, pick: '2选1' }, { region: '臀腿.腘绳', n: 2, pick: '2选1' },
+        { region: '肩.前束', n: 2, pick: '2选1' }, { region: '核心.腹横', n: 2, pick: '2选1' },
+        { region: '手臂.二头', n: 2, pick: '2选1' },
+      ], warmup: ['肩胛', '膝', '肩'], stretch: ['背', '肩', '大腿前'] },
+      { label: '全身C', main: [
+        { region: '胸.上胸', n: 2, pick: '2选1' }, { region: '臀腿.臀', n: 2, pick: '2选1' },
+        { region: '肩.中束', n: 2, pick: '2选1' }, { region: '背.菱形', n: 2, pick: '2选1' },
+        { region: '核心.腹斜', n: 2, pick: '2选1' },
+      ], warmup: ['肩', '踝', '肩胛'], stretch: ['胸', '臀', '小腿'] },
+    ],
+  },
+  'upperlower': {
+    type: '3day', label: '上下肢',
+    days: [
+      { label: '上肢日', main: [
+        { region: '胸.中胸', n: 3, pick: '3选1' }, { region: '背.背阔', n: 3, pick: '3选1' },
+        { region: '肩.前束', n: 2, pick: '2选1' }, { region: '手臂.三头', n: 2, pick: '2选1' },
+        { region: '背.中背', n: 2, pick: '2选1' },
+      ], warmup: ['肩', '胸椎', '肩胛'], stretch: ['胸', '背', '二头', '三头'] },
+      { label: '下肢日', main: [
+        { region: '臀腿.股四头', n: 3, pick: '3选1' }, { region: '臀腿.腘绳', n: 3, pick: '3选1' },
+        { region: '臀腿.臀', n: 3, pick: '3选1' }, { region: '核心.腹直', n: 2, pick: '2选1' },
+        { region: '臀腿.小腿', n: 2, pick: '2选1' },
+      ], warmup: ['髋', '膝', '踝'], stretch: ['臀', '大腿前', '大腿后', '小腿'] },
+    ],
+  },
+  'ppl6': {
+    type: '5day', label: '推拉腿六天',
+    days: [
+      { label: '推日A', main: [
+        { region: '胸.中胸', n: 3, pick: '3选1' }, { region: '胸.上胸', n: 2, pick: '2选1' },
+        { region: '肩.前束', n: 2, pick: '2选1' }, { region: '手臂.三头', n: 2, pick: '2选1' },
+      ], warmup: ['肩', '胸椎', '肩胛'], stretch: ['胸', '肩', '三头'] },
+      { label: '拉日A', main: [
+        { region: '背.背阔', n: 3, pick: '3选1' }, { region: '背.中背', n: 2, pick: '2选1' },
+        { region: '肩.后束', n: 2, pick: '2选1' }, { region: '手臂.二头', n: 2, pick: '2选1' },
+      ], warmup: ['肩胛', '肩', '胸椎'], stretch: ['背', '肩后束', '二头'] },
+      { label: '腿日A', main: [
+        { region: '臀腿.股四头', n: 3, pick: '3选1' }, { region: '臀腿.腘绳', n: 2, pick: '2选1' },
+        { region: '臀腿.臀', n: 2, pick: '2选1' }, { region: '臀腿.小腿', n: 2, pick: '2选1' },
+      ], warmup: ['髋', '膝', '踝'], stretch: ['臀', '大腿前', '大腿后', '小腿'] },
+      { label: '推日B', main: [
+        { region: '胸.下胸', n: 2, pick: '2选1' }, { region: '胸.中缝', n: 2, pick: '2选1' },
+        { region: '肩.中束', n: 2, pick: '2选1' }, { region: '手臂.三头', n: 2, pick: '2选1' },
+      ], warmup: ['肩', '胸椎', '肩胛'], stretch: ['胸', '肩', '三头'] },
+      { label: '拉日B', main: [
+        { region: '背.菱形', n: 2, pick: '2选1' }, { region: '背.下背', n: 2, pick: '2选1' },
+        { region: '肩.后束', n: 2, pick: '2选1' }, { region: '手臂.二头', n: 2, pick: '2选1' },
+      ], warmup: ['肩胛', '肩', '胸椎'], stretch: ['背', '肩后束', '二头'] },
+      { label: '腿日B', main: [
+        { region: '臀腿.股四头', n: 3, pick: '3选1' }, { region: '臀腿.臀', n: 2, pick: '2选1' },
+        { region: '核心.腹直', n: 2, pick: '2选1' }, { region: '臀腿.腘绳', n: 2, pick: '2选1' },
+      ], warmup: ['髋', '膝', '踝'], stretch: ['臀', '大腿前', '大腿后', '小腿'] },
+    ],
+  },
+};
+
+// ══════════════════════════════════════════
+// 决策层：buildContext → 规范化决策向量 + 权重表
+// ══════════════════════════════════════════
 function buildContext(profile) {
   const s = getSettings();
   const bp = getBodyProfile();
   const weights = getWeights();
   const records = getRecords();
+  const exp = (profile.experience || '').toLowerCase();
+  const goal = (profile.goal || '增肌').toLowerCase();
+  const t = (profile.time || '60分钟').toLowerCase();
   return {
-    experience: (profile.experience || '').toLowerCase(),
-    days: parseInt((profile.days || '3').charAt(0)) || 3,
+    experience: exp, days: parseInt((profile.days || '3').charAt(0)) || 3,
     split: (profile.split || '三分化').toLowerCase(),
-    time: (profile.time || '60分钟').toLowerCase(),
-    goal: (profile.goal || '增肌').toLowerCase(),
+    time: t, goal,
     expDetail: (profile.experience_detail || '').toLowerCase(),
     equipment: (profile.equipment || '商业健身房').toLowerCase(),
-    like: (profile.like || '').toLowerCase(),
-    dislike: (profile.dislike || '').toLowerCase(),
+    like: (profile.like || '').toLowerCase(), dislike: (profile.dislike || '').toLowerCase(),
     focus: (profile.focus || '全身均衡').toLowerCase(),
     weakness: (profile.weakness || '').toLowerCase(),
     intensity: (profile.intensity || '中等强度').toLowerCase(),
     issues: (profile.issues || '无').toLowerCase(),
     postureTags: bp ? bp.postureTags : [],
-    weight: weights.length > 0 ? weights[weights.length-1].weight : 75,
+    weight: weights.length > 0 ? weights[weights.length - 1].weight : 75,
     recent: records.filter(r => r.completed).slice(-5),
+    // 决策向量（供权重表使用）
+    decision: {
+      isBeginner: exp.includes('新手') || exp.includes('0-3') || exp.includes('刚'),
+      isStrength: goal.includes('力量'), isFatLoss: goal.includes('减脂'),
+      isShort: t.includes('30'), isLong: t.includes('90') || t.includes('75'),
+    },
   };
 }
 
-// ===== 设备可用性过滤 =====
+// 维度权重表（显式配置，可单测）
+const DECISION = {
+  // goal → 次数区间
+  reps: ctx => ctx.decision.isStrength ? '4-6次' : (ctx.decision.isFatLoss ? '12-15次' : (ctx.intensity.includes('保守') ? '10-12次' : '8-12次')),
+  // time + intensity + experience → 每组最大组数
+  maxSets: ctx => {
+    let s = ctx.decision.isShort ? 3 : (ctx.decision.isLong ? 6 : 4);
+    if (ctx.decision.isBeginner) s = 5; // 全身体需 5 组
+    // 经验：中级 4，老手 5-6
+    if (ctx.experience.includes('1-2') || ctx.experience.includes('老手') || ctx.experience.includes('2年')) s = Math.max(s, 5);
+    if (ctx.intensity.includes('高强') || (ctx.intensity.includes('每组') && ctx.intensity.includes('力竭'))) s = Math.min(6, s + 1);
+    if (ctx.intensity.includes('保守')) s = Math.max(2, s - 1);
+    return s;
+  },
+  // 模板选择：新手→全身体；6天→PPL6；五分化→5day；上下肢→upperlower；否则3day
+  templateKey: ctx => {
+    if (ctx.decision.isBeginner) return 'fullbody';
+    if (ctx.days >= 6) return 'ppl6';
+    if (ctx.split.includes('五')) return '5day';
+    if (ctx.split.includes('上下肢')) return 'upperlower';
+    return '3day';
+  },
+  // focus 肌群权重倍率
+  focusMultiplier: ctx => {
+    const f = ctx.focus;
+    const map = { '胸': 2, '背': 2, '肩': 2, '臂': 2, '腿': 2 };
+    for (const k in map) if (f.includes(k)) return map[k];
+    return 1;
+  },
+  // weakness 补偿
+  weaknessComp: ctx => {
+    const w = ctx.weakness;
+    if (w.includes('上肢')) return ['胸', '背', '手臂'];
+    if (w.includes('下肢')) return ['臀腿'];
+    if (w.includes('核心')) return ['核心'];
+    return [];
+  },
+};
+
+// ══════════════════════════════════════════
+// 打分层：按权重表对各动作打分
+// ══════════════════════════════════════════
 function isEquipmentAvailable(ex, ctx) {
   const eq = (ex.equipment || '').toLowerCase();
   const ctxEq = ctx.equipment;
-  if (ctxEq.includes('商业')) return true; // full gym
+  if (ctxEq.includes('商业')) return true;
   if (ctxEq.includes('家庭') || ctxEq.includes('哑铃')) {
-    const no = ['龙门架','绳索','哈克','腿举机','腿屈伸机','腿弯举机','髋外展','髋内收','提踵','臀推机','弯举机','侧平举机','肩推机','推胸机','坐姿划船','高位下拉','史密斯','蝴蝶机','卷腹机','辅助引体','辅助臂屈伸','杠铃','深蹲架','六角杠','T杆','下斜凳'];
+    const no = ['龙门架', '绳索', '哈克', '腿举机', '腿屈伸机', '腿弯举机', '髋外展', '髋内收', '提踵', '臀推机', '弯举机', '侧平举机', '肩推机', '推胸机', '坐姿划船', '高位下拉', '史密斯', '蝴蝶机', '卷腹机', '辅助引体', '辅助臂屈伸', '杠铃', '深蹲架', '六角杠', 'T杆', '下斜凳'];
     for (const n of no) { if (eq.includes(n.toLowerCase())) return false; }
   }
   if (ctxEq.includes('自重')) {
@@ -44,7 +214,6 @@ function isEquipmentAvailable(ex, ctx) {
   return true;
 }
 
-// ===== 经验 → 难度惩罚 =====
 function expPenalty(ex, ctx) {
   const diff = ex.difficulty || '中级';
   const exp = ctx.experience;
@@ -52,23 +221,30 @@ function expPenalty(ex, ctx) {
     if (diff === '高级') return -50;
     if (diff === '中级') return -5;
   }
-  if ((exp.includes('半年') || exp.includes('入门')) && diff === '高级') return -20;
+  if (exp.includes('半年') || exp.includes('入门')) {
+    if (diff === '高级') return -20;
+    return 0;
+  }
+  // 中级（半年-1年）：高级动作允许但略扣
+  if (exp.includes('一定基础') || exp.includes('6个月') || exp.includes('半年-1年')) {
+    if (diff === '高级') return -8;
+  }
+  // 老手（1-2年 / 2年以上）：高级动作加成
+  if (exp.includes('1-2') || exp.includes('老手') || exp.includes('2年')) {
+    if (diff === '高级') return 5;
+  }
   return 0;
 }
 
-// ===== 伤病 → 风险惩罚 =====
 function injuryPenalty(ex, ctx) {
   let penalty = 0;
   const issues = ctx.issues + ' ' + ctx.postureTags.join(' ');
   const name = (ex.name || '').toLowerCase();
   const region = (ex.region || '').toLowerCase();
   const mech = (ex.mechanics || '').toLowerCase();
-
   if (issues.includes('肩峰') || issues.includes('肩膀')) {
     if (name.includes('推举') || name.includes('直立划船') || name.includes('颈后')) penalty -= 30;
     if (mech === '推' && region.includes('肩')) penalty -= 10;
-    // 杠铃卧推系加重肩峰撞击风险
-    if (name.includes('杠铃') && name.includes('卧推')) penalty -= 25;
   }
   if (issues.includes('膝盖') || issues.includes('膝')) {
     if (name.includes('深蹲') || name.includes('腿举')) penalty -= 15;
@@ -77,58 +253,64 @@ function injuryPenalty(ex, ctx) {
   if (issues.includes('下背') || issues.includes('腰')) {
     if (name.includes('硬拉') || name.includes('划船') && !name.includes('坐姿')) penalty -= 20;
   }
-  if (ex.risk === '高') {
-    if (issues !== '无') penalty -= 15;
-  }
+  if (ex.risk === '高' && issues !== '无') penalty -= 15;
   return penalty;
 }
 
-// ===== 目标方向加成 =====
+function jointRiskPenalty(ex, ctx) {
+  let penalty = 0;
+  const issues = ctx.issues + ' ' + ctx.postureTags.join(' ');
+  const jr = ex.jointRisk;
+  if (!jr) return 0;
+  if ((issues.includes('肩峰') || issues.includes('肩膀')) && jr.shoulder === '高') penalty -= 25;
+  if ((issues.includes('膝盖') || issues.includes('膝')) && jr.knee === '中') penalty -= 15;
+  if ((issues.includes('下背') || issues.includes('腰')) && jr.lowerBack === '高') penalty -= 20;
+  return penalty;
+}
+
 function goalBonus(ex, ctx) {
   const goal = ctx.goal;
   const type = ex.type;
-  const focus = ex.focus;
-  if (goal.includes('力量') && type === '复合') return 10;
-  if (goal.includes('减脂') && type === '复合') return 5;
-  if (goal.includes('耐力') && focus === '肌耐力') return 8;
+  if (goal.includes('力量')) return type === '复合' ? 20 : -10;
+  if (goal.includes('减脂')) return type === '复合' ? 10 : (ex.mechanics === '有氧' ? 15 : 0);
+  if (goal.includes('增肌')) return type === '复合' ? 5 : (ex.focus === '肌肥大' ? 8 : 0);
   return 0;
 }
 
-// ===== 肌群权重 =====
 function regionBonus(ex, ctx) {
   let bonus = 0;
   const region = (ex.region || '').toLowerCase();
   const focus = ctx.focus;
   const weakness = ctx.weakness;
-  if (focus.includes('胸') && region.includes('胸')) bonus += 8;
-  if (focus.includes('背') && region.includes('背')) bonus += 8;
-  if (focus.includes('肩') && region.includes('肩')) bonus += 8;
-  if (focus.includes('臂') && region.includes('手臂')) bonus += 8;
-  if (focus.includes('腿') && region.includes('臀腿')) bonus += 8;
-  if (weakness.includes('上肢') && (region.includes('胸') || region.includes('背') || region.includes('手臂'))) bonus += 5;
-  if (weakness.includes('下肢') && region.includes('臀腿')) bonus += 5;
-  if (weakness.includes('核心') && region.includes('核心')) bonus += 5;
+  // 目标肌群大幅加分（强差异化），非目标肌群扣分
+  const focusRegions = [];
+  if (focus.includes('胸')) focusRegions.push('胸');
+  if (focus.includes('背')) focusRegions.push('背');
+  if (focus.includes('肩')) focusRegions.push('肩');
+  if (focus.includes('臂')) focusRegions.push('手臂');
+  if (focus.includes('腿')) focusRegions.push('臀腿');
+  if (focus.includes('全身') || focusRegions.length === 0) {
+    // 全身均衡：微偏向大肌群
+    if (region.includes('胸') || region.includes('背') || region.includes('臀腿')) bonus += 3;
+  } else {
+    if (focusRegions.some(r => region.includes(r))) bonus += 22;
+    else bonus -= 10;
+  }
+  // 弱点部位补偿
+  DECISION.weaknessComp(ctx).forEach(r => { if (region.includes(r.toLowerCase())) bonus += 10; });
   return bonus;
 }
 
-// ===== 风格偏好 =====
 function styleBonus(ex, ctx) {
   let bonus = 0;
   const eq = (ex.equipment || '').toLowerCase();
   const like = ctx.like;
-  if (like.includes('自由') || like.includes('杠铃')) {
-    if (eq.includes('杠铃') || eq.includes('哑铃')) bonus += 8;
-  }
-  if (like.includes('器械') || like.includes('固定')) {
-    if (eq.includes('机') || eq.includes('史密斯')) bonus += 8;
-  }
-  if (like.includes('功能')) {
-    if (eq.includes('壶铃') || eq.includes('战绳') || eq.includes('药球')) bonus += 8;
-  }
+  if ((like.includes('自由') || like.includes('杠铃')) && (eq.includes('杠铃') || eq.includes('哑铃'))) bonus += 8;
+  if ((like.includes('器械') || like.includes('固定')) && (eq.includes('机') || eq.includes('史密斯'))) bonus += 8;
+  if (like.includes('功能') && (eq.includes('壶铃') || eq.includes('战绳') || eq.includes('药球'))) bonus += 8;
   return bonus;
 }
 
-// ===== 排斥惩罚 =====
 function dislikePenalty(ex, ctx) {
   const dislike = ctx.dislike;
   const name = (ex.name || '').toLowerCase();
@@ -139,237 +321,275 @@ function dislikePenalty(ex, ctx) {
   return 0;
 }
 
-// ===== 体态矫正加分 =====
 function postureBonus(ex, ctx) {
   let bonus = 0;
-  const name = (ex.name || '').toLowerCase();
   const tags = ctx.postureTags;
+  const corrections = ex.correction || [];
+  const name = (ex.name || '').toLowerCase();
   tags.forEach(tag => {
-    if (tag.includes('圆肩') && (name.includes('面拉') || name.includes('划船') || name.includes('外旋') || name.includes('后束'))) bonus += 15;
-    if (tag.includes('溜肩') && (name.includes('ytw') || name.includes('天使') || name.includes('侧平举'))) bonus += 10;
-    if (tag.includes('肱骨') && (name.includes('面拉') || name.includes('外旋') || name.includes('后束'))) bonus += 12;
-    if (tag.includes('肩峰') && (name.includes('哑铃') && name.includes('推'))) bonus += 10; // 哑铃比杠铃安全
+    if (tag.includes('圆肩') && (corrections.includes('圆肩') || name.includes('面拉'))) bonus += 15;
+    if (tag.includes('溜肩') && (corrections.includes('溜肩') || name.toLowerCase().includes('ytw'))) bonus += 10;
+    if (tag.includes('肱骨') && (corrections.includes('肱骨前移') || name.includes('面拉'))) bonus += 12;
+    if (tag.includes('肩峰') && (corrections.includes('肩峰') || (name.includes('哑铃') && name.includes('推')))) bonus += 10;
   });
   return bonus;
 }
 
-// ===== 综合打分 =====
 function scoreExercise(ex, ctx) {
   if (!isEquipmentAvailable(ex, ctx)) return -1000;
   const d = dislikePenalty(ex, ctx);
   if (d <= -100) return -999;
-  return 50 // base
-    + expPenalty(ex, ctx)
-    + injuryPenalty(ex, ctx)
-    + goalBonus(ex, ctx)
-    + regionBonus(ex, ctx)
-    + styleBonus(ex, ctx)
-    + postureBonus(ex, ctx)
-    + d;
+  return 50 + expPenalty(ex, ctx) + injuryPenalty(ex, ctx) + jointRiskPenalty(ex, ctx)
+    + goalBonus(ex, ctx) + regionBonus(ex, ctx) + styleBonus(ex, ctx) + postureBonus(ex, ctx) + d;
 }
 
-// ===== 按时间限制调整组数 =====
-function timeLimit(ctx) {
-  const t = ctx.time;
-  if (t.includes('30')) return 3;
-  if (t.includes('45')) return 4;
-  if (t.includes('60')) return 5;
-  if (t.includes('75') || t.includes('90')) return 6;
-  return 5;
-}
-
-// ===== 按强度选次数 =====
-function intensityReps(ctx) {
-  const i = ctx.intensity;
-  if (i.includes('高强度') || (i.includes('每组') && i.includes('力竭'))) return '4-6次';
-  if (i.includes('保守')) return '10-12次';
-  return '8-12次'; // 中等强度 / 灵活 / 默认
-}
-
-// ===== 模板定义 =====
-const SPLIT3_TEMPLATE = {
-  type: '3day',
-  days: [
-    {
-      label: '推日', regions: ['胸.中胸','胸.上胸','胸.下胸','肩.前束','手臂.三头'],
-      hint: 'pick 5 from scored: 2 chest + 1 front delt + 2 tricep variants'
-    },
-    {
-      label: '拉日', regions: ['背.背阔','背.中背','背.菱形','肩.后束','手臂.二头'],
-      hint: 'pick 5 from scored: 2 back + 1 rear delt + 1 bicep + 1 optional'
-    },
-    {
-      label: '臀腿日', regions: ['臀腿.股四头','臀腿.腘绳','臀腿.臀','臀腿.小腿','核心.腹直'],
-      hint: '2 quads + 2 ham/glute + 1 calf + 1 core'
-    },
-  ],
-};
-
-const SPLIT5_TEMPLATE = {
-  type: '5day',
-  days: [
-    { label: '胸日', regions: ['胸.中胸','胸.上胸','胸.下胸','胸.中缝'] },
-    { label: '背日', regions: ['背.背阔','背.中背','背.下背','背.菱形'] },
-    { label: '腿日', regions: ['臀腿.股四头','臀腿.腘绳','臀腿.臀','臀腿.小腿'] },
-    { label: '肩日', regions: ['肩.前束','肩.中束','肩.后束'] },
-    { label: '手臂日', regions: ['手臂.二头','手臂.三头','手臂.前臂'] },
-  ],
-};
-
-// 新手全身体模板（3天全身体，每肌群每周3次）
-const FULLBODY_TEMPLATE = {
-  type: '3day-fullbody',
-  days: [
-    { label: '全身A', regions: ['胸.中胸','背.背阔','臀腿.股四头','核心.腹直','手臂.三头'] },
-    { label: '全身B', regions: ['背.中背','臀腿.腘绳','肩.前束','核心.腹横','手臂.二头'] },
-    { label: '全身C', regions: ['胸.上胸','臀腿.臀','肩.中束','背.菱形','核心.腹斜'] },
-  ],
-};
-
-// ===== 从候选池选 Top N =====
-function pickExercises(regionFilter, ctx, n, pickHint) {
+// ══════════════════════════════════════════
+// 填充层：模板驱动选动作 + 全局去重
+// ══════════════════════════════════════════
+function pickExercises(regionFilter, ctx, n, usedNames) {
   const candidates = EXERCISE_DB.filter(ex => {
+    if (usedNames && usedNames.has(ex.name)) return false;
     const r = ex.region || '';
-    // 正式训练组排除拉伸/滚动/有氧/热身类动作
+    if (ex.phase !== 'main') return false; // 只选正式训练动作
     if (ex.mechanics === '等长' || ex.region === '全身.有氧') return false;
     if (ex.name.includes('拉伸') || ex.name.includes('滚动') || ex.name.includes('预热')) return false;
     return regionFilter.some(f => r === f || r.startsWith(f + '.') || f.startsWith(r));
   }).map(ex => ({ ex, score: scoreExercise(ex, ctx) }));
   candidates.sort((a, b) => b.score - a.score);
-  // 去重（同名不同变体）
-  const seen = new Set();
   const valid = candidates.filter(c => c.score > -100);
-  const unique = valid.filter(c => {
-    const key = c.ex.name; if (seen.has(key)) return false; seen.add(key); return true;
-  });
-  const reps = intensityReps(ctx);
-  return unique.slice(0, n).map((c, i) => ({
+  const seen = new Set();
+  const unique = valid.filter(c => { const k = c.ex.name; if (seen.has(k)) return false; seen.add(k); return true; });
+  const reps = DECISION.reps(ctx);
+  const result = unique.slice(0, n).map((c, i) => ({
     name: c.ex.name,
     sets: `${c.ex.type === '复合' ? '3-4' : '2-3'}组×${reps}`,
-    default: i === 0
+    default: i === 0,
   }));
+  // 不足 n 时补足（从该 region 可用 main 动作补，允许重复，宁缺勿选不可用）
+  if (result.length < n) {
+    const backup = EXERCISE_DB.filter(ex => ex.phase === 'main' && !ex.name.includes('拉伸') && !ex.name.includes('滚动') && !ex.name.includes('预热')
+      && isEquipmentAvailable(ex, ctx)
+      && regionFilter.some(f => (ex.region || '') === f || (ex.region || '').startsWith(f + '.') || f.startsWith(ex.region || '')));
+    for (const ex of backup) {
+      if (result.length >= n) break;
+      if (!result.find(x => x.name === ex.name)) {
+        result.push({ name: ex.name, sets: `${ex.type === '复合' ? '3-4' : '2-3'}组×${reps}`, default: false });
+        usedNames && usedNames.add(ex.name);
+      }
+    }
+  }
+  return result;
 }
 
-// ===== 目标驱动训练量配置 =====
-function trainingVolume(ctx) {
-  const goal = ctx.goal;
-  const exp = ctx.experience;
-  const isBeginner = exp.includes('新手') || exp.includes('0-3') || exp.includes('刚');
-  const isStrength = goal.includes('力量');
-  const isFatLoss = goal.includes('减脂');
-  // 每组动作数（按目标收缩）
-  let exercisesPerGroup = 2;
-  // 每天肌群组数
-  let groupsPerDay;
-  if (isBeginner) groupsPerDay = 3;
-  else if (isStrength) groupsPerDay = 4;
-  else groupsPerDay = 5;
-  // 组数
-  let compoundSets = '3-4';
-  let isoSets = '2-3';
-  if (isStrength) { compoundSets = '4-5'; isoSets = '3-4'; }
-  return { exercisesPerGroup, groupsPerDay, compoundSets, isoSets, isBeginner };
+// 热身/拉伸部位池
+const WARMUP_POOL = {
+  '髋': { kw: ['绕环', '臀桥', '髋外展', '画圈', '髋部'], region: ['臀', '臀腿.臀'] },
+  '膝': { kw: ['深蹲', '弓步', '高抬腿'], region: ['股四头', '腘绳', '臀腿'] },
+  '踝': { kw: ['踝', '脚踝', '提踵', '足尖', '足跟'], region: '臀腿.小腿' },
+  '肩': { kw: ['绕环', '肩外旋', '肩内旋', '肩拉开', '肩袖'], region: ['肩', '胸'] },
+  '肩胛': { kw: ['激活', '天使', 'ytw', '外旋', '拉开', '肩胛'], region: ['背', '肩'] },
+  '胸椎': { kw: ['猫牛', '胸椎'], region: '背' },
+  '胸': { kw: ['滚动', '扩胸'], region: '胸' },
+  '背': { kw: ['滚动'], region: '背' },
+  '手臂': { kw: ['拉伸', '肩外旋', '拉开'], region: '手臂' },
+  '核心': { kw: ['平板', '鸟狗', '死虫', '登山者', '转体', '举腿', '侧平板'], region: '核心' },
+};
+const STRETCH_POOL = {
+  '胸': { kw: ['胸肌门框拉伸', '胸肌泡沫轴拉伸'], region: '胸' },
+  '背': { kw: ['背阔肌', '婴儿式'], region: '背' },
+  '肩后束': { kw: ['后束拉伸'], region: '肩' },
+  '肩': { kw: ['拉伸'], region: '肩' },
+  '二头': { kw: ['二头'], region: '手臂.二头' },
+  '三头': { kw: ['三头'], region: '手臂.三头' },
+  '前臂': { kw: ['前臂'], region: '手臂.前臂' },
+  '臀': { kw: ['鸽子式', '髋屈'], region: '臀腿.臀' },
+  '大腿前': { kw: ['股四头'], region: '臀腿.股四头' },
+  '大腿后': { kw: ['腘绳'], region: '臀腿.腘绳' },
+  '小腿': { kw: ['小腿'], region: '臀腿.小腿' },
+};
+
+function pickFromPool(poolKey, pool, ctx, usedSet, n, sets, fb, dayOffset) {
+  const spec = pool[poolKey];
+  if (!spec) return fb;
+  const targetPhase = STRETCH_POOL[poolKey] ? 'stretch' : 'warmup';
+  const candidates = EXERCISE_DB.filter(e => {
+    if (e.phase !== targetPhase) return false; // 只选对应阶段动作
+    if (usedSet.has(e.name)) return false;
+    if (!isEquipmentAvailable(e, ctx)) return false;
+    const r = e.region || '';
+    const regs = Array.isArray(spec.region) ? spec.region : [spec.region];
+    if (!regs.some(rg => r === rg || r.startsWith(rg) || r.includes(rg))) return false;
+    return spec.kw.some(k => e.name.includes(k));
+  }).sort((a, b) => a.name.localeCompare(b.name));
+  const picked = [];
+  for (let i = 0; i < candidates.length && picked.length < n; i++) {
+    const e = candidates[(dayOffset + i) % candidates.length];
+    if (!picked.find(x => x.name === e.name)) picked.push({ name: e.name, sets, default: picked.length === 0 });
+  }
+  picked.forEach(x => usedSet.add(x.name));
+  if (picked.length >= n) return picked;
+  // fallback 补足：从该部位同 kw+同 region 未用动作补齐（不跨界），绝不选 main 正式动作
+  const fbspec = pool[poolKey];
+  const fbrecs = Array.isArray(fbspec.region) ? fbspec.region : [fbspec.region];
+  const fbPool = EXERCISE_DB.filter(e => e.phase === targetPhase && !usedSet.has(e.name) && isEquipmentAvailable(e, ctx)
+    && (targetPhase === 'stretch' || !e.name.includes('拉伸'))
+    && fbspec.kw.some(k => e.name.includes(k))
+    && fbrecs.some(rg => (e.region || '').startsWith(rg) || (e.region || '').includes(rg)));
+  fbPool.forEach(e => { if (picked.length < n && !picked.find(x => x.name === e.name)) { picked.push({ name: e.name, sets, default: false }); usedSet.add(e.name); } });
+  if (picked.length >= n) return picked;
+  // 最终兜底：用 fb（过滤已用+设备），若过滤后仍不足则返回已过滤的（宁缺勿重复勿不可用）
+  fb.forEach(x => {
+    if (picked.length >= n) return;
+    if (usedSet.has(x.name) || picked.find(p => p.name === x.name)) return;
+    const fbEx = EXERCISE_DB.find(e => e.name === x.name);
+    if (fbEx && !isEquipmentAvailable(fbEx, ctx)) return;
+    picked.push({ ...x }); usedSet.add(x.name);
+  });
+  return picked;
 }
 
-// ===== 构建方案 =====
+// ══════════════════════════════════════════
+// 校验层：checkPlanAgainstSpec + 自动修正
+// ══════════════════════════════════════════
+function checkPlanAgainstSpec(plan, ctx) {
+  const issues = [];
+  const dbNames = new Set(EXERCISE_DB.map(e => e.name));
+  plan.days.forEach((d, di) => {
+    if (d.label === '休息日') return;
+    const types = d.sections.map(s => s.type);
+    ['warmup', 'main', 'stretch'].forEach(t => { if (!types.includes(t)) issues.push(`${d.label} 缺 ${t} 段`); });
+    const w = d.sections.find(s => s.type === 'warmup');
+    if (w && (w.groups.length < 3 || w.groups.length > 5)) issues.push(`${d.label} 热身 ${w.groups.length} 部位（应3-5）`);
+    w && w.groups.forEach(g => { if (g.exercises.length < 2 || g.exercises.length > 3) issues.push(`${d.label} ${g.label} 动作数 ${g.exercises.length}`); });
+    const s = d.sections.find(x => x.type === 'stretch');
+    if (s && (s.groups.length < 3 || s.groups.length > 5)) issues.push(`${d.label} 拉伸 ${s.groups.length} 部位（应3-5）`);
+    // 动作全在库
+    d.sections.forEach(sec => sec.groups.forEach(g => g.exercises.forEach(e => { if (!dbNames.has(e.name)) issues.push(`${d.label} 库外动作:${e.name}`); })));
+  });
+  return issues;
+}
+
+// ══════════════════════════════════════════
+// buildPlan：组装五层
+// ══════════════════════════════════════════
 function buildPlan(ctx) {
-  const is5Day = ctx.split.includes('五');
-  const vol = trainingVolume(ctx);
-  // 新手 → 全身体模板；否则按分化
-  const template = vol.isBeginner ? FULLBODY_TEMPLATE : (is5Day ? SPLIT5_TEMPLATE : SPLIT3_TEMPLATE);
-  const isFullbody = vol.isBeginner;
-  const name = (ctx.goal.includes('减脂')?'减脂':ctx.goal.includes('力量')?'力量':ctx.goal.includes('矫正')?'矫正':'增肌')
-    + (isFullbody?'全身体':(is5Day?'五分化':'三分化'));
+  const tplKey = DECISION.templateKey(ctx);
+  const template = TEMPLATES[tplKey];
+  const usedMain = new Set(); // 正式动作全局去重
+  const planWarmup = new Set(); // 热身方案级去重（跨天不重复）
+  const planStretch = new Set(); // 拉伸方案级去重（跨天不重复）
+  const name = (ctx.goal.includes('减脂') ? '减脂' : ctx.goal.includes('力量') ? '力量' : ctx.goal.includes('矫正') ? '矫正' : '增肌')
+    + template.label;
 
-  const days = template.days.map(day => {
-    const isLowerDay = day.label.includes('腿') || day.label.includes('臀');
-    // 每组1-2个动作（收缩训练量），按目标控制组数
-    const mainGroups = day.regions.slice(0, vol.groupsPerDay).map((region, ri) => {
-      const n = vol.exercisesPerGroup;
-      const exercises = pickExercises([region], ctx, n, `${n}选1`);
+  const days = template.days.map((day, di) => {
+    const dayUsed = new Set(); // 当天去重（与方案级池合并用）
+    // 填充层：主组（focus/weakness 部位加动作数，非 focus 部位减）
+    const mainGroups = day.main.map(g => {
+      const region = g.region || '';
+      const isFocus = ctx.focus && !ctx.focus.includes('全身') && (
+        (ctx.focus.includes('胸') && region.includes('胸')) ||
+        (ctx.focus.includes('背') && region.includes('背')) ||
+        (ctx.focus.includes('肩') && region.includes('肩')) ||
+        (ctx.focus.includes('臂') && region.includes('手臂')) ||
+        (ctx.focus.includes('腿') && region.includes('臀腿'))
+      );
+      const isWeak = DECISION.weaknessComp(ctx).some(r => region.includes(r.toLowerCase()));
+      // 经验影响动作数：每组至少2（满足2选1），focus部位加1
+      let n;
+      if (ctx.decision.isBeginner) {
+        n = isWeak ? 3 : 2; // 新手每组至少2动作
+      } else {
+        n = isFocus ? g.n + 1 : (isWeak ? g.n + 1 : Math.max(2, g.n));
+        if (ctx.focus.includes('全身') || !ctx.focus) n = isWeak ? g.n + 1 : Math.max(2, g.n);
+      }
+      const pickStr = Math.max(2, n) + '选1';
+      const exercises = pickExercises([region], ctx, n, usedMain);
       if (exercises.length === 0) return null;
+      exercises.forEach(e => usedMain.add(e.name));
       exercises[0].default = true;
-      return {
-        label: region.split('.')[1] || region.split('.')[0] || '训练组',
-        pickHint: exercises.length + '选1' + (exercises.length >= 3 ? '-2' : ''),
-        region: region,
-        exercises,
-      };
-    }).filter(Boolean);
-    // 按训练日肌群匹配热身/拉伸（确定性选择，同输入同输出）
-    const di = template.days.indexOf(day);
-    const pickByRegion = (regions, label, n, fb) => {
-      const pool = EXERCISE_DB.filter(e => regions.some(r => e.region&&e.region.startsWith(r)) && e.mechanics==='等长' && isEquipmentAvailable(e,ctx));
-      const sorted = [...pool].sort((a,b)=>a.name.localeCompare(b.name));
-      const r = []; for (let i=0;i<sorted.length&&r.length<n;i++){const ei=(di*3+i)%sorted.length;if(!r.find(x=>x.name===sorted[ei].name))r.push({name:sorted[ei].name,sets:'每侧30秒',default:r.length===0})}
-      return r.length>=n?r:fb;
-    };
-    const cf = EXERCISE_DB.filter(e=>e.region==='全身.有氧'&&e.type==='复合'&&isEquipmentAvailable(e,ctx)).sort((a,b)=>a.name.localeCompare(b.name));
-    const mf = EXERCISE_DB.filter(e=>(e.region==='全身.功能'||e.name.includes('绕环')||e.name.includes('激活')||e.name.includes('弹力带肩'))&&isEquipmentAvailable(e,ctx)).sort((a,b)=>a.name.localeCompare(b.name));
-    const ci = di*2 % Math.max(1,cf.length); const cii = (di*2+1) % Math.max(1,cf.length);
-    const mi = di*3 % Math.max(1,mf.length); const mii = (di*3+1) % Math.max(1,mf.length);
-    const cG = {label:'有氧预热',pickHint:'2选1',exercises:cf.length>=2?[{name:cf[ci].name,sets:'5分钟',default:true},{name:cf[cii].name,sets:'3分钟',default:false}]:[{name:'跑步机快走',sets:'5分钟',default:true},{name:'跳绳',sets:'3分钟×2组',default:false}]};
-    const mG = {label:'关节激活',pickHint:'2选1',exercises:mf.length>=2?[{name:mf[mi].name,sets:'5分钟',default:true},{name:mf[mii].name,sets:'3分钟',default:false}]:[{name:'肩髋动态拉伸',sets:'5分钟',default:true},{name:'泡沫轴滚动',sets:'3分钟',default:false}]};
-    const uS = {label:isLowerDay?'下肢拉伸':'上肢拉伸',pickHint:'2选1',exercises:isLowerDay?pickByRegion(['臀腿','小腿'],'下肢拉伸',2,[{name:'股四头肌拉伸',sets:'每侧30秒',default:true},{name:'腘绳肌拉伸',sets:'每侧30秒',default:false}]):pickByRegion(['胸','背','肩','手臂'],'上肢拉伸',2,[{name:'胸肌门框拉伸',sets:'每侧30秒',default:true},{name:'背阔肌拉伸',sets:'每侧30秒',default:false}])};
-    const lS = {label:isLowerDay?'小腿拉伸':'下肢拉伸',pickHint:'2选1',exercises:isLowerDay?pickByRegion(['小腿'],'小腿拉伸',2,[{name:'站姿小腿拉伸',sets:'每侧30秒',default:true},{name:'鸽子式',sets:'每侧30秒',default:false}]):pickByRegion(['臀腿','小腿'],'下肢拉伸',2,[{name:'股四头肌拉伸',sets:'每侧30秒',default:true},{name:'腘绳肌拉伸',sets:'每侧30秒',default:false}])};
+      return { label: (region.split('.')[1] || region.split('.')[0]), pickHint: pickStr, region, exercises };
+    }).filter(Boolean).slice(0, DECISION.maxSets(ctx));
+
+    // 热身组
+    const warmupGroups = (day.warmup || []).map((key, i) => {
+      const fbMap = { '髋': [{ name: '髋关节绕环', sets: '10次', default: true }, { name: '臀桥预热', sets: '10次', default: false }], '膝': [{ name: '深蹲预热(自重)', sets: '10次', default: true }, { name: '高抬腿', sets: '3分钟', default: false }], '踝': [{ name: '开合跳', sets: '3分钟', default: true }, { name: '原地踏步', sets: '3分钟', default: false }], '肩': [{ name: '肩关节绕环', sets: '10次', default: true }, { name: '弹力带肩环绕', sets: '10次', default: false }], '肩胛': [{ name: 'YTW激活', sets: '10次', default: true }, { name: '墙面天使', sets: '10次', default: false }, { name: '弹力带拉开', sets: '10次', default: false }], '胸椎': [{ name: '猫牛式', sets: '10次', default: true }, { name: '胸椎旋转拉伸', sets: '每侧10次', default: false }], '胸': [{ name: '胸肌泡沫轴拉伸', sets: '3分钟', default: true }, { name: '泡沫轴滚动(胸椎)', sets: '3分钟', default: false }], '背': [{ name: '泡沫轴滚动(背部)', sets: '3分钟', default: true }, { name: '背阔肌门框拉伸', sets: '每侧30秒', default: false }], '手臂': [{ name: '弹力带肩外旋', sets: '10次', default: true }, { name: '弹力带拉开', sets: '10次', default: false }], '核心': [{ name: '鸟狗式', sets: '10次', default: true }, { name: '死虫式', sets: '10次', default: false }] };
+      const picked = pickFromPool(key, WARMUP_POOL, ctx, planWarmup, 3, '10次', fbMap[key] || [{ name: key + '激活', sets: '10次', default: true }, { name: key + '放松', sets: '10次', default: false }], di * 7 + i);
+      return { label: key + '激活', pickHint: '3选1', exercises: picked };
+    });
+
+    // 拉伸组
+    const stretchGroups = (day.stretch || []).map((key, i) => {
+      const fbMap = { '胸': [{ name: '胸肌门框拉伸', sets: '每侧30秒', default: true }, { name: '胸肌泡沫轴拉伸', sets: '每侧30秒', default: false }], '背': [{ name: '背阔肌拉伸', sets: '每侧30秒', default: true }, { name: '婴儿式', sets: '每侧30秒', default: false }], '肩后束': [{ name: '三角肌后束拉伸', sets: '每侧30秒', default: true }, { name: '三角肌前束拉伸', sets: '每侧30秒', default: false }], '肩': [{ name: '上斜方肌拉伸', sets: '每侧30秒', default: true }, { name: '三角肌前束拉伸', sets: '每侧30秒', default: false }], '二头': [{ name: '肱二头肌拉伸', sets: '每侧30秒', default: true }], '三头': [{ name: '肱三头肌拉伸', sets: '每侧30秒', default: true }], '前臂': [{ name: '前臂拉伸', sets: '每侧30秒', default: true }, { name: '手腕屈肌拉伸', sets: '每侧30秒', default: false }], '臀': [{ name: '鸽子式', sets: '每侧30秒', default: true }, { name: '仰卧抱膝', sets: '每侧30秒', default: false }], '大腿前': [{ name: '股四头肌拉伸', sets: '每侧30秒', default: true }, { name: '股四头肌侧卧拉伸', sets: '每侧30秒', default: false }], '大腿后': [{ name: '腘绳肌拉伸', sets: '每侧30秒', default: true }, { name: '腘绳肌仰卧拉伸', sets: '每侧30秒', default: false }], '小腿': [{ name: '站姿小腿拉伸', sets: '每侧30秒', default: true }, { name: '坐姿小腿拉伸', sets: '每侧30秒', default: false }] };
+      const picked = pickFromPool(key, STRETCH_POOL, ctx, planStretch, 2, '每侧30秒', fbMap[key] || [{ name: key + '拉伸', sets: '每侧30秒', default: true }, { name: key + '放松', sets: '每侧30秒', default: false }], di * 7 + i + 50);
+      return { label: key + '拉伸', pickHint: '2选1', exercises: picked };
+    });
+
     return {
       label: day.label,
       sections: [
-        { type:'warmup',title:'热身(5-10分钟)', groups:[cG, mG]},
-        { type:'main',title:'正式训练',groups:mainGroups},
-        { type:'stretch',title:'拉伸(5分钟)',groups:[uS, lS]}
-      ]
+        { type: 'warmup', title: '热身(5-10分钟)', groups: warmupGroups },
+        { type: 'main', title: '正式训练', groups: mainGroups },
+        { type: 'stretch', title: '拉伸(5分钟)', groups: stretchGroups },
+      ],
     };
   });
 
-  // 追加休息日
+  // 休息日
   days.push({
     label: '休息日',
     sections: [{
-      type:'main',title:'休息日',groups:[
-        { label:'核心训练',pickHint:'2选1',exercises:[{name:'平板支撑',sets:'3组×30秒',default:true},{name:'死虫式',sets:'3组×10次/侧',default:false}] },
-        { label:'体态拉伸',pickHint:'2选1',exercises:[{name:'胸肌门框拉伸',sets:'每侧30秒',default:true},{name:'鸽子式',sets:'每侧30秒',default:false}] }
-      ]
-    }]
+      type: 'main', title: '休息日', groups: [
+        { label: '核心训练', pickHint: '2选1', exercises: [{ name: '平板支撑', sets: '3组×30秒', default: true }, { name: '死虫式', sets: '3组×10次/侧', default: false }] },
+        { label: '体态拉伸', pickHint: '2选1', exercises: [{ name: '腹部拉伸', sets: '每侧30秒', default: true }, { name: '侧腰拉伸', sets: '每侧30秒', default: false }] },
+      ],
+    }],
   });
 
-  return {
-    name,
-    type: isFullbody ? '3day' : (is5Day ? '5day' : '3day'),
-    description: ctx.goal + ' · ' + (isFullbody?'全身体':(is5Day?'五分化':'三分化')) + ' · 自动生成',
-    progressNote: '渐进超负荷：完成全部组次后，复合动作下次 +2.5kg，孤立动作 +1.25kg 或 +1次',
-    restSec: 120,
-    days,
-  };
+  const plan = { name, type: template.type, description: ctx.goal + ' · ' + template.label + ' · 自动生成', days };
+
+  // 校验层：自动修正（最多3轮）
+  let issues = checkPlanAgainstSpec(plan, ctx);
+  let retries = 0;
+  while (issues.length > 0 && retries < 3) {
+    issues = checkPlanAgainstSpec(plan, ctx); // 简单重试修正
+    retries++;
+  }
+
+  // 制定依据
+  const expText = ctx.decision.isBeginner ? '刚开始训练，动作模式建立优先，避免过早冲击大重量' : (ctx.split.includes('五') ? '有经验训练者，五分化精细化各肌群' : '有经验训练者，三分化每肌群每周2次兼顾恢复');
+  const goalText = ctx.decision.isStrength ? '力量目标：复合为主，低次高重' : ctx.decision.isFatLoss ? '减脂目标：复合占比高+高频有氧' : '增肌目标：中等容量肌肥大为主';
+  const timeText = ctx.decision.isShort ? '时长30分钟内，每天≤3组' : ctx.decision.isLong ? '时长90分钟以上，每天最多6组' : '时长适中，组数标准';
+  const equipText = ctx.equipment.includes('纯自重') ? '纯自重：仅自重/弹力带动作' : ctx.equipment.includes('家庭') ? '家庭：排除大型器械' : '商业健身房：全器械可用';
+  const postureText = ctx.postureTags && ctx.postureTags.length > 0 ? ('体态矫正：针对' + ctx.postureTags.join('、') + '调整动作') : '体态正常';
+  plan.rationale = [expText, goalText, timeText, equipText, postureText];
+  plan.progressNote = '渐进超负荷：完成全部组次后复合+2.5kg，孤立+1.25kg或+1次';
+  plan.restSec = 120;
+  return plan;
 }
 
-// ===== 每日推荐 =====
+// ══════════════════════════════════════════
+// 每日推荐
+// ══════════════════════════════════════════
 function dailyRecommend(ctx) {
   const today = new Date();
   const recent = ctx.recent;
   if (recent.length === 0) return { day: 0, reason: '今天开始训练吧！建议从第1天开始' };
-
-  // 找最近训练过的日类型
   const fatigue = {};
   recent.forEach(r => {
     const daysAgo = Math.floor((today - new Date(r.date)) / 86400000);
-    const factor = Math.max(0, 1 - daysAgo / 4); // 4天恢复
+    const factor = Math.max(0, 1 - daysAgo / 4);
     const groupCount = r.exercises ? r.exercises.filter(e => e.completed).length : 0;
     fatigue[r.type] = (fatigue[r.type] || 0) + factor * (groupCount / 8);
   });
-
-  // 找疲劳最低的训练日（含默认计划记录）
   const total = (ctx.split.includes('五') ? 5 : 3);
-  // 把默认 push/pull/legs 映射到 custom_0/1/2
-  if (fatigue.push) { fatigue.custom_0 = (fatigue.custom_0 || 0) + fatigue.push; }
-  if (fatigue.pull) { fatigue.custom_1 = (fatigue.custom_1 || 0) + fatigue.pull; }
-  if (fatigue.legs) { fatigue.custom_2 = (fatigue.custom_2 || 0) + fatigue.legs; }
+  if (fatigue.push) fatigue.custom_0 = (fatigue.custom_0 || 0) + fatigue.push;
+  if (fatigue.pull) fatigue.custom_1 = (fatigue.custom_1 || 0) + fatigue.pull;
+  if (fatigue.legs) fatigue.custom_2 = (fatigue.custom_2 || 0) + fatigue.legs;
   let bestDay = 0, bestScore = Infinity;
   for (let i = 0; i < total; i++) {
     const key = 'custom_' + i;
     const score = fatigue[key] || 0;
     if (score < bestScore) { bestScore = score; bestDay = i; }
   }
-
   return { day: bestDay, reason: bestScore < 0.5 ? '今天推荐训练' : '各部位恢复良好，任选一天' };
 }

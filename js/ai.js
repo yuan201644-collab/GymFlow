@@ -5,9 +5,19 @@
 let aiMessages = [];
 let aiLoading = false;
 
-const DEFAULT_AI_SERVER = 'https://fathers-resistance-integral-valves.trycloudflare.com';
+// 默认地址：网页端用 localhost（连本机后端）；APK/手机端用隧道地址
+const DEFAULT_AI_SERVER_LOCAL = 'http://localhost:3000';
+const DEFAULT_AI_SERVER_TUNNEL = 'https://fathers-resistance-integral-valves.trycloudflare.com';
 
-function getAIServer() { return localStorage.getItem('fitness_ai_server') || DEFAULT_AI_SERVER; }
+function getAIServer() {
+  const saved = localStorage.getItem('fitness_ai_server');
+  if (saved) return saved;
+  // Capacitor APK 环境（window.Capacitor 存在）→ 用隧道地址
+  if (typeof window !== 'undefined' && window.Capacitor) {
+    return DEFAULT_AI_SERVER_TUNNEL;
+  }
+  return DEFAULT_AI_SERVER_LOCAL;
+}
 function getAIPassword() { return localStorage.getItem('fitness_ai_password') || 'gymflow2024'; }
 function getDeviceId() {
   let id = localStorage.getItem('fitness_device_id');
@@ -159,8 +169,22 @@ async function sendAIMessage() {
 function appendChatMessage(role, content) {
   const box = document.getElementById('chat-box');
   if (!box) return;
-  box.insertAdjacentHTML('beforeend', `<div class="chat-msg ${role}" style="animation:fadeUp .25s var(--ease-out) both;"><div class="chat-bubble">${content.replace(/\n/g,'<br>')}</div></div>`);
+  box.insertAdjacentHTML('beforeend', `<div class="chat-msg ${role}" style="animation:fadeUp .25s var(--ease-out) both;"><div class="chat-bubble" id="typing-bubble"></div></div>`);
   box.scrollTop = box.scrollHeight;
+  const bubble = document.getElementById('typing-bubble');
+  // 打字机效果：按字符逐个显示，换行停顿稍长
+  let i = 0;
+  const interval = setInterval(() => {
+    if (i <= content.length) {
+      const shown = content.slice(0, i);
+      bubble.innerHTML = shown.replace(/\n/g, '<br>');
+      box.scrollTop = box.scrollHeight;
+      i++;
+    } else {
+      clearInterval(interval);
+      bubble.id = '';
+    }
+  }, 20);
 }
 
 function appendChatLoading() {
