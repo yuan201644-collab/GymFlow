@@ -533,7 +533,9 @@ function buildPlan(ctx) {
       }
       // 老手（2年以上）：每组多 1 个备选动作，驱动结构与中级差异化（相似度 < 1）
       if (ctx.experience.includes('老手') || ctx.experience.includes('2年以上')) n += 1;
-      const pickStr = Math.max(2, n) + '选1';
+      // pickHint：大肌群（胸/背/臀腿）允许多选备选 N选1-2，小肌群（肩/手臂/核心）N选1（规范 5.3）
+      const bigMuscle = region.startsWith('胸') || region.startsWith('背') || region.startsWith('臀腿');
+      const pickStr = bigMuscle ? `${Math.max(2, n)}选1-2` : `${Math.max(2, n)}选1`;
       const exercises = pickExercises([region], ctx, n, used);
       if (exercises.length === 0) return null;
       exercises.forEach(e => used.add(e.name));

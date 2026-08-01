@@ -302,7 +302,7 @@ function importAllData(jsonStr) {
     saveSettings(data.settings || DEFAULT_SETTINGS);
     saveRecords(data.records);
     saveWeights(data.weights);
-    if (data.plans) savePlans(data.plans);
+    if (data.plans) savePlans((Array.isArray(data.plans) ? data.plans : []).map(sanitizePlan).filter(Boolean));
     if (data.activePlan) setActivePlan(data.activePlan);
     if (data.aiServer) localStorage.setItem('fitness_ai_server', data.aiServer);
     if (data.aiPassword) localStorage.setItem('fitness_ai_password', data.aiPassword);
@@ -330,8 +330,33 @@ function resetAllData() {
 
 // ========== 训练方案库 ==========
 
+// 清洗可能畸形的方案数据（旧格式 / 手动编辑 / 导入异常），幂等，不破坏正常结构
+function sanitizePlan(plan) {
+  if (!plan || typeof plan !== 'object') return null;
+  if (!Array.isArray(plan.days)) plan.days = [];
+  plan.days = plan.days.filter(d => d && typeof d === 'object').map(d => {
+    // 旧格式 day.groups（无 sections）→ 转 main sections
+    if (!Array.isArray(d.sections) && Array.isArray(d.groups)) {
+      d.sections = [{ type: 'main', title: '训练', groups: d.groups }];
+    }
+    if (!Array.isArray(d.sections)) d.sections = [];
+    d.sections = d.sections.filter(s => s && typeof s === 'object').map(s => {
+      if (!Array.isArray(s.groups)) s.groups = [];
+      s.groups = s.groups.filter(g => g && typeof g === 'object').map(g => {
+        if (!Array.isArray(g.exercises)) g.exercises = [];
+        g.exercises = g.exercises.filter(e => e && typeof e === 'object');
+        return g;
+      });
+      return s;
+    });
+    return d;
+  });
+  return plan;
+}
+
 function getPlans() {
-  return loadJSON('fitness_plans') || [];
+  const plans = loadJSON('fitness_plans') || [];
+  return Array.isArray(plans) ? plans.map(sanitizePlan).filter(Boolean) : [];
 }
 
 function savePlans(plans) {

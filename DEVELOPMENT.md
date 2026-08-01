@@ -218,7 +218,9 @@ GymFlow/
 - **网页版**：浏览器打开 index.html
 - **APK**：`健身.apk/` 目录的 Capacitor 工程，`npx cap sync android && gradlew assembleDebug`
 - **GitHub**：`git add -A && git commit && git push`
-- ⚠️ **重要**：用户要求「上传前必须先询问」，不要默认自动 push
+- ⚠️ **重要**：用户要求（2026-08-01）：
+  1. **提交 GitHub 与打包 APK 总是一起做**（改动完成 → 询问 → 一起执行 push + 打包）
+  2. **提交前必须先询问用户确认**，不要默认自动 push
 
 ---
 
