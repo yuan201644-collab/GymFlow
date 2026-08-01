@@ -12,11 +12,33 @@ const DEFAULT_AI_SERVER_TUNNEL = 'https://ai.gym-flow.xyz';
 function getAIServer() {
   const saved = localStorage.getItem('fitness_ai_server');
   if (saved) return saved;
-  // Capacitor APK 环境（window.Capacitor 存在）→ 用隧道地址
+  // Capacitor APK 环境（window.Capacitor 存在）→ 用云端地址
   if (typeof window !== 'undefined' && window.Capacitor) {
     return DEFAULT_AI_SERVER_TUNNEL;
   }
   return DEFAULT_AI_SERVER_LOCAL;
+}
+
+// ── 双线（改进报告 §18）：云端 Worker 24/7 为主 + 本地 localhost 回退（网页端） ──
+const AI_ENDPOINTS = { cloud: 'https://ai.gym-flow.xyz', local: 'http://localhost:3000' };
+function isWeb() { return !(typeof window !== 'undefined' && window.Capacitor); }
+function getAIBase() {
+  const saved = localStorage.getItem('fitness_ai_server');
+  if (saved) return saved; // 我的页手动覆盖（始终优先）
+  if (!isWeb()) return AI_ENDPOINTS.cloud; // APK 强制云端，除非手动覆盖（P2 防御：防残留 local 模式）
+  const mode = localStorage.getItem('fitness_ai_mode') || 'cloud'; // 记忆上次可用
+  return AI_ENDPOINTS[mode] || AI_ENDPOINTS.cloud;
+}
+// 失败自动切另一线重试一次（网页端才有 local 回退；APK 仅云端）
+async function aiFetch(path, body) {
+  const tryBase = (base) => fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  try { return await tryBase(getAIBase()); }
+  catch (e) {
+    const cur = getAIBase();
+    const other = cur === AI_ENDPOINTS.local ? AI_ENDPOINTS.cloud : (isWeb() ? AI_ENDPOINTS.local : AI_ENDPOINTS.cloud);
+    localStorage.setItem('fitness_ai_mode', other === AI_ENDPOINTS.local ? 'local' : 'cloud');
+    return await tryBase(other);
+  }
 }
 function getAIPassword() { return localStorage.getItem('fitness_ai_password') || 'gymflow2024'; }
 function getDeviceId() {
@@ -137,11 +159,7 @@ async function sendAIMessage() {
   }, 1500);
 
   try {
-    const resp = await fetch(getAIServer() + '/api/ask', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: getAIPassword(), deviceId: getDeviceId(), content: text }),
-    });
+    const resp = await aiFetch('/api/ask', { password: getAIPassword(), deviceId: getDeviceId(), content: text });
     const data = await resp.json();
 
     clearInterval(statusInterval);

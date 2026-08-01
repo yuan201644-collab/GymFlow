@@ -1273,7 +1273,7 @@ async function submitForRating() {
   report += '\n\n请输出3行训练小结（每行不超过30字）：\n✅ 完成度与亮点\n📊 与近期对比\n💡 明日建议\n然后给出评分（满分100）和简短评价。格式：【小结】... 【评分】XX分 【评价】...';
 
   try{
-    const resp = await fetch(getAIServer()+'/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:getAIPassword(),deviceId:getDeviceId(),content:report})});
+    const resp = await aiFetch('/api/ask',{password:getAIPassword(),deviceId:getDeviceId(),content:report});
     const d = await resp.json();
     if(d.success){
       record.aiRating = d.answer; record.aiSummary = d.answer; saveTodayRecord(record);
@@ -1521,7 +1521,7 @@ async function generateWeeklyReport() {
   report += '\n\n请生成本周训练周报，包含：部位覆盖分析、总训练量评估、体重趋势、下周训练建议。简洁凝练。';
 
   try {
-    const resp = await fetch(getAIServer()+'/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:getAIPassword(),deviceId:getDeviceId(),content:report})});
+    const resp = await aiFetch('/api/ask',{password:getAIPassword(),deviceId:getDeviceId(),content:report});
     const d = await resp.json();
     if (d.success) {
       const log = getCoachLog(); log.push({ week: monday.toISOString().slice(0,10), summary: d.answer }); saveCoachLog(log);

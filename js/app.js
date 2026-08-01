@@ -79,7 +79,7 @@ function renderMePage() {
   h += `</div></div>`;
 
   h += `<div class="me-section"><h3>AI 服务</h3>`;
-  h += `<input type="text" class="form-input mb-8" id="ai-server-me" value="${localStorage.getItem('fitness_ai_server')||getAIServer()}" onchange="saveAIMe()" placeholder="API 地址">`;
+  h += `<input type="text" class="form-input mb-8" id="ai-server-me" value="${localStorage.getItem('fitness_ai_server')||getAIBase()}" onchange="saveAIMe()" placeholder="API 地址">`;
   h += `<input type="password" class="form-input mb-8" id="ai-pwd-me" value="${localStorage.getItem('fitness_ai_password')||'gymflow2024'}" onchange="saveAIMe()" placeholder="访问密码"></div>`;
 
   h += `<div class="me-section"><h3>数据管理</h3><div style="display:flex;flex-direction:column;gap:8px;">`;
@@ -609,10 +609,7 @@ async function coachRegenerate(customPrompt) {
   const status = document.getElementById('coach-status');
   if (status) status.textContent = '🧠 AI正在修改方案...';
   try {
-    const resp = await fetch(getAIServer()+'/api/ask', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({password:getAIPassword(),deviceId:getDeviceId(),content:customPrompt})
-    });
+    const resp = await aiFetch('/api/ask', {password:getAIPassword(),deviceId:getDeviceId(),content:customPrompt});
     const data = await resp.json();
     coachLoading = false;
     if (data.success) {

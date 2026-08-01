@@ -1,0 +1,8 @@
+name = "gymflow-ai"
+main = "worker.js"
+compatibility_date = "2024-09-23"
+
+# 生产：ai.gym-flow.xyz 整个域名交给 Worker（24/7 云端 GLM 中转）
+routes = [
+  { pattern = "ai.gym-flow.xyz", custom_domain = true }
+]
