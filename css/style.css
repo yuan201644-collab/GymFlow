@@ -247,6 +247,7 @@ h1{font-size:22px;font-weight:700;letter-spacing:-.3px}h2{font-size:18px;font-we
 .chat-sugg-scroll{max-height:130px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 4px}
 .chat-suggestions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .chat-sugg-btn{background:var(--bg);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--font);font-size:13px;padding:8px 16px;cursor:pointer;transition:all .2s;min-height:40px}
+.chat-sugg-btn.active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600}
 .chat-sugg-btn:active{border-color:var(--accent);color:var(--accent)}
 .chat-msg{display:flex;max-width:88%}.chat-msg.user{align-self:flex-end}.chat-msg.ai{align-self:flex-start}
 .chat-bubble{padding:12px 16px;border-radius:18px;font-size:14px;line-height:1.6;word-break:break-word}
