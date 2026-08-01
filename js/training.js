@@ -624,7 +624,7 @@ function getTrainingPlan(type) {
               return day.sections.map((sec, si) => ({
                 type: sec.type || 'main',
                 title: sec.title || day.label,
-                badge: sec.type === 'warmup' ? '热身' : sec.type === 'stretch' ? '拉伸' : '正式',
+                badge: sec.type === 'warmup' ? '热身' : sec.type === 'stretch' ? '拉伸' : sec.type === 'cardio' ? '有氧' : '正式',
                 badgeClass: sec.type === 'warmup' ? 'warmup-badge' : sec.type === 'stretch' ? 'stretch-badge' : 'section-badge',
                 groups: (sec.groups || []).map((g, gi) => ({
                   id: 'cust_' + dayIdx + '_' + si + '_' + gi,

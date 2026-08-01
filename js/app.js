@@ -79,7 +79,7 @@ function renderMePage() {
   h += `</div></div>`;
 
   h += `<div class="me-section"><h3>AI 服务</h3>`;
-  h += `<input type="text" class="form-input mb-8" id="ai-server-me" value="${localStorage.getItem('fitness_ai_server')||DEFAULT_AI_SERVER}" onchange="saveAIMe()" placeholder="API 地址">`;
+  h += `<input type="text" class="form-input mb-8" id="ai-server-me" value="${localStorage.getItem('fitness_ai_server')||getAIServer()}" onchange="saveAIMe()" placeholder="API 地址">`;
   h += `<input type="password" class="form-input mb-8" id="ai-pwd-me" value="${localStorage.getItem('fitness_ai_password')||'gymflow2024'}" onchange="saveAIMe()" placeholder="访问密码"></div>`;
 
   h += `<div class="me-section"><h3>数据管理</h3><div style="display:flex;flex-direction:column;gap:8px;">`;
