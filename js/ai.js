@@ -7,7 +7,7 @@ let aiLoading = false;
 
 // 默认地址：网页端用 localhost（连本机后端）；APK/手机端用隧道地址
 const DEFAULT_AI_SERVER_LOCAL = 'http://localhost:3000';
-const DEFAULT_AI_SERVER_TUNNEL = 'https://fathers-resistance-integral-valves.trycloudflare.com';
+const DEFAULT_AI_SERVER_TUNNEL = 'https://reporter-donor-lid-guaranteed.trycloudflare.com';
 
 function getAIServer() {
   const saved = localStorage.getItem('fitness_ai_server');
