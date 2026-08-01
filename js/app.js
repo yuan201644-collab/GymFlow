@@ -660,6 +660,13 @@ async function coachGeneratePlan() {
     const ctx = buildContext(coachProfile);
     const plan = buildPlan(ctx);
     pendingPlan = plan;
+    // 记录设备偏好（供训练页替换/新增动作做设备过滤）
+    if (coachProfile && coachProfile.equipment) {
+      const s2 = getSettings();
+      s2.userInfo = s2.userInfo || {};
+      s2.userInfo.equipment = coachProfile.equipment;
+      saveSettings(s2);
+    }
     coachLoading = false;
     let resultText = '✅ 方案已生成！\n\n📋 ' + (plan.type==='5day'?'五分化':'三分化') + ' · ' + plan.days.length + '天';
     // 制定依据

@@ -711,23 +711,37 @@ function getAllGroups(plan) {
   return groups;
 }
 
+// 该组动作集合 = 方案动作 + 当日自定义替换动作（P1：替换动作也计入组完成）
+function groupExerciseSet(group, record) {
+  const customExs = (record.exercises || []).filter(e => e.groupId === group.id && e.custom && !(group.exercises || []).some(x => x.name === e.name));
+  return (group.exercises || []).concat(customExs);
+}
+
 function isGroupCompleted(group, record) {
-  const completed = group.exercises.filter(ex => {
-    const recEx = record.exercises.find(e => e.name === ex.name && e.groupId === group.id);
-    return recEx && recEx.completed;
-  }).length;
-  // 自动折叠阈值：取 pickHint 中范围的上限，如 "3选1-2" → 2个才折叠
-  let collapseThreshold = 1;
+  const exs = groupExerciseSet(group, record);
+  if (exs.length === 0) return false;
+  const skipped = exs.filter(ex => { const r = record.exercises.find(e => e.name === ex.name && e.groupId === group.id); return r && r.skipped; }).length;
+  if (skipped >= exs.length) return false; // 全跳过组不算完成（单独记跳过）
+  const completed = exs.filter(ex => { const r = record.exercises.find(e => e.name === ex.name && e.groupId === group.id); return r && r.completed; }).length;
+  const active = exs.length - skipped;
+  // 完成阈值取 pickHint 下限（3选1-2 → 1；3选2 → 2）；不选满也能完成（15.2 决策）
+  let threshold = 1;
   if (group.pickHint) {
     const rangeMatch = group.pickHint.match(/(\d+)选(\d+)-(\d+)/);
-    if (rangeMatch) {
-      collapseThreshold = parseInt(rangeMatch[3]); // 上限，如 "3选1-2" → 2
-    } else {
+    if (rangeMatch) threshold = parseInt(rangeMatch[2]); // 下限
+    else {
       const singleMatch = group.pickHint.match(/(\d+)选(\d+)/);
-      if (singleMatch) collapseThreshold = parseInt(singleMatch[2]);
+      if (singleMatch) threshold = parseInt(singleMatch[2]);
     }
   }
-  return completed >= collapseThreshold;
+  return completed >= Math.min(threshold, active);
+}
+
+// 组内全部动作被跳过 → 记「已跳过」组（单独统计，不进完成率分子）
+function isGroupSkipped(group, record) {
+  const exs = groupExerciseSet(group, record);
+  if (exs.length === 0) return false;
+  return exs.every(ex => { const r = record.exercises.find(e => e.name === ex.name && e.groupId === group.id); return r && r.skipped; });
 }
 
 function getSelectedExercise(group, record) {
@@ -748,8 +762,8 @@ function renderTrainingPage() {
 
   const allGroups = getAllGroups(plan);
   const totalGroups = allGroups.length;
-  let completedGroups = 0;
-  allGroups.forEach(g => { if (isGroupCompleted(g, record)) completedGroups++; });
+  let completedGroups = 0, skippedGroups = 0;
+  allGroups.forEach(g => { if (isGroupCompleted(g, record)) completedGroups++; if (isGroupSkipped(g, record)) skippedGroups++; });
 
   let html = '';
 
@@ -829,7 +843,7 @@ function renderTrainingPage() {
   }
   html += `</div>`;
 
-  html += `<div class="progress-section"><div class="progress-header"><div><div class="day-label" style="font-size:17px;">${plan.emoji} ${plan.label}</div><div class="day-subtitle" style="font-size:12px;color:var(--muted);">${plan.subtitle} · <span class="history-link" onclick="showHistory()">📋 历史</span> · <span class="history-link" onclick="generateWeeklyReport()">📊 周报</span></div></div><div class="progress-count"><span class="history-link" onclick="resetTodayProgress()" style="color:var(--danger);margin-right:8px;font-size:12px;">🔄</span><span id="completed-count">${completedGroups}</span>/<span>${totalGroups}</span> 部位</div></div><div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:${totalGroups?(completedGroups/totalGroups*100):0}%"></div></div></div>`;
+  html += `<div class="progress-section"><div class="progress-header"><div><div class="day-label" style="font-size:17px;">${plan.emoji} ${plan.label}</div><div class="day-subtitle" style="font-size:12px;color:var(--muted);">${plan.subtitle} · <span class="history-link" onclick="showHistory()">📋 历史</span> · <span class="history-link" onclick="generateWeeklyReport()">📊 周报</span></div></div><div class="progress-count"><span class="history-link" onclick="resetTodayProgress()" style="color:var(--danger);margin-right:8px;font-size:12px;">🔄</span><span id="completed-count">${completedGroups}</span>/<span>${totalGroups}</span> 部位${skippedGroups?' <span style="color:var(--muted);font-size:11px;">跳过'+skippedGroups+'</span>':''}</div></div><div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:${totalGroups?(completedGroups/totalGroups*100):0}%"></div></div></div>`;
 
   plan.sections.forEach((section, secIdx) => {
     html += `<div class="mb-8"><span class="${section.badgeClass||'section-badge'}" style="opacity:0.7;">${section.badge}</span>`;
@@ -845,28 +859,36 @@ function renderTrainingPage() {
 
       html += `<div class="group-header ${groupDone?'group-done':''}" onclick="toggleGroup('${secIdx}-${grpIdx}')" id="gh-${secIdx}-${grpIdx}">`;
       html += `<span class="group-target-label">${groupDone?'✅':'🎯'} ${group.label}</span>`;
-      html += `<div class="group-right"><span class="group-pick-hint">${pickHint}</span><span class="group-expand-icon" id="ge-${secIdx}-${grpIdx}">▼</span></div></div>`;
+      html += `<div class="group-right"><span class="group-pick-hint">${pickHint}</span>${section.type==='main'?`<button class="fav-star-btn" onclick="event.stopPropagation();openExercisePicker('${secIdx}','${grpIdx}','${groupId}','${(group.region||'').replace(/'/g,"\\'")}')" title="替换/新增动作">🔄</button>`:''}<span class="group-expand-icon" id="ge-${secIdx}-${grpIdx}">▼</span></div></div>`;
 
       html += `<div class="group-exercises" id="gx-${secIdx}-${grpIdx}">`;
 
-      (group.exercises || []).forEach((ex, exIdx) => {
+      // 合并方案组动作 + 当日自定义动作（15.5：替换/新增的动作用户自定义，仅当日有效）
+      const customExs = record.exercises.filter(e => e.groupId === groupId && e.custom && !(group.exercises || []).some(x => x.name === e.name));
+      const renderExs = (group.exercises || []).concat(customExs.map(e => {
+        const dbEx = (typeof EXERCISE_DB !== 'undefined') ? EXERCISE_DB.find(x => x.name === e.name) : null;
+        return { name: e.name, sets: dbEx ? (dbEx.type === '复合' ? '3-4组×8-12次' : '2-3组×8-12次') : '自定义', equipment: dbEx ? dbEx.equipment : '', custom: true };
+      }));
+      renderExs.forEach((ex, exIdx) => {
         if (!ex || !ex.name) return;
         const exRec = record.exercises.find(e => e.name === ex.name && e.groupId === groupId);
         const exDone = exRec ? exRec.completed : false;
+        const exSkipped = exRec ? exRec.skipped : false;
         const exWeight = exRec ? (exRec.weight || '') : '';
+        const exReps = exRec ? (exRec.reps || '') : '';
         const isSelected = ex.name === currentEx.name;
         const uid = secIdx + '-' + grpIdx + '-' + exIdx;
 
-        html += `<div class="card group-exercise-card ${exDone?'completed':''}" style="margin-bottom:6px;${!isSelected?'opacity:0.55;':''}" id="card-${uid}">`;
+        html += `<div class="card group-exercise-card ${exDone?'completed':''} ${exSkipped?'exercise-skipped':''}" style="margin-bottom:6px;${!isSelected?'opacity:0.55;':''}" id="card-${uid}">`;
         html += `<div class="card-header"><div class="checkbox-wrapper" onclick="selectAndToggle('${secIdx}','${grpIdx}','${exIdx}','${groupId}','${escapeHtml(ex.name)}')">`;
         html += `<div class="checkbox-custom ${exDone?'checked':''}" id="check-${uid}">${exDone?'✓':''}</div>`;
-        html += `<div style="flex:1;"><div class="card-title" style="font-size:14px;${exDone?'text-decoration:line-through;color:var(--accent);':''}">${ex.name}${ex.default?'<span class="card-default-tag">推荐</span>':''}</div>`;
+        html += `<div style="flex:1;"><div class="card-title" style="font-size:14px;${exDone?'text-decoration:line-through;color:var(--accent);':''}${exSkipped?'text-decoration:line-through;color:var(--muted);':''}">${ex.name}${exSkipped?'<span class="card-default-tag" style="background:var(--border);color:var(--muted);">已跳过</span>':''}${ex.default?'<span class="card-default-tag">推荐</span>':''}</div>`;
         if(ex.equipment) html += `<span class="card-equipment">${ex.equipment}</span>`;
         html += `<div class="card-meta">${ex.sets}</div>`;
         if(section.type==='main'&&ex.equipment){
-          html += `<div class="weight-row" onclick="stopPropagation(event)"><span class="weight-label">🏋️</span><input type="number" class="weight-input-sm" value="${exWeight}" onchange="updateExerciseWeight('${groupId}','${escapeHtml(ex.name)}',this.value)" onfocus="this.select()" step="5" min="0" max="500"><span class="weight-unit">kg</span></div>`;
+          html += `<div class="weight-row" onclick="stopPropagation(event)"><span class="weight-label">🏋️</span><input type="number" class="weight-input-sm" value="${exWeight}" onchange="updateExerciseWeight('${groupId}','${escapeHtml(ex.name)}',this.value)" onfocus="this.select()" step="5" min="0" max="500" placeholder="${getLastWeightHint(ex.name)}"><span class="weight-unit">kg</span><span class="weight-label" style="margin-left:6px;">次</span><input type="number" class="weight-input-sm" value="${exReps}" onchange="updateExerciseReps('${groupId}','${escapeHtml(ex.name)}',this.value)" onfocus="this.select()" step="1" min="0" max="60" style="width:52px;"></div>`;
         }
-        html += `</div><button class="fav-star-btn" data-ex="${escapeHtml(ex.name)}" onclick="event.stopPropagation();var el=this;try{toggleFavorite(this.getAttribute('data-ex'));el.textContent=isFavorite(this.getAttribute('data-ex'))?'⭐':'☆';el.classList.add('pop');setTimeout(function(){el.classList.remove('pop')},500)}catch(e){}">☆</button></div></div>`;
+        html += `</div><div style="display:flex;align-items:center;gap:2px;"><button class="fav-star-btn skip-btn ${exSkipped?'skip-active':''}" onclick="event.stopPropagation();toggleSkip('${secIdx}','${grpIdx}','${groupId}','${escapeHtml(ex.name)}')" title="跳过此动作">⏭</button><button class="fav-star-btn" data-ex="${escapeHtml(ex.name)}" onclick="event.stopPropagation();var el=this;try{toggleFavorite(this.getAttribute('data-ex'));el.textContent=isFavorite(this.getAttribute('data-ex'))?'⭐':'☆';el.classList.add('pop');setTimeout(function(){el.classList.remove('pop')},500)}catch(e){}">☆</button></div></div></div>`;
         if(ex.tip) html += `<div class="card-tip">💡 ${ex.tip}</div>`;
         html += `</div>`;
       });
@@ -921,9 +943,10 @@ function renderBottomBar(completedGroups, totalGroups) {
     document.getElementById('app').appendChild(bar);
   }
   const allDone = completedGroups >= totalGroups;
+  // 完成按钮始终可点：部分完成也能结束训练（15.4 决策）
   bar.innerHTML = `
     <button class="btn btn-outline" style="flex:1;" onclick="submitForRating()">📝 评分</button>
-    <button class="btn btn-accent" style="flex:1;" id="finish-btn" ${allDone?'':'disabled'} onclick="finishTraining()">${allDone?'✅ 完成训练':'未完成('+completedGroups+'/'+totalGroups+')'}</button>
+    <button class="btn btn-accent" style="flex:1;" id="finish-btn" onclick="finishTraining()">${allDone?'✅ 完成训练':'🏁 结束训练('+completedGroups+'/'+totalGroups+')'}</button>
   `;
 }
 
@@ -956,6 +979,7 @@ function selectAndToggle(secIdx, grpIdx, exIdx, groupId, exName) {
   let recEx = record.exercises.find(e => e.name === exName && e.groupId === groupId);
   if (!recEx) { recEx = { name: exName, groupId: groupId, completed: false }; record.exercises.push(recEx); }
   recEx.completed = !recEx.completed;
+  if (recEx.completed) recEx.skipped = false; // P2-1：勾选完成时清除跳过标记，避免同卡 completed+skipped 冲突
   saveTodayRecord(record);
 
   // ── 局部更新 DOM，不重渲染 ──
@@ -1061,19 +1085,160 @@ function updateExerciseWeight(groupId, exName, value) {
   saveTodayRecord(record);
 }
 
+// 次数录入（15.6）
+function updateExerciseReps(groupId, exName, value) {
+  const record = getTodayRecord();
+  let recEx = record.exercises.find(e => e.name === exName && e.groupId === groupId);
+  if (!recEx) { recEx = { name: exName, groupId: groupId, completed: false }; record.exercises.push(recEx); }
+  recEx.reps = parseInt(value) || 0;
+  saveTodayRecord(record);
+}
+
+// 建议重量提示：该动作最近一次历史重量（15.6）
+function getLastWeightHint(exName) {
+  const records = getRecords().filter(r => r.completed && r.exercises && r.exercises.some(e => e.name === exName && e.weight));
+  if (records.length === 0) return '';
+  const last = records[records.length - 1].exercises.find(e => e.name === exName && e.weight);
+  return last && last.weight ? '上次 ' + last.weight + 'kg' : '';
+}
+
+// 动作级跳过（15.3）
+function toggleSkip(secIdx, grpIdx, groupId, exName) {
+  const record = getTodayRecord();
+  let recEx = record.exercises.find(e => e.name === exName && e.groupId === groupId);
+  if (!recEx) { recEx = { name: exName, groupId: groupId, completed: false }; record.exercises.push(recEx); }
+  recEx.skipped = !recEx.skipped;
+  if (recEx.skipped) { recEx.completed = false; showSkipOption(groupId, exName); }
+  saveTodayRecord(record);
+  renderTrainingPage();
+}
+
+// 跳过后弹轻量选项：仅今天 / 以后也别推荐（15.3）
+function showSkipOption(groupId, exName) {
+  const old = document.getElementById('skip-option-overlay');
+  if (old) old.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'skip-option-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `<div style="background:var(--surface);border-radius:16px;padding:20px;max-width:300px;width:90%;text-align:center;">
+    <div style="font-size:32px;margin-bottom:8px;">⏭</div>
+    <h3 style="margin-bottom:4px;">已跳过「${exName}」</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">今天先不练这个动作</p>
+    <button class="btn btn-outline btn-sm" style="width:100%;margin-bottom:8px;" onclick="document.getElementById('skip-option-overlay').remove()">仅今天跳过</button>
+    <button class="btn btn-accent btn-sm" style="width:100%;" onclick="persistDislike('${exName.replace(/'/g, "\\'")}');document.getElementById('skip-option-overlay').remove()">以后也别推荐</button>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+// 「以后也别推荐」→ 写入持久偏好，引擎 buildContext 合并进 dislike（15.3）
+function persistDislike(name) {
+  const s = getSettings();
+  if (!s.userDislike) s.userDislike = [];
+  if (!s.userDislike.includes(name)) s.userDislike.push(name);
+  saveSettings(s);
+  showToast('已记住：以后不再推荐「' + name + '」', 'success');
+}
+
+// ── 15.5 替换 / 新增动作：同部位 + 设备可用 选择器 ──
+function openExercisePicker(secIdx, grpIdx, groupId, region) {
+  const s = getSettings();
+  const eq = (s.userInfo || {}).equipment;
+  if (!eq) { showEquipmentPicker(secIdx, grpIdx, groupId, region); return; } // P2-3：首次先确认设备
+  openExercisePickerInner(secIdx, grpIdx, groupId, region, eq);
+}
+
+// P2-3：设备偏好首次弹选择，存 settings.userInfo.equipment，之后过滤用保存值
+function showEquipmentPicker(secIdx, grpIdx, groupId, region) {
+  const old = document.getElementById('ex-picker-overlay');
+  if (old) old.remove();
+  const options = ['商业健身房(器械很全)', '社区健身房(基础器械够用)', '家庭健身(哑铃+弹力带+引体架)', '纯自重训练(无器械)'];
+  const overlay = document.createElement('div');
+  overlay.id = 'ex-picker-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `<div style="background:var(--surface);border-radius:16px;padding:20px;max-width:320px;width:90%;text-align:center;">
+    <div style="font-size:30px;margin-bottom:8px;">🏋️</div>
+    <h3 style="margin-bottom:4px;">你的器械条件？</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">用于过滤可替换/新增的动作</p>
+    ${options.map((o, i) => `<button class="btn btn-outline btn-sm" style="width:100%;margin-bottom:8px;" onclick="setEquipmentPref(${i})">${o}</button>`).join('')}
+  </div>`;
+  window._pickerCtx = { secIdx, grpIdx, groupId, region };
+  document.body.appendChild(overlay);
+}
+
+function setEquipmentPref(idx) {
+  const options = ['商业健身房(器械很全)', '社区健身房(基础器械够用)', '家庭健身(哑铃+弹力带+引体架)', '纯自重训练(无器械)'];
+  const s = getSettings();
+  if (!s.userInfo) s.userInfo = {};
+  s.userInfo.equipment = options[idx];
+  saveSettings(s);
+  const ov = document.getElementById('ex-picker-overlay');
+  if (ov) ov.remove();
+  const c = window._pickerCtx || {};
+  openExercisePickerInner(c.secIdx, c.grpIdx, c.groupId, c.region, options[idx]);
+}
+
+function openExercisePickerInner(secIdx, grpIdx, groupId, region, eqPref) {
+  const old = document.getElementById('ex-picker-overlay');
+  if (old) old.remove();
+  const ctx = { equipment: eqPref };
+  const regionFilter = [region || ''];
+  const cands = EXERCISE_DB.filter(ex => {
+    if (ex.phase !== 'main') return false;
+    const r = ex.region || '';
+    if (!regionFilter.some(f => f && (r === f || r.startsWith(f + '.') || f.startsWith(r)))) return false;
+    if (typeof isEquipmentAvailable === 'function' && !isEquipmentAvailable(ex, ctx)) return false;
+    return true;
+  });
+  const renderList = (kw) => {
+    const list = kw ? cands.filter(e => e.name.includes(kw)) : cands;
+    return list.slice(0, 50).map(e =>
+      `<div class="card ex-card" style="padding:10px 14px;margin-bottom:6px;" onclick="addCustomExercise('${groupId}','${escapeHtml(e.name)}')"><div style="font-size:14px;font-weight:600;">${e.name}</div><div class="card-meta">${e.equipment} · ${e.mechanics} · ${e.difficulty}</div></div>`
+    ).join('') || '<p class="text-muted text-center" style="padding:20px;">无可用动作</p>';
+  };
+  const overlay = document.createElement('div');
+  overlay.id = 'ex-picker-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.85);display:flex;flex-direction:column;';
+  overlay.innerHTML = `<div style="background:var(--surface);height:100%;max-height:88vh;display:flex;flex-direction:column;border-radius:16px 16px 0 0;margin-top:auto;">
+    <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;"><b>替换/新增动作</b><span style="color:var(--muted);font-size:12px;">${region || '该部位'} · ${eqPref.replace(/\(.*/,'')}</span><button class="fav-star-btn" onclick="document.getElementById('ex-picker-overlay').remove()">✕</button></div>
+    <input type="text" class="form-input" placeholder="搜索动作..." oninput="filterPicker(this.value)" style="margin:12px 16px 8px;">
+    <div style="flex:1;overflow-y:auto;padding:0 16px 16px;" id="ex-picker-list">${renderList('')}</div>
+  </div>`;
+  window._pickerCands = cands;
+  window._pickerRender = renderList;
+  document.body.appendChild(overlay);
+}
+
+function filterPicker(kw) {
+  const listEl = document.getElementById('ex-picker-list');
+  if (listEl && window._pickerRender) listEl.innerHTML = window._pickerRender(kw.trim());
+}
+
+// 选中动作 → 写入当日记录（custom），并设为组当前选中；仅当日有效，不写回方案
+function addCustomExercise(groupId, name) {
+  const record = getTodayRecord();
+  const existing = record.exercises.find(e => e.name === name && e.groupId === groupId);
+  if (!existing) record.exercises.push({ name: name, groupId: groupId, completed: false, custom: true });
+  if (!record.groupSelections) record.groupSelections = {};
+  record.groupSelections[groupId] = name;
+  saveTodayRecord(record);
+  const ov = document.getElementById('ex-picker-overlay');
+  if (ov) ov.remove();
+  showToast('已选用「' + name + '」', 'success');
+  renderTrainingPage();
+}
+
 function finishTraining() {
   const record = getTodayRecord();
   const plan = getTrainingPlan(record.type);
   const allGroups = getAllGroups(plan);
-  allGroups.forEach(g => {
-    const ex = getSelectedExercise(g, record);
-    let recEx = record.exercises.find(e => e.name===ex.name && e.groupId===g.id);
-    if(!recEx){ recEx={name:ex.name,groupId:g.id,completed:false}; record.exercises.push(recEx); }
-    recEx.completed = true;
-    if(!record.groupSelections) record.groupSelections = {};
-    record.groupSelections[g.id] = ex.name;
-  });
+  const completedCount = allGroups.filter(g => isGroupCompleted(g, record) && !isGroupSkipped(g, record)).length;
+  const skippedCount = allGroups.filter(g => isGroupSkipped(g, record)).length;
+  if (completedCount === 0 && !confirm('你还没完成任何部位，确定要结束今天的训练吗？')) return;
+  // 不再强制补全：只记录实际勾选的完成 + 跳过的动作（15.4 决策）
   record.completed = true;
+  record.completedGroups = completedCount;
+  record.totalGroups = allGroups.length;
+  record.skippedGroups = skippedCount;
   saveTodayRecord(record);
   advanceWorkout(record.type);
   showCelebration();
@@ -1172,11 +1337,15 @@ function switchToPlan(id) {
 function resetTodayProgress() {
   if (!confirm('确定要清除今日所有完成记录吗？此操作不可恢复。')) return;
   const record = getTodayRecord();
-  record.exercises.forEach(e => { e.completed = false; });
+  record.exercises = []; // P2-2：一并清掉 skipped/weight/reps/custom/completed
+  record.groupSelections = {};
   record.cardio = null;
   record.aiRating = '';
   record.aiSummary = '';
   record.completed = false;
+  delete record.completedGroups;
+  delete record.totalGroups;
+  delete record.skippedGroups;
   saveTodayRecord(record);
   showToast('今日进度已清零', 'success');
   renderTrainingPage();

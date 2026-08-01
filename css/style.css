@@ -120,6 +120,8 @@ h1{font-size:22px;font-weight:700;letter-spacing:-.3px}h2{font-size:18px;font-we
 .group-exercises{overflow:hidden;transition:all .35s var(--ease-out)}
 .group-exercise-card{transition:all .3s var(--ease-out),opacity .25s var(--ease-out)}
 .group-exercise-card.collapse-hide{max-height:0!important;opacity:0;margin-bottom:0!important;padding-top:0!important;padding-bottom:0!important;border-width:0!important;overflow:hidden}
+.group-exercise-card.exercise-skipped{opacity:.45;filter:saturate(.3)}
+.fav-star-btn.skip-active{color:var(--danger)}
 
 /* Exercise Card */
 .card-header{display:flex;justify-content:space-between;align-items:flex-start}

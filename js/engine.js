@@ -141,7 +141,7 @@ function buildContext(profile) {
     time: t, goal,
     expDetail: (profile.experience_detail || '').toLowerCase(),
     equipment: (profile.equipment || '商业健身房').toLowerCase(),
-    like: (profile.like || '').toLowerCase(), dislike: (profile.dislike || '').toLowerCase(),
+    like: (profile.like || '').toLowerCase(), dislike: ((profile.dislike || '') + ' ' + (s.userDislike || []).join(' ')).toLowerCase(),
     focus: (profile.focus || '全身均衡').toLowerCase(),
     weakness: (profile.weakness || '').toLowerCase(),
     intensity: (profile.intensity || '中等强度').toLowerCase(),
