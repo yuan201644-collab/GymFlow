@@ -35,14 +35,21 @@ echo -e "${YELLOW}📋 本次任务：${NC}"
 cat "$WORKFLOW_DIR/task.md"
 echo ""
 
-# 读取状态
-get_phase() {
-    grep -o '"phase": *"[^"]*"' "$STATUS_FILE" | head -1 | sed 's/"phase": *"//' | sed 's/"//'
+# 读取状态（jq 优先，无 jq 退回 grep）
+read_status() {
+    local key="$1"
+    if command -v jq >/dev/null 2>&1; then
+        jq -r ".$key" "$STATUS_FILE" 2>/dev/null || echo ""
+    else
+        case "$key" in
+            phase) grep -o '"phase": *"[^"]*"' "$STATUS_FILE" | head -1 | sed 's/.*: *"//;s/"$//' ;;
+            iteration) grep -o '"iteration": *[0-9]*' "$STATUS_FILE" | head -1 | sed 's/.*: *//' ;;
+        esac
+    fi
 }
 
-get_iteration() {
-    grep -o '"iteration": *[0-9]*' "$STATUS_FILE" | head -1 | sed 's/"iteration": *//'
-}
+get_phase() { read_status phase; }
+get_iteration() { read_status iteration; }
 
 MAX_ITERATIONS=3
 
