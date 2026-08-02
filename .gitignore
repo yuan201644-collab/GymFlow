@@ -6,3 +6,6 @@ Thumbs.db
 # Server — 密钥和本地数据
 server/config.js
 server/data.json
+
+# Cloudflare Wrangler 构建产物
+server/.wrangler/

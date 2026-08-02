@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Read", "Glob", "Grep",
+      "Edit", "Write",
+      "Bash(git status)", "Bash(git diff)", "Bash(git diff *)",
+      "Bash(git log *)", "Bash(git add *)", "Bash(git commit -m *)",
+      "Bash(node engine_test.js)",
+      "Bash(node fuzzy_test.js)",
+      "Bash(node ai_worker_test.js)",
+      "Bash(node patch20_test.js)",
+      "Bash(node ui21_test.js)",
+      "Bash(node help_ui_test.js)",
+      "Bash(node ai_dual_ui.js)",
+      "Bash(node *.test.js)",
+      "Bash(ls *)", "Bash(cat *)", "Bash(head *)",
+      "Bash(mkdir -p *)",
+      "Bash(cp *)", "Bash(mv *)",
+      "Bash(jq *)",
+      "Bash(date)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force *)",
+      "Bash(git push)",
+      "Bash(curl *|bash)",
+      "Bash(wget *|sh)",
+      "Bash(sudo *)",
+      "Bash(npm install)",
+      "Bash(npm *)"
+    ]
+  }
+}
