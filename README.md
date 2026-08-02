@@ -4,63 +4,81 @@
 </p>
 
 <h1 align="center">GymFlow</h1>
-<p align="center"><b>AI 定制化健身追踪 · 三分化 / 五分化</b></p>
+<p align="center"><b>全面 AI 化健身追踪 · 训练页 AI 教练</b></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/纯前端-零依赖-green?style=flat-square">
+  <img src="https://img.shields.io/badge/版本-v2.0.0-green?style=flat-square">
   <img src="https://img.shields.io/badge/AI-GLM4--Flash-blue?style=flat-square">
   <img src="https://img.shields.io/badge/PWA+APK-双端-orange?style=flat-square">
   <img src="https://img.shields.io/badge/数据-本地存储-red?style=flat-square">
+  <img src="https://img.shields.io/badge/AI服务-云端24%2F7-purple?style=flat-square">
 </p>
 
 ---
 
 ## 这是什么
 
-GymFlow 是一个手机端 AI 健身追踪工具。**打开即用，数据本地存储，无需注册、无需网络。** 支持 Web H5 + Android APK 双端运行，内置 AI 健身顾问与定制化训练方案生成。
+GymFlow 是一个手机端 AI 健身追踪工具。**打开即用，数据本地存储。** 支持 Web H5 + Android APK 双端运行，内置**训练页 AI 教练**与本地方案生成引擎。AI 服务云端 24/7 在线（Cloudflare Worker），电脑关机照用。
 
 <p align="center">
-  <b>🏋️ 训练</b> · <b>🤖 AI</b> · <b>📦 功能</b> · <b>👤 我的</b>
+  <b>🏋️ 训练</b> · <b>AI</b> · <b>📦 功能</b> · <b>👤 我的</b>
 </p>
 
 ---
 
-## v1.3 核心亮点
+## v2.0.0 核心亮点
 
-| 功能 | 说明 |
-|------|------|
-| 🧠 **AI 定制方案** | 10 步对话采集，AI 自动生成三分化/五分化训练计划 |
-| 📋 **方案库管理** | 多套方案并存，一键切换，默认三分化永久保留 |
-| 📚 **160+ 动作库** | 8 维标签（部位/器械/难度/类型/姿态/力学/侧重/风险），搜索+筛选 |
-| 🔀 **五分化支持** | 训练页日切换器自动适配方案天数，轮转打卡无缝衔接 |
-| 📊 **部位下钻统计** | 6 大区域→子区域逐层展开，排除热身拉伸 |
-| 🤖 **AI 健身顾问** | 独立页面，GLM-4-Flash 免费模型，思考动画 |
-| 📝 **AI 训练评分** | 提交训练数据，AI 评分+评价+建议，已完成/未完成分隔 |
-| ⚖️ **体重+BMI** | 双线折线图，双Y轴，BMI 自动计算，输入校验 |
-| 📂 **折叠动作组** | 点击展开/收起，完成任务自动折叠，平滑动画 |
-| 📅 **月度日历** | 标注每日训练类型（推/拉/腿/休），彩色区分 |
-| 🏃 **有氧量化** | 时长/坡度/距离记录，附加项不影响主训练 |
-| 📋 **训练历史** | 补录（日期+类型选择器）/编辑/删除，闭环管理 |
-| 🎯 **体态矫正** | 圆肩/溜肩/肱骨前移/肩峰撞击专项要领 |
-| 🧘 **休息日计划** | 核心激活+体态矫正拉伸 |
-| 🚀 **开屏动画** | 圆环描边+哑铃淡入，品牌一致 |
-| 🌓 **深浅主题** | 跟随系统/手动切换 |
-| 🔒 **数据安全** | 导出/导入含方案库+AI配置，重置清空全部数据 |
+### 🧠 训练页 AI 教练（全面 AI 化，4 阶段）
+| 阶段 | 功能 | 说明 |
+|------|------|------|
+| 💡 **本地建议（L0）** | 每个动作卡 💡 按钮 | 动作要点 / 建议重量（上次+2.5kg）/ 组间休息（复合120s·孤立60s）/ 替换动作（同部位+设备过滤） |
+| 🗣 **问 AI 讲解（L1）** | 💡 卡内「问 AI」 | 调 GLM 讲解动作（结合历史重量/体态/伤病），回复转义防 XSS + 7 天缓存 |
+| 🤖 **底部 AI 教练浮层** | 训练页常驻入口 | 上下文感知：当前方案/训练日/完成度/历史，可答"今天还差什么""下一组加多少" |
+| 🎯 **描述性智能替补** | 替换选择器「AI 描述」 | 自然语言描述需求 → AI 从候选池推荐替换动作（池内校验防注入） |
+
+### 🏋️ 训练页灵活性
+- 完成阈值改下限（3选1-2 做 1 个即完成）、完成按钮放开（部分完成可结束、记完成率）
+- 动作级跳过（仅今天 / 以后也别推荐 → 引擎永久排除）
+- 替换/新增动作（同部位+设备过滤选择器）、重量/次数录入（上次重量提示）
+- 热身/拉伸组也可加动作（按阶段过滤）
+
+### 🔍 500+ 动作库
+- **500+ 动作**，11 维标签（部位/器械/难度/类型/姿态/力学/侧重/风险 + 矫正/关节风险/阶段）
+- **模糊搜索**：拼音（`wotui`→卧推）/ 首字母 / 错别字容错（`握推`→卧推）/ 同义词（`bench`/`推胸`）/ 多关键词（`哑铃 推`）
+- 按部位/难度/类型筛选 + ⭐ 收藏
+
+### ☁️ AI 服务 24/7
+- GLM 中转部署 **Cloudflare Worker**，`ai.gym-flow.xyz` 云端 24/7（电脑关机照用）
+- 网页端云端失败自动回退 localhost；APK 仅云端
+- 智谱 GLM-4-Flash 免费模型
+
+### 🧠 其他 AI 能力
+- **AI 定制方案**：本地方案引擎（五层架构：模板定结构/打分定动作/校验守规范），全局去重 + 维度敏感
+- **AI 复盘教练**：训练小结 + 今日建议 + 周报
+- **AI 云端双线**：网页端云端为主 + 本地回退
+
+### 📖 使用教程
+- 功能模块顶部可折叠「ℹ️ 使用说明」卡（首访展开、二次折叠）
+
+### 既有能力（v1.x）
+- ⚖️ 体重+BMI 双线图 · 📊 部位下钻统计 · 📅 月度日历 · 🏃 有氧量化 · 📋 训练历史 · 🎯 体态矫正闭环 · 🧘 休息日 · 🌓 深浅主题 · 🔒 数据导入导出 · 📱 PWA+APK
 
 ---
 
-## AI 后端（可选）
+## AI 后端（Cloudflare Worker 24/7）
 
 ```
 server/
-├── server.js          # Node.js 中转代理（纯内置模块，零依赖）
-├── config.js          # 密钥+密码+限流配置（不上传Git）
-├── config.example.js  # 配置模板
-├── data.json          # 调用次数记录
-└── README.md          # 部署文档（含 Cloudflare Tunnel）
+├── worker.js         # Cloudflare Worker（GLM 中转，24/7 云端）
+├── wrangler.toml     # Worker 部署配置（绑定 ai.gym-flow.xyz）
+├── server.js         # 本地 Node 中转（网页端回退用）
+├── config.js         # 密钥+密码+限流（不上传Git）
+└── README.md         # 部署文档
 ```
 
-对接智谱 GLM-4-Flash 免费模型。详见 [server/README.md](server/README.md)。
+- **云端**：`ai.gym-flow.xyz` → Cloudflare Worker，24/7 可用
+- **本地**：`node server.js`（开发/回退）+ `cloudflared tunnel run gymflow`（真机调试走 local.gym-flow.xyz）
+- 详见 [server/README.md](server/README.md)
 
 ---
 
@@ -68,7 +86,7 @@ server/
 
 ### 手机使用
 
-从 [Releases](https://github.com/yuan201644-collab/GymFlow/releases) 下载 `健身助手.apk` 安装，或解压 `健身助手.zip` → 浏览器打开 `index.html`。
+从 [Releases](https://github.com/yuan201644-collab/GymFlow/releases) 下载 `健身助手.apk` 安装。
 
 ### 电脑预览
 
@@ -84,11 +102,12 @@ cd GymFlow
 
 ```
 HTML5 + CSS3 + Vanilla JS
-├── Chart.js       图表渲染
-├── localStorage   数据持久化
-├── Service Worker 离线+PWA
-├── Capacitor      APK 打包
-└── Node.js        AI 后端（可选）
+├── Chart.js          图表渲染
+├── localStorage      数据持久化
+├── Service Worker    离线+PWA
+├── Capacitor         APK 打包
+├── Cloudflare Worker AI 服务 24/7（可选）
+└── Node.js           本地 AI 回退（可选）
 ```
 
 ---
@@ -102,16 +121,21 @@ GymFlow/
 ├── sw.js               # 离线 Service Worker
 ├── css/style.css       # 全部样式（暗黑+亮色主题）
 ├── js/
-│   ├── app.js          # 主入口/路由/模块系统/AI教练
+│   ├── app.js          # 主入口/路由/功能模块/AI教练流程
 │   ├── data.js         # localStorage 数据层+方案库
-│   ├── training.js     # 训练计划+打卡逻辑+历史
-│   ├── ai.js           # AI 对话页面
-│   ├── exercises.js    # 160+ 动作数据库（8维标签）
-│   ├── weight.js       # 体重/BMI 追踪
+│   ├── training.js     # 训练页（打卡/跳过/替换/重量/AI教练）
+│   ├── engine.js       # 方案生成引擎（五层架构）
+│   ├── ai.js           # AI 顾问 + 双线（云端/本地）
+│   ├── exercises.js    # 500+ 动作库（11维标签）
+│   ├── search_index.js # 模糊搜索拼音索引（自动生成）
+│   ├── synonyms.js     # 模糊搜索同义词表
+│   ├── utils.js        # 工具函数 + 模糊搜索
+│   ├── posture.js      # 体态矫正
 │   ├── stats.js        # 统计图表+日历
-│   └── utils.js        # 工具函数
-├── icons/              # App 图标（绿圈+哑铃）
-└── server/             # AI 后端（可选）
+│   ├── weight.js       # 体重/BMI
+│   └── tutorial.js     # 新手教程
+├── server/             # AI 后端（Worker + 本地回退）
+└── icons/              # App 图标
 ```
 
 ---
