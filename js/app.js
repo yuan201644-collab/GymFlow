@@ -175,6 +175,7 @@ const FEATURE_MODULES = [
   {
     id: 'stats', icon: '📊', label: '数据统计',
     desc: () => `累计训练 ${getTypeCounts().total} 天`,
+    help: { intro: '查看训练总量与部位分布', steps: ['看顶部统计卡', '点部位卡展开子部位', '看日历彩色标记'] },
     render: renderStatsModule,
   },
   {
@@ -185,16 +186,19 @@ const FEATURE_MODULES = [
       const activePlan = plans.find(p => p.id === active);
       return activePlan ? `当前：${activePlan.name}` : `当前：默认三分化 · ${plans.length}套方案`;
     },
+    help: { intro: '管理训练方案，一键切换', steps: ['看已存方案', '点卡片设为当前', '去 AI 定制新方案'] },
     render: renderPlanLib,
   },
   {
     id: 'ai-coach', icon: '🧠', label: 'AI训练方案',
     desc: () => '定制化三分化/五分化训练',
+    help: { intro: '对话式定制专属计划', steps: ['回答问题', '生成后预览', '保存到方案库'] },
     render: renderAICoach,
   },
   {
     id: 'exercises', icon: '📚', label: '动作库',
     desc: () => `${EXERCISE_DB.length}+ 动作 · 8维标签`,
+    help: { intro: '300+ 动作大全，可搜可筛', steps: ['搜名字/拼音', '按部位/难度/类型筛选', '收藏常用动作'] },
     render: renderExerciseLib,
   },
   {
@@ -203,6 +207,7 @@ const FEATURE_MODULES = [
       const log = getCoachLog();
       return log.length > 0 ? `${log.length} 篇周报 · 最近：${log[log.length-1].week}` : '复盘小结 · 周报回顾';
     },
+    help: { intro: 'AI 复盘 + 周报', steps: ['训练后看 AI 小结', '生成周报', '回顾历史复盘'] },
     render: renderCoachLogModule,
   },
   {
@@ -211,6 +216,7 @@ const FEATURE_MODULES = [
       const p = getBodyProfile();
       return p ? `${p.postureTags.length||0}项标签 · 点击查看` : '自测评估 · 定制矫正';
     },
+    help: { intro: '自测 → 定制 → 追踪', steps: ['做 4 题自测', '生成体态画像', '每 4 周复测看进展'] },
     render: renderPostureModule,
   },
   {
@@ -219,6 +225,7 @@ const FEATURE_MODULES = [
       const ws = getWeights();
       return ws.length ? `${ws[ws.length-1].weight}kg · BMI ${calcBMI(ws[ws.length-1].weight).toFixed(1)}` : '暂无数据';
     },
+    help: { intro: '记录体重，看 BMI 曲线', steps: ['填体重点添加', '看趋势图', '删错记录'] },
     render: renderWeightModule,
   },
   // 加新模块在这里加一行即可
@@ -239,9 +246,35 @@ function openFeatureModule(id) {
   if (!mod) return;
   const c = document.getElementById('features-content');
   let h = `<div class="sub-page-header"><button class="history-back-btn" onclick="renderFeaturesPage()">← 功能</button><span class="history-title">${mod.icon} ${mod.label}</span><span></span></div>`;
+  // §19：可折叠「使用说明」卡（首访展开、二次折叠、可再展开，按模块记忆）
+  if (mod.help) {
+    const seenKey = 'fitness_help_seen_' + id;
+    const isFirst = !localStorage.getItem(seenKey);
+    if (isFirst) localStorage.setItem(seenKey, '1'); // 首访看过一次，下次折叠（不打扰）
+    const collapsed = isFirst ? false : localStorage.getItem(seenKey) === '1';
+    h += `<div class="card help-card" style="margin:12px 0;">
+      <div class="help-header" onclick="toggleHelp('${id}')" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer;">
+        <span style="font-weight:600;font-size:14px;">ℹ️ 使用说明</span><span id="help-icon-${id}">${collapsed?'▶':'▼'}</span>
+      </div>
+      <div id="help-body-${id}"${collapsed?' style="display:none;"':''}>
+        <p style="font-size:13px;color:var(--muted);margin:0 14px 8px;">${mod.help.intro}</p>
+        <ol style="margin:0 30px 12px;padding:0;font-size:13px;color:var(--muted);">${mod.help.steps.map(s=>`<li style="margin-bottom:4px;">${s}</li>`).join('')}</ol>
+      </div>
+    </div>`;
+  }
   c.innerHTML = h;
   mod.render(c);
   c.scrollIntoView({ behavior: 'smooth' });
+}
+
+// §19：切换使用说明展开/折叠
+function toggleHelp(id) {
+  const body = document.getElementById('help-body-' + id);
+  const icon = document.getElementById('help-icon-' + id);
+  if (!body) return;
+  const isCollapsed = body.style.display === 'none';
+  body.style.display = isCollapsed ? '' : 'none';
+  if (icon) icon.textContent = isCollapsed ? '▼' : '▶';
 }
 
 // ── 统计模块（部位下钻）──
