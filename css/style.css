@@ -43,7 +43,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
 /* Layout */
 #app-wrap{display:flex;flex-direction:column;min-height:100dvh}
-#app{flex:1;max-width:680px;margin:0 auto;width:100%}
+#app{flex:1;max-width:680px;margin:0 auto;width:100%;transition:transform .25s var(--ease-out)}
+#app.swiping{transition:none}   /* 拖动中关闭过渡，松手恢复过渡实现吸附/回弹 */
 .page{display:none;padding:16px;padding-bottom:100px;animation:fadeUp .25s var(--ease-out)}
 .page.active{display:block}
 
@@ -91,7 +92,7 @@ h1{font-size:22px;font-weight:700;letter-spacing:-.3px}h2{font-size:18px;font-we
 
 /* Checkbox */
 .checkbox-wrapper{display:flex;align-items:center;gap:10px;cursor:pointer;min-height:44px}
-.checkbox-custom{width:28px;height:28px;border-radius:50%;border:2px solid #555;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .25s var(--ease-in-out);font-size:14px;color:transparent;background:transparent}
+.checkbox-custom{width:24px;height:24px;border-radius:50%;border:2px solid #555;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .25s var(--ease-in-out);font-size:12px;color:transparent;background:transparent}
 .checkbox-custom.checked{animation:popIn .3s var(--ease-out);background:var(--accent);border-color:var(--accent);color:#000}
 
 /* Plan Selector */
@@ -132,14 +133,15 @@ h1{font-size:22px;font-weight:700;letter-spacing:-.3px}h2{font-size:18px;font-we
 .group-exercise-card{transition:all .3s var(--ease-out),opacity .25s var(--ease-out)}
 .group-exercise-card.collapse-hide{max-height:0!important;opacity:0;margin-bottom:0!important;padding-top:0!important;padding-bottom:0!important;border-width:0!important;overflow:hidden}
 .group-exercise-card.exercise-skipped{opacity:.45;filter:saturate(.3)}
-.fav-star-btn.skip-active{color:var(--danger)}
+.group-exercise-card.card-menu-open{transform:scale(1.04) translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:10}
 
 /* Exercise Card */
 .card-header{display:flex;justify-content:space-between;align-items:flex-start}
 .card-title{font-size:15px;font-weight:600}.card-meta{font-size:13px;color:var(--muted);margin-top:3px}
 .card-equipment{display:inline-block;font-size:11px;color:var(--accent);background:rgba(0,200,83,.1);padding:2px 8px;border-radius:20px}
 .card-target{font-size:12px;color:#b39ddb;font-weight:600}
-.card-tip{font-size:12px;color:var(--muted);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);line-height:1.6}
+.advice-summary{font-size:12px;color:var(--muted);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);cursor:pointer;line-height:1.6;user-select:none}
+.advice-summary:active{opacity:.7}
 .card-default-tag{display:inline-block;font-size:10px;color:var(--accent);background:rgba(0,200,83,.08);padding:2px 6px;border-radius:10px;margin-left:6px;font-weight:400}
 
 /* 本地 AI 建议卡（V2.0 阶段1） */
@@ -151,7 +153,7 @@ h1{font-size:22px;font-weight:700;letter-spacing:-.3px}h2{font-size:18px;font-we
 
 /* 「问 AI」动作讲解（V2.0 阶段2，L1 点按调 AI） */
 .advice-ai-row{margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)}
-.advice-ai-btn{width:100%;padding:7px 0;border:1px solid var(--accent);border-radius:8px;background:transparent;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer}
+.advice-ai-btn{width:100%;min-height:44px;padding:7px 0;border:1px solid var(--accent);border-radius:8px;background:transparent;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer}
 .advice-ai-btn:active{opacity:.7}
 .advice-ai-loading{display:flex;align-items:center;gap:4px;margin-top:8px;font-size:12px;color:var(--muted)}
 .advice-ai-loading .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:dotBounce 1.4s ease-in-out infinite}
@@ -176,6 +178,13 @@ h1{font-size:22px;font-weight:700;letter-spacing:-.3px}h2{font-size:18px;font-we
 .weight-row{display:flex;align-items:center;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
 .weight-input-sm{width:60px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--accent);font-family:var(--font);font-size:14px;font-weight:600;padding:5px 4px;text-align:center;transition:border-color .2s;-webkit-appearance:none}
 .weight-input-sm:focus{outline:none;border-color:var(--accent)}.weight-unit{font-size:12px;color:var(--muted)}
+
+/* 动作卡长按菜单（V2.1 轮B） */
+.card-menu-item{display:flex;align-items:center;gap:8px;width:100%;min-height:48px;padding:0 20px;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:15px;text-align:left;cursor:pointer;transition:background .15s}
+.card-menu-item:active{background:var(--bg)}
+.card-menu-weight{display:flex;align-items:center;gap:4px;padding:10px 20px;background:var(--bg);border-top:1px solid var(--border);flex-wrap:wrap}
+.card-menu-weight .weight-input-sm{min-width:0}
+.weight-label{font-size:11px;white-space:nowrap}
 
 /* Cardio */
 .cardio-card{border-left:3px solid #ff6d00}
@@ -233,6 +242,10 @@ h1{font-size:22px;font-weight:700;letter-spacing:-.3px}h2{font-size:18px;font-we
 .chart-container{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 16px;margin-bottom:14px}
 .chart-container canvas{max-height:220px}
 
+/* 图标统一标准（V2.1 轮C）：动作卡功能按钮 28px 图标 / 44px 触控，accent 配色 */
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;font-size:28px;line-height:1;padding:0;border-radius:12px;background:rgba(0,200,83,.08);border:1px solid rgba(0,200,83,.22);color:var(--accent);cursor:pointer;transition:transform .15s var(--ease-out);flex-shrink:0}
+.icon-btn:active{transform:scale(.9)}
+.icon-btn.pop{animation:favPop .5s var(--ease-out)}
 .fav-star-btn{background:rgba(255,183,77,.12);border:1px solid rgba(255,183,77,.25);font-size:16px;cursor:pointer;padding:6px 8px;flex-shrink:0;transition:all .15s;border-radius:8px;color:#ffb74d;min-width:38px;min-height:38px;line-height:1;margin-left:auto}
 .fav-star-btn:active{transform:scale(1.1);background:rgba(255,183,77,.2)}
 .fav-star-btn.pop{animation:favPop .5s var(--ease-out)}
@@ -307,7 +320,8 @@ h1{font-size:22px;font-weight:700;letter-spacing:-.3px}h2{font-size:18px;font-we
 .chat-status{position:fixed;bottom:62px;left:50%;transform:translateX(-50%);z-index:100;text-align:center;font-size:11px;color:var(--muted);min-height:16px;transition:color .3s;padding-bottom:env(safe-area-inset-bottom,0px)}
 
 /* AI 教练浮层（V2.0 阶段3）：底部常驻入口 + 对话弹层 */
-#ai-coach-fab{position:fixed;bottom:76px;right:16px;z-index:150;background:var(--accent);color:#000;border:none;border-radius:22px;padding:10px 16px;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,200,83,.35);display:flex;align-items:center;gap:6px;transition:transform .15s var(--ease-out),box-shadow .2s}
+/* V2.1 轮C：入口换为 AI 字母徽章，外观复用 .nav-ai/.nav-ai-lg，此处仅保留定位 */
+#ai-coach-fab{position:fixed;bottom:76px;right:16px;z-index:150;border:none;font-family:var(--font);cursor:pointer;box-shadow:0 4px 14px rgba(0,200,83,.35);transition:transform .15s var(--ease-out),box-shadow .2s}
 #ai-coach-fab:active{transform:scale(.92)}
 #ai-coach-fab:hover{box-shadow:0 6px 18px rgba(0,200,83,.45)}
 .coach-overlay{position:fixed;inset:0;z-index:400;display:flex;align-items:flex-end}
@@ -321,6 +335,25 @@ h1{font-size:22px;font-weight:700;letter-spacing:-.3px}h2{font-size:18px;font-we
 .coach-sheet .chat-box{flex:1;overflow-y:auto;padding-bottom:10px}
 .coach-sheet .chat-input-row{position:sticky;bottom:0;left:auto;right:auto;transform:none;width:auto;max-width:none;background:var(--surface);border-top:1px solid var(--border);padding:10px 0 8px}
 .coach-retry-btn{margin-top:6px;background:var(--surface);border:1px solid var(--border);color:var(--accent);border-radius:16px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:var(--font)}
+
+/* AI 问询自由输入弹层（V2.1 轮C）：💡/问AI 打开底部弹层，复用 overlay-fade/sheet-fadeUp */
+#ai-ask-overlay{position:fixed;inset:0;z-index:520;display:flex;align-items:flex-end}
+.ai-ask-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.6)}
+.ai-ask-sheet{position:relative;background:var(--surface);width:100%;max-width:680px;margin:0 auto;border-radius:var(--radius) var(--radius) 0 0;padding:16px 16px 20px;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));max-height:80dvh;overflow-y:auto;animation:sheetFadeUp .3s var(--ease-out)}
+#ai-ask-overlay .ai-ask-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.ai-ask-title{font-weight:800;font-size:15px;color:var(--accent)}
+.ai-ask-close{width:44px;height:44px;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ai-ask-close:active{transform:scale(.9)}
+.ai-ask-quicks{display:flex;gap:8px;margin-bottom:10px}
+.ai-ask-quick{flex:1;min-height:40px;border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)}
+.ai-ask-quick:active{background:rgba(0,200,83,.08)}
+.ai-ask-input-row{display:flex;gap:8px;margin-bottom:10px}
+#ai-ask-input{flex:1;min-width:0;height:44px;background:var(--surface);border:1px solid var(--border);border-radius:22px;color:var(--text);font-family:var(--font);font-size:15px;padding:0 18px;outline:none;transition:border-color .2s,box-shadow .3s}
+#ai-ask-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,200,83,.12)}
+#ai-ask-input::placeholder{color:var(--muted)}
+#ai-ask-send{width:44px;height:44px;border-radius:50%;background:var(--accent);color:#000;border:none;font-size:16px;font-weight:700;cursor:pointer;flex-shrink:0}
+#ai-ask-send:active{transform:scale(.9)}
+.ai-ask-result{font-size:13px;line-height:1.7;word-break:break-word}
 
 /* Theme */
 .theme-switcher{display:flex;gap:6px}

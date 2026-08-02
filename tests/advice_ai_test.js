@@ -283,6 +283,51 @@ console.log('=== 10. buildPickerAIPrompt 描述→候选 prompt（阶段4） ===
   t('prompt 每行非空', p1.split('\n').every(l => l.trim().length > 0), JSON.stringify(p1));
 }
 
+console.log('=== 11. buildTrainingPrompt 自由输入 question（V2.1 轮C）===');
+{
+  // 11.1 有具体问题 → 首行走「用户问题」分支，仍含动作名与上下文行
+  const q = '这个动作适合新手吗？';
+  const p1 = btp({ name: bench.name, tip: '肩胛收紧' }, { equipment: '家庭健身(哑铃+弹力带+引体架)' }, q);
+  t('含「用户问题」首行', p1.includes('用户问题'), p1);
+  t('含用户问题原文', p1.includes(q), p1);
+  t('含动作名上下文', p1.includes('动作「' + bench.name + '」'), p1);
+  t('仍含动作要点行', p1.includes('动作要点'), p1);
+  t('仍含器械行', p1.includes('家庭健身'), p1);
+  t('不再含默认「讲解动作」', !p1.includes('请用100-150字讲解动作「' + bench.name + '」'), p1);
+
+  // 11.2 无 question → 默认讲解语（阶段2 兼容）
+  const p2 = btp({ name: bench.name }, {});
+  t('无 question → 默认「讲解动作」', p2.includes('请用100-150字讲解动作「' + bench.name + '」'), p2);
+
+  // 11.3 空字符串 → 默认讲解语
+  const p3 = btp({ name: bench.name }, {}, '');
+  t('空字符串 → 默认「讲解动作」', p3.includes('请用100-150字讲解动作「' + bench.name + '」'), p3);
+
+  // 11.4 「讲解要点」→ 默认讲解语（快捷 chip 语义）
+  const p4 = btp({ name: bench.name }, {}, '讲解要点');
+  t('「讲解要点」→ 默认「讲解动作」', p4.includes('请用100-150字讲解动作「' + bench.name + '」'), p4);
+
+  // 11.5 全参 prompt 无 undefined/null/NaN、每行非空
+  const p5 = btp({ name: bench.name, tip: '肩胛收紧' }, {
+    equipment: '家庭健身(哑铃+弹力带+引体架)',
+    records: [{ date: '2026-07-05', exercises: [{ name: bench.name, weight: 60, reps: 8, completed: true }] }],
+    bodyProfile: { postureTags: ['圆肩'] },
+    issues: '左肩旧伤',
+    todayRecord: { exercises: [{ name: bench.name, completed: true }] },
+  }, '手腕容易疼怎么办');
+  t('全参 prompt 无 undefined/null/NaN', !/undefined|null|NaN/.test(p5), p5);
+  t('全参 prompt 每行非空', p5.split('\n').every(l => l.trim().length > 0), JSON.stringify(p5));
+}
+
+console.log('=== 12. actionCacheKey 缓存键（V2.1 轮C）===');
+{
+  const ack = vm.runInContext('actionCacheKey', c);
+  t('默认(无问题) → 用动作名', ack('杠铃平板卧推', '') === '杠铃平板卧推', ack('杠铃平板卧推', ''));
+  t('「讲解要点」→ 沿用动作名(兼容旧缓存)', ack('杠铃平板卧推', '讲解要点') === '杠铃平板卧推', ack('杠铃平板卧推', '讲解要点'));
+  t('自定义问题 → name##question', ack('杠铃平板卧推', '这个动作怎么保护手腕') === '杠铃平板卧推##这个动作怎么保护手腕', ack('杠铃平板卧推', '这个动作怎么保护手腕'));
+  t('空白问题 trim 后 → 动作名', ack('杠铃平板卧推', '   ') === '杠铃平板卧推', ack('杠铃平板卧推', '   '));
+}
+
 console.log('');
 console.log('结果: ' + pass + ' 通过 / ' + fail + ' 失败');
 process.exit(fail ? 1 : 0);

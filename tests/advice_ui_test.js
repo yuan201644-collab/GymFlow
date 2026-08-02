@@ -36,32 +36,33 @@ const { chromium } = require(pwPath);
   t('存在 💡 按钮', dist.mainBtn > 0, 'count=' + dist.mainBtn);
   t('💡 按钮数 ≤ 动作卡数', dist.mainBtn <= dist.cards);
 
-  // 2. 展开/收起
+  // 2. 展开/收起（V2.1 轮C：💡 改开 AI 问询弹层；本地建议卡改由折叠摘要 .advice-summary 开合）
   const toggle = await page.evaluate(async () => {
-    const btn = document.querySelector('button[title="本地AI建议"]');
-    if (!btn) return { err: '无💡按钮' };
-    btn.click();
+    const sum = document.querySelector('.advice-summary');
+    if (!sum) return { err: '无折叠摘要' };
+    sum.click();
     await new Promise(r => setTimeout(r, 300));
-    const uid = btn.id.replace('ab-', '');
+    const uid = sum.id.replace('as-', '');
     const card = document.getElementById('advice-' + uid);
     const visibleOpen = card && card.style.display !== 'none' && card.offsetHeight > 0;
-    const title = card ? card.querySelector('.advice-title')?.textContent : '';
-    btn.click();
+    const title = card && card.querySelector('.advice-title') ? card.querySelector('.advice-title').textContent : '';
+    sum.click();
     await new Promise(r => setTimeout(r, 300));
-    const visibleClose = card.style.display === 'none';
+    const visibleClose = card ? card.style.display === 'none' : false;
     return { visibleOpen, title, visibleClose };
   });
   console.log('2. 展开/收起:', JSON.stringify(toggle));
-  t('点击展开显示建议卡', toggle.visibleOpen === true);
+  t('点击摘要展开显示建议卡', toggle.visibleOpen === true);
   t('标题为「本地建议」', (toggle.title || '').includes('本地建议'));
   t('再次点击收起', toggle.visibleClose === true);
 
   // 3. 展开后 4 项内容（要点/重量/休息/替换）
   const content = await page.evaluate(async () => {
-    const btn = document.querySelector('button[title="本地AI建议"]');
-    btn.click();
+    const sum = document.querySelector('.advice-summary');
+    if (!sum) return { err: '无折叠摘要' };
+    sum.click();
     await new Promise(r => setTimeout(r, 200));
-    const uid = btn.id.replace('ab-', '');
+    const uid = sum.id.replace('as-', '');
     const card = document.getElementById('advice-' + uid);
     const labels = [...card.querySelectorAll('.advice-label')].map(x => x.textContent);
     const items = {};
@@ -69,7 +70,7 @@ const { chromium } = require(pwPath);
       const lb = it.querySelector('.advice-label').textContent;
       items[lb] = it.textContent.replace(lb, '').trim();
     });
-    btn.click();
+    sum.click();
     await new Promise(r => setTimeout(r, 200));
     return { labels, items };
   });
@@ -84,14 +85,18 @@ const { chromium } = require(pwPath);
   const weightText = content.items['重量'] || '';
   t('重量项为预期格式', /首次做|上次.*建议/.test(weightText), weightText);
 
-  // 5. 休息日无 💡 按钮
+  // 5. 休息日无 💡 按钮 / 无折叠摘要（V2.1 轮A：三处一致）
   const rest = await page.evaluate(async () => {
     if (window.switchTrainingDay) { try { window.switchTrainingDay('rest'); } catch (e) {} }
     await new Promise(r => setTimeout(r, 300));
-    return document.querySelectorAll('button[title="本地AI建议"]').length;
+    return {
+      btn: document.querySelectorAll('button[title="本地AI建议"]').length,
+      summaries: document.querySelectorAll('.advice-summary').length,
+    };
   });
-  console.log('5. 休息日 💡 按钮数:', rest);
-  t('休息日无 💡 按钮', rest === 0);
+  console.log('5. 休息日:', JSON.stringify(rest));
+  t('休息日无 💡 按钮', rest.btn === 0);
+  t('休息日无折叠摘要', rest.summaries === 0);
 
   // 6. 390px 横向不溢出
   await page.evaluate(async () => {
@@ -105,6 +110,330 @@ const { chromium } = require(pwPath);
   });
   console.log('6. 横向宽度:', JSON.stringify(overflow));
   t('390px 无横向溢出', overflow.body <= overflow.vw && overflow.doc <= overflow.vw, JSON.stringify(overflow));
+
+  // ===== V2.1 轮A — 本地建议卡重构：折叠摘要（push 日）=====
+  // 6b. 默认折叠摘要行 → 点击展开本地建议卡（含要点/重量/休息）→ 再点收起；card-tip 已移除
+  const sumTest = await page.evaluate(async () => {
+    const summaries = [...document.querySelectorAll('.advice-summary')];
+    const first = summaries[0];
+    if (!first) return { err: '无折叠摘要' };
+    const text = first.textContent.trim();
+    const visible = first.offsetHeight > 0;
+    first.click();
+    await new Promise(r => setTimeout(r, 300));
+    const uid = first.id.replace('as-', '');
+    const card = document.getElementById('advice-' + uid);
+    const openVisible = card && card.style.display !== 'none' && card.offsetHeight > 0;
+    const labels = card ? [...card.querySelectorAll('.advice-label')].map(x => x.textContent) : [];
+    const again = document.getElementById('as-' + uid);
+    if (again) again.click();
+    await new Promise(r => setTimeout(r, 300));
+    const closed = card && card.style.display === 'none';
+    return { text, visible, openVisible, labels, closed, tipCount: document.querySelectorAll('.card-tip').length, sumCount: summaries.length };
+  });
+  console.log('6b. 折叠摘要:', JSON.stringify(sumTest));
+  t('默认显示折叠摘要行(可见)', sumTest.visible === true, JSON.stringify(sumTest));
+  t('摘要含「要点」标签', (sumTest.text || '').includes('要点'), sumTest.text);
+  t('摘要重量段为 建议Xkg 或 轻重量起步', /建议\d+(\.\d+)?kg|轻重量起步/.test(sumTest.text || ''), sumTest.text);
+  t('摘要含「休息Xs」段', /休息\d+s/.test(sumTest.text || ''), sumTest.text);
+  t('点击摘要展开本地建议卡', sumTest.openVisible === true, JSON.stringify(sumTest));
+  t('展开卡含 要点/重量/休息 项', ['要点', '重量', '休息'].every(x => sumTest.labels.includes(x)), JSON.stringify(sumTest.labels));
+  t('再点摘要收起', sumTest.closed === true, JSON.stringify(sumTest));
+  t('卡片底部无 card-tip 行', sumTest.tipCount === 0, 'tipCount=' + sumTest.tipCount);
+  t('push 日折叠摘要数 > 0', sumTest.sumCount > 0, 'sumCount=' + sumTest.sumCount);
+
+  // ===== V2.1 轮B — 卡片表面精简 + 长按菜单 + 弹出动画 =====
+  // B1. 表面精简：无 ⏭/➕/重量输入行；保留 💡/☆
+  const surface = await page.evaluate(() => ({
+    skipBtns: document.querySelectorAll('.skip-btn').length,
+    plusBtns: document.querySelectorAll('button[title="替换/新增动作"]').length,
+    weightRows: document.querySelectorAll('.weight-row').length,
+    adviceBtns: document.querySelectorAll('button[title="本地AI建议"]').length,
+    favBtns: document.querySelectorAll('.group-exercise-card .icon-btn').length,
+  }));
+  console.log('B1. 表面精简:', JSON.stringify(surface));
+  t('表面无 ⏭ 跳过按钮', surface.skipBtns === 0, 'skip=' + surface.skipBtns);
+  t('表面无 ➕ 替换按钮', surface.plusBtns === 0, 'plus=' + surface.plusBtns);
+  t('表面无重量/次数输入行', surface.weightRows === 0, 'weightRow=' + surface.weightRows);
+  t('表面保留 💡 按钮', surface.adviceBtns > 0, 'adv=' + surface.adviceBtns);
+  t('表面保留 ☆ 收藏按钮', surface.favBtns > 0, 'fav=' + surface.favBtns);
+
+  // 预置设备偏好：长按→替换动作需先确认设备，避免首弹设备选择
+  await page.evaluate(async () => {
+    const s = window.getSettings();
+    if (!s.userInfo) s.userInfo = {};
+    s.userInfo.equipment = '商业健身房(器械很全)';
+    window.saveSettings(s);
+    await new Promise(r => setTimeout(r, 200));
+  });
+
+  async function longPressAt(x, y) {
+    await page.waitForTimeout(100);
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.waitForTimeout(560);
+    await page.mouse.up();
+    await page.waitForTimeout(120);
+  }
+  // 长按卡片「空白区」：避开 checkbox-wrapper/按钮/输入/建议行。
+  // 注意：V2.1 轮B 当前实现把整个 checkbox-wrapper（含标题/器械/meta）排除在长按之外，
+  // 故用卡片 padding/空白网格点触发（见 B2a 对标题长按的 P1 断言）。
+  async function longPressCard(idx) {
+    const pos = await page.evaluate((i) => {
+      const cards = [...document.querySelectorAll('.group-exercise-card[data-ex]')];
+      const card = cards[i];
+      if (!card) return { err: 'no-card', count: cards.length };
+      card.scrollIntoView({ block: 'center' });
+      const r = card.getBoundingClientRect();
+      const ignore = '.checkbox-wrapper, button, input, .advice-summary, .advice-card';
+      for (let fy = 0.9; fy >= 0.2; fy -= 0.2) {
+        for (let fx = 0.15; fx <= 0.85; fx += 0.2) {
+          const x = r.left + r.width * fx;
+          const y = r.top + r.height * fy;
+          const el = document.elementFromPoint(x, y);
+          if (el && el.closest && !el.closest(ignore)) {
+            return { x, y, ex: card.dataset.ex, uid: card.id.replace('card-', '') };
+          }
+        }
+      }
+      return { err: 'no-point', ex: card.dataset.ex };
+    }, idx);
+    if (pos.err) return pos;
+    await longPressAt(pos.x, pos.y);
+    return pos;
+  }
+  // 长按标题区域（P1 暴露点：标题位于 .checkbox-wrapper 内，被忽略拦截）
+  async function longPressTitle(idx) {
+    const pos = await page.evaluate((i) => {
+      const cards = [...document.querySelectorAll('.group-exercise-card[data-ex]')];
+      const card = cards[i];
+      if (!card) return { err: 'no-card' };
+      card.scrollIntoView({ block: 'center' });
+      const title = card.querySelector('.card-title') || card;
+      const r = title.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2, ex: card.dataset.ex };
+    }, idx);
+    if (pos.err) return pos;
+    await longPressAt(pos.x, pos.y);
+    return pos;
+  }
+
+  // B2. 长按动作卡 → 卡片弹出动画 + 菜单（4 项）
+  let lp = await longPressCard(0);
+  const menuOpen = await page.evaluate(() => ({
+    overlay: !!document.getElementById('card-menu-overlay'),
+    anim: !!document.querySelector('.group-exercise-card.card-menu-open'),
+    items: [...document.querySelectorAll('#card-menu-overlay .card-menu-item')].map(x => x.textContent.trim()),
+    sheet: !!document.querySelector('#card-menu-overlay .sheet-fadeUp'),
+  }));
+  console.log('B2. 长按菜单:', JSON.stringify(menuOpen));
+  t('长按弹出菜单(overlay)', menuOpen.overlay === true, JSON.stringify(menuOpen));
+  t('卡片有弹出动画类 card-menu-open', menuOpen.anim === true, JSON.stringify(menuOpen));
+  t('菜单含 今日删除/永久删除/替换动作/重量·组数·次数 四项', ['今日删除', '永久删除', '替换动作', '组数'].every(k => (menuOpen.items || []).some(i => i.includes(k))), JSON.stringify(menuOpen.items));
+  t('菜单用 sheet-fadeUp 弹层样式', menuOpen.sheet === true, JSON.stringify(menuOpen));
+  await page.evaluate(() => window.closeCardMenu());
+  await page.waitForTimeout(150);
+
+  // B3. 长按落在 ☆ 按钮 → 不弹菜单（可交互目标忽略）
+  const favPos = await page.evaluate(() => {
+    const card = document.querySelector('.group-exercise-card[data-ex]');
+    const fav = card ? [...card.querySelectorAll('.icon-btn')].find(b => b.textContent === '☆' || b.textContent === '⭐') : null;
+    if (!fav) return { err: 'no-fav' };
+    const r = fav.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  });
+  if (!favPos.err) {
+    await page.mouse.move(favPos.x, favPos.y);
+    await page.mouse.down();
+    await page.waitForTimeout(560);
+    await page.mouse.up();
+    await page.waitForTimeout(120);
+  }
+  const noMenu = await page.evaluate(() => !document.getElementById('card-menu-overlay'));
+  t('长按落在 ☆ 不弹菜单', favPos.err ? false : noMenu === true, 'err=' + (favPos.err || 'none') + ', noMenu=' + noMenu);
+
+  // B4. 今日删除（原「仅今天跳过」）
+  lp = await longPressCard(0);
+  const skipTest = await page.evaluate(async (exName) => {
+    const items = [...document.querySelectorAll('#card-menu-overlay .card-menu-item')];
+    const label = items[0] ? items[0].textContent.trim() : '';
+    if (items[0]) items[0].click();
+    await new Promise(r => setTimeout(r, 300));
+    const rec = window.getTodayRecord();
+    const skipped = rec.exercises.filter(x => x.name === exName).some(e => e.skipped === true);
+    const skippedCards = document.querySelectorAll('.exercise-skipped').length;
+    const tagEl = document.querySelector('.exercise-skipped .card-title');
+    const tagged = !!tagEl && tagEl.textContent.includes('已跳过');
+    return { label, skipped, skippedCards, tagged };
+  }, lp.ex);
+  console.log('B4. 今日删除:', JSON.stringify(skipTest));
+  t('未跳过时菜单首项为「今日删除」', (skipTest.label || '').includes('今日删除'), skipTest.label);
+  t('点今日删除 → skipped=true', skipTest.skipped === true, JSON.stringify(skipTest));
+  t('卡片变灰(exercise-skipped)', skipTest.skippedCards === 1, 'cards=' + skipTest.skippedCards);
+  t('标题带「已跳过」标签', skipTest.tagged === true, JSON.stringify(skipTest));
+
+  // B5. 已跳过卡再长按 → 首项「今日恢复」→ 可逆
+  lp = await longPressCard(0);
+  const restoreTest = await page.evaluate(async (exName) => {
+    const items = [...document.querySelectorAll('#card-menu-overlay .card-menu-item')];
+    const label = items[0] ? items[0].textContent.trim() : '';
+    if (items[0]) items[0].click();
+    await new Promise(r => setTimeout(r, 300));
+    const rec = window.getTodayRecord();
+    const skipped = rec.exercises.filter(x => x.name === exName).some(e => e.skipped === true);
+    const skippedCards = document.querySelectorAll('.exercise-skipped').length;
+    return { label, skipped, skippedCards };
+  }, lp.ex);
+  console.log('B5. 今日恢复:', JSON.stringify(restoreTest));
+  t('已跳过时菜单首项为「今日恢复」', (restoreTest.label || '').includes('今日恢复'), restoreTest.label);
+  t('点今日恢复 → skipped=false', restoreTest.skipped === false, JSON.stringify(restoreTest));
+  t('卡片恢复正常(无 exercise-skipped)', restoreTest.skippedCards === 0, 'cards=' + restoreTest.skippedCards);
+
+  // B6. 重量/组数/次数：菜单内展开输入 → 录入写记录（V2.1 轮D：三输入 ⚖️重量/组数/🔁次数）
+  lp = await longPressCard(0);
+  const weightTest = await page.evaluate(async (exName) => {
+    const items = [...document.querySelectorAll('#card-menu-overlay .card-menu-item')];
+    const w = items.find(i => i.textContent.includes('组数'));
+    if (w) w.click();
+    await new Promise(r => setTimeout(r, 150));
+    const row = document.querySelector('.card-menu-weight');
+    const visible = row && getComputedStyle(row).display !== 'none';
+    const inputs = row ? row.querySelectorAll('.weight-input-sm') : [];
+    const labels = row ? row.querySelectorAll('.weight-label') : [];
+    if (visible && inputs.length >= 3) {
+      inputs[0].value = '42.5';
+      inputs[0].dispatchEvent(new Event('change', { bubbles: true }));
+      inputs[1].value = '3';
+      inputs[1].dispatchEvent(new Event('change', { bubbles: true }));
+      inputs[2].value = '12';
+      inputs[2].dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    await new Promise(r => setTimeout(r, 200));
+    const rec = window.getTodayRecord();
+    const e = rec.exercises.find(x => x.name === exName);
+    window.closeCardMenu();
+    return {
+      visible,
+      inputCount: inputs.length,
+      hasScale: [...labels].some(l => l.textContent === '⚖️'),
+      hasRepeat: [...labels].some(l => l.textContent === '🔁'),
+      hasGroupLabel: row ? row.textContent.includes('组数') : false,
+      weight: e ? e.weight : null, sets: e ? e.sets : null, reps: e ? e.reps : null,
+    };
+  }, lp.ex);
+  console.log('B6. 重量/组数/次数:', JSON.stringify(weightTest));
+  t('点重量/次数 → 输入行展开', weightTest.visible === true, JSON.stringify(weightTest));
+  t('重量行含 3 个输入(重量/组数/次数)', weightTest.inputCount === 3, 'n=' + weightTest.inputCount);
+  t('标签含 ⚖️ 与 🔁 双图标', weightTest.hasScale === true && weightTest.hasRepeat === true, JSON.stringify(weightTest));
+  t('含「组数」文字标签', weightTest.hasGroupLabel === true, JSON.stringify(weightTest));
+  t('录入 重量/组数/次数 写入当日记录', weightTest.weight === 42.5 && weightTest.sets === 3 && weightTest.reps === 12, JSON.stringify(weightTest));
+
+  // B7. 永久删除 → 内联确认 → 取消：不写 userDislike
+  lp = await longPressCard(1);
+  const dislikeCancel = await page.evaluate(async (exName) => {
+    const items = [...document.querySelectorAll('#card-menu-overlay .card-menu-item')];
+    const del = items.find(i => i.textContent.includes('永久删除'));
+    if (del) del.click();
+    await new Promise(r => setTimeout(r, 150));
+    const sheet = document.querySelector('#card-menu-overlay .sheet-fadeUp');
+    const confirmShown = !!(sheet && sheet.textContent.includes('确定以后不再推荐'));
+    const cancel = sheet ? sheet.querySelector('.btn-outline') : null;
+    if (cancel) cancel.click();
+    await new Promise(r => setTimeout(r, 150));
+    const s = window.getSettings();
+    const inDislike = (s.userDislike || []).includes(exName);
+    const backToMenu = document.querySelectorAll('#card-menu-overlay .card-menu-item').length === 4;
+    window.closeCardMenu();
+    return { confirmShown, inDislike, backToMenu };
+  }, lp.ex);
+  console.log('B7. 永久删除-取消:', JSON.stringify(dislikeCancel));
+  t('点永久删除 → 内联确认层出现', dislikeCancel.confirmShown === true, JSON.stringify(dislikeCancel));
+  t('取消 → 不写 userDislike', dislikeCancel.inDislike === false, JSON.stringify(dislikeCancel));
+  t('取消 → 回到菜单项', dislikeCancel.backToMenu === true, JSON.stringify(dislikeCancel));
+
+  // B8. 永久删除 → 确定：写 userDislike + 该卡同时今日删除；随后清理避免影响后续
+  lp = await longPressCard(1);
+  const dislikeConfirm = await page.evaluate(async (exName) => {
+    const items = [...document.querySelectorAll('#card-menu-overlay .card-menu-item')];
+    const del = items.find(i => i.textContent.includes('永久删除'));
+    if (del) del.click();
+    await new Promise(r => setTimeout(r, 150));
+    const sheet = document.querySelector('#card-menu-overlay .sheet-fadeUp');
+    const ok = sheet ? sheet.querySelector('.btn-danger') : null;
+    if (ok) ok.click();
+    await new Promise(r => setTimeout(r, 300));
+    const s = window.getSettings();
+    const inDislike = (s.userDislike || []).includes(exName);
+    const rec = window.getTodayRecord();
+    const skipped = rec.exercises.filter(x => x.name === exName).some(e => e.skipped === true);
+    const cardSkipped = document.querySelectorAll('.exercise-skipped').length > 0;
+    const toast = document.body.textContent.includes('以后不再推荐');
+    // 清理：移除 dislike + 恢复 skipped + 重渲染，避免污染后续替换选择器候选池
+    s.userDislike = (s.userDislike || []).filter(n => n !== exName);
+    window.saveSettings(s);
+    rec.exercises.filter(x => x.name === exName).forEach(e => { e.skipped = false; });
+    window.saveTodayRecord(rec);
+    window.renderTrainingPage();
+    await new Promise(r => setTimeout(r, 250));
+    return { inDislike, skipped, cardSkipped, toast };
+  }, lp.ex);
+  console.log('B8. 永久删除-确定:', JSON.stringify(dislikeConfirm));
+  t('确定 → userDislike 写入动作名', dislikeConfirm.inDislike === true, JSON.stringify(dislikeConfirm));
+  t('确定 → 该卡同时被今日删除(skipped)', dislikeConfirm.skipped === true, JSON.stringify(dislikeConfirm));
+  t('确定 → 卡片变灰', dislikeConfirm.cardSkipped === true, JSON.stringify(dislikeConfirm));
+  t('确定 → toast 提示', dislikeConfirm.toast === true, JSON.stringify(dislikeConfirm));
+
+  // B9. 长按菜单 → 替换动作 → 选择器打开（原表面 ➕ 入口移到这里）
+  lp = await longPressCard(0);
+  const pickerFromMenu = await page.evaluate(async () => {
+    const items = [...document.querySelectorAll('#card-menu-overlay .card-menu-item')];
+    const rep = items.find(i => i.textContent.includes('替换动作'));
+    if (rep) rep.click();
+    await new Promise(r => setTimeout(r, 300));
+    const ov = document.getElementById('ex-picker-overlay');
+    return {
+      overlay: !!ov,
+      sheet: !!(ov && ov.querySelector('.sheet-fadeUp')),
+      aiInput: !!document.getElementById('ai-pick-input'),
+      cands: window._pickerCands ? window._pickerCands.length : -1,
+    };
+  });
+  console.log('B9. 长按→替换动作:', JSON.stringify(pickerFromMenu));
+  t('长按菜单→替换动作→选择器打开', pickerFromMenu.overlay === true, JSON.stringify(pickerFromMenu));
+  t('选择器含 sheet-fadeUp + AI 输入框', pickerFromMenu.sheet === true && pickerFromMenu.aiInput === true, JSON.stringify(pickerFromMenu));
+  t('候选池非空', pickerFromMenu.cands > 0, 'cands=' + pickerFromMenu.cands);
+  await page.evaluate(() => document.getElementById('ex-picker-overlay')?.remove());
+
+  // B10. 菜单打开时 390px 无横向溢出
+  lp = await longPressCard(0);
+  const menuOverflow = await page.evaluate(() => {
+    const body = document.body.scrollWidth;
+    const doc = document.documentElement.scrollWidth;
+    return { vw: window.innerWidth, body, doc };
+  });
+  console.log('B10. 菜单溢出:', JSON.stringify(menuOverflow));
+  t('长按菜单打开 390px 无横向溢出', menuOverflow.body <= menuOverflow.vw && menuOverflow.doc <= menuOverflow.vw, JSON.stringify(menuOverflow));
+  await page.evaluate(() => window.closeCardMenu());
+  await page.waitForTimeout(150);
+
+  // B2a. 【P1】长按标题区域（checkbox-wrapper 内）→ 应弹出菜单。
+  // 当前实现把整个 .checkbox-wrapper（含标题/器械/meta）排除在长按外，
+  // 导致长按标题无效（用户最自然的操作点）；且未拦截 click → 可能误勾选。
+  lp = await longPressTitle(0);
+  const titleMenu = await page.evaluate((exName) => {
+    const menu = !!document.getElementById('card-menu-overlay');
+    const rec = window.getTodayRecord();
+    const misChecked = rec.exercises.filter(x => x.name === exName).some(e => e.completed === true);
+    // 清理：取消误勾选 + 重渲染，避免污染后续
+    rec.exercises.filter(x => x.name === exName).forEach(e => { e.completed = false; });
+    window.saveTodayRecord(rec);
+    window.renderTrainingPage();
+    return { menu, misChecked };
+  }, lp.ex);
+  console.log('B2a. 长按标题:', JSON.stringify(titleMenu));
+  t('长按标题区域应弹菜单（P1：checkbox-wrapper 覆盖标题）', titleMenu.menu === true, 'menu=' + titleMenu.menu + ', 误勾选=' + titleMenu.misChecked);
+  await page.evaluate(() => window.closeCardMenu());
+  await page.waitForTimeout(150);
 
   // ===== V2.0 阶段2 —「问 AI」动作讲解（L1，点按调 AI）=====
   // mock aiFetch：拦截所有 /api/ask 请求，避免真实网络
@@ -120,109 +449,260 @@ const { chromium } = require(pwPath);
     });
   });
 
-  // 7. 点 💡 展开 → 点「问 AI」→ 显示转义后的回复（XSS payload + 换行）
-  aiMock.answer = '动作要领：肩胛收紧，杠贴近胸骨。<script>window.__xss=1</script>\n第二行针对性建议：手腕保持中立位。';
-  const ask1 = await page.evaluate(async () => {
+  // ===== V2.1 轮C — AI💡 自由输入弹层（替代阶段2固定「问 AI」链路）=====
+  // C1. 点💡 → 弹层出现：输入框 + 发送 + 2 快捷 chips + 头部动作名
+  const firstEx = await page.evaluate(() => {
+    const card = document.querySelector('.group-exercise-card[data-ex]');
+    return card ? card.dataset.ex : '';
+  });
+  const c1 = await page.evaluate(async () => {
     const b = document.querySelector('button[title="本地AI建议"]');
     if (!b) return { err: '无💡按钮' };
     b.click();
     await new Promise(r => setTimeout(r, 250));
-    const uid = b.id.replace('ab-', '');
-    const aiBtn = document.getElementById('aai-btn-' + uid);
-    if (!aiBtn) return { err: '无问AI按钮' };
-    aiBtn.click();
-    await new Promise(r => setTimeout(r, 500));
-    const res = document.getElementById('aai-result-' + uid);
+    const ov = document.getElementById('ai-ask-overlay');
+    return {
+      overlay: !!ov,
+      input: !!document.getElementById('ai-ask-input'),
+      send: !!document.getElementById('ai-ask-send'),
+      quicks: ov ? [...ov.querySelectorAll('.ai-ask-quick')].map(x => x.textContent.trim()) : [],
+      title: ov && ov.querySelector('.ai-ask-title') ? ov.querySelector('.ai-ask-title').textContent : '',
+    };
+  });
+  console.log('C1. AI弹层:', JSON.stringify(c1));
+  t('点💡打开 AI 问询弹层', c1.overlay === true && c1.input === true && c1.send === true, c1.err || JSON.stringify(c1));
+  t('弹层含 2 个快捷问法 chip', c1.quicks.length === 2 && c1.quicks.includes('讲解要点') && c1.quicks.includes('建议重量'), JSON.stringify(c1.quicks));
+  t('弹层头部含动作名上下文', (c1.title || '').includes(firstEx), c1.title);
+
+  // C2. 输入自定义问题 → 发送 → mock AI XSS 转义 + 换行→<br>
+  aiMock.answer = '保护手腕：手腕保持中立位。<script>window.__xss2=1</script>\n第二行：先充分热身。';
+  const c2 = await page.evaluate(async () => {
+    const input = document.getElementById('ai-ask-input');
+    if (!input) return { err: '无输入框' };
+    input.value = '这个动作怎么保护手腕';
+    document.getElementById('ai-ask-send').click();
+    await new Promise(r => setTimeout(r, 600));
+    const res = document.getElementById('ai-ask-result');
     return { html: res.innerHTML, text: res.innerText, scriptEls: res.querySelectorAll('script').length };
   });
-  console.log('7. 问AI回复:', JSON.stringify(ask1).slice(0, 200));
-  t('点击「问 AI」显示 AI 回复', (ask1.text || '').includes('动作要领'), ask1.err || ask1.html);
-  t('XSS payload 已转义（无 script 元素）', ask1.scriptEls === 0, 'scriptEls=' + ask1.scriptEls);
-  t('换行渲染为 <br>', (ask1.html || '').includes('<br>'), ask1.html);
-  t('AI 回复无 JS 错误注入', errs.length === 0, errs.join(' | '));
+  console.log('C2. 自由输入回复:', JSON.stringify(c2).slice(0, 200));
+  t('自定义问题回复显示', (c2.text || '').includes('保护手腕'), c2.err || c2.text);
+  t('XSS payload 转义（无 script 元素）', c2.scriptEls === 0, 'scriptEls=' + c2.scriptEls);
+  t('换行渲染为 <br>', (c2.html || '').includes('<br>'), c2.html);
 
-  // 8. 缓存：re-render 后预填显示，重复问不重复调 aiFetch
-  const cacheTest = await page.evaluate(async () => {
-    window.renderTrainingPage();
-    await new Promise(r => setTimeout(r, 400));
+  // C3. prompt 含用户问题原文 + 动作名上下文
+  t('prompt 含用户问题原文', (aiMock.lastContent || '').includes('这个动作怎么保护手腕'), (aiMock.lastContent || '').slice(0, 120));
+  t('prompt 含动作名上下文', (aiMock.lastContent || '').includes(firstEx), (aiMock.lastContent || '').slice(0, 120));
+
+  // C4. 快捷问法 chips：填输入框 + 自动发送；prompt 分支正确
+  aiMock.answer = '讲解要点回答';
+  const c4a = await page.evaluate(async () => {
+    const chip = [...document.querySelectorAll('.ai-ask-quick')].find(x => x.textContent.trim() === '讲解要点');
+    if (!chip) return { err: '无讲解要点chip' };
+    chip.click();
+    await new Promise(r => setTimeout(r, 500));
+    return { inputVal: document.getElementById('ai-ask-input').value };
+  });
+  console.log('C4a. 讲解要点:', JSON.stringify(c4a), 'last=', (aiMock.lastContent || '').slice(0, 60));
+  t('讲解要点 chip 自动填输入框', c4a.inputVal === '讲解要点', JSON.stringify(c4a));
+  t('讲解要点 prompt 走「讲解动作」分支', (aiMock.lastContent || '').includes('讲解动作'), (aiMock.lastContent || '').slice(0, 120));
+  aiMock.answer = '建议重量回答';
+  const c4b = await page.evaluate(async () => {
+    const chip = [...document.querySelectorAll('.ai-ask-quick')].find(x => x.textContent.trim() === '建议重量');
+    if (!chip) return { err: '无建议重量chip' };
+    chip.click();
+    await new Promise(r => setTimeout(r, 500));
+    return { inputVal: document.getElementById('ai-ask-input').value };
+  });
+  console.log('C4b. 建议重量:', JSON.stringify(c4b), 'last=', (aiMock.lastContent || '').slice(0, 60));
+  t('建议重量 chip 自动填输入框', c4b.inputVal === '建议重量', JSON.stringify(c4b));
+  t('建议重量 prompt 含「建议重量」', (aiMock.lastContent || '').includes('建议重量'), (aiMock.lastContent || '').slice(0, 120));
+
+  // C5. 缓存：同问题二次问（关弹层重开）→ 不重复调 aiFetch；写 name##question 键
+  const countBefore5 = aiMock.count;
+  await page.evaluate(() => window.closeAIActionAsk());
+  await page.waitForTimeout(150);
+  aiMock.answer = '缓存命中不请求';
+  const c5 = await page.evaluate(async (ex) => {
     const b = document.querySelector('button[title="本地AI建议"]');
-    if (!b) return { err: 're-render 后无💡按钮' };
-    const uid = b.id.replace('ab-', '');
-    const card = document.getElementById('advice-' + uid);
-    if (card && card.style.display === 'none') { b.click(); await new Promise(r => setTimeout(r, 250)); }
-    const res = document.getElementById('aai-result-' + uid);
-    const store = JSON.parse(localStorage.getItem('fitness_ai_action_cache') || '{}');
-    return { resText: res ? res.innerText : '', cacheKeys: Object.keys(store).length, first: store[Object.keys(store)[0]] || {} };
-  });
-  console.log('8. 缓存:', JSON.stringify({ resText: (cacheTest.resText || '').slice(0, 30), cacheKeys: cacheTest.cacheKeys }));
-  t('re-render 后缓存预填显示回复', (cacheTest.resText || '').includes('动作要领'), cacheTest.resText);
-  t('缓存已写入 localStorage', cacheTest.cacheKeys >= 1, 'keys=' + cacheTest.cacheKeys);
-  t('缓存带时间戳', typeof cacheTest.first.ts === 'number', JSON.stringify(cacheTest.first));
-  t('重复问不重复调 aiFetch（count 仍=1）', aiMock.count === 1, 'count=' + aiMock.count);
-
-  // 9. 失败路径：mock 返回 success:false → 显示错误 + 重试按钮（换第二个动作，避免缓存命中）
-  aiMock.success = false;
-  const failTest = await page.evaluate(async () => {
-    const btns = document.querySelectorAll('button[title="本地AI建议"]');
-    const b = btns[1];
-    if (!b) return { err: '无第二个💡按钮' };
-    const uid = b.id.replace('ab-', '');
-    const card = document.getElementById('advice-' + uid);
-    if (card && card.style.display === 'none') { b.click(); await new Promise(r => setTimeout(r, 200)); }
-    const aiBtn = document.getElementById('aai-btn-' + uid);
-    if (!aiBtn) return { err: '无问AI按钮' };
-    aiBtn.click();
+    if (!b) return { err: '无💡按钮' };
+    b.click();
+    await new Promise(r => setTimeout(r, 250));
+    const input = document.getElementById('ai-ask-input');
+    input.value = '这个动作怎么保护手腕';
+    document.getElementById('ai-ask-send').click();
     await new Promise(r => setTimeout(r, 400));
-    const res = document.getElementById('aai-result-' + uid);
-    const errEl = res.querySelector('.advice-ai-err');
-    return { html: res.innerHTML, hasRetry: !!res.querySelector('.advice-ai-retry'), errText: errEl ? errEl.textContent : '' };
-  });
-  console.log('9. 失败重试:', JSON.stringify(failTest));
-  t('失败显示错误信息', (failTest.errText || '').includes('模拟后端失败'), failTest.errText);
-  t('失败显示重试按钮', failTest.hasRetry === true, failTest.html);
+    const res = document.getElementById('ai-ask-result');
+    const store = JSON.parse(localStorage.getItem('fitness_ai_action_cache') || '{}');
+    const keys = Object.keys(store);
+    return { text: res.innerText, hasQKey: keys.indexOf(ex + '##这个动作怎么保护手腕') >= 0 };
+  }, firstEx);
+  console.log('C5. 缓存:', JSON.stringify({ count: aiMock.count, hasQKey: c5.hasQKey, text: (c5.text || '').slice(0, 30) }));
+  t('同问题二次问不重复调 aiFetch', aiMock.count === countBefore5, 'count=' + aiMock.count + ' before=' + countBefore5);
+  t('缓存写入 name##question 键', c5.hasQKey === true, JSON.stringify(c5));
+  t('二次问命中缓存显示回复', (c5.text || '').includes('保护手腕'), c5.text);
 
-  // 10. 加载中转圈：mock 延迟 → 加载中出现「AI 分析中」样式，延迟后显示结果
+  // C6. 失败 → 错误 + 重试按钮 → 点重试复用同问题成功
+  aiMock.success = false;
+  const c6 = await page.evaluate(async () => {
+    const input = document.getElementById('ai-ask-input');
+    input.value = '失败测试问题';
+    document.getElementById('ai-ask-send').click();
+    await new Promise(r => setTimeout(r, 400));
+    const res = document.getElementById('ai-ask-result');
+    const errEl = res.querySelector('.advice-ai-err');
+    return { errText: errEl ? errEl.textContent : '', hasRetry: !!res.querySelector('.advice-ai-retry'), html: res.innerHTML };
+  });
+  console.log('C6. 失败:', JSON.stringify({ errText: (c6.errText || '').slice(0, 30), hasRetry: c6.hasRetry }));
+  t('失败显示错误信息', (c6.errText || '').includes('模拟后端失败'), c6.errText);
+  t('失败显示重试按钮', c6.hasRetry === true, c6.html);
   aiMock.success = true;
-  aiMock.answer = '延迟后的讲解：肘部贴紧，控制离心。';
+  aiMock.answer = '重试后的回答';
+  const c6r = await page.evaluate(async () => {
+    const retry = document.querySelector('#ai-ask-result .advice-ai-retry');
+    if (!retry) return { err: '无重试按钮' };
+    retry.click();
+    await new Promise(r => setTimeout(r, 500));
+    const res = document.getElementById('ai-ask-result');
+    return { text: res.innerText, hasRetry: !!res.querySelector('.advice-ai-retry') };
+  });
+  console.log('C6r. 重试:', JSON.stringify(c6r));
+  t('重试后显示回答', (c6r.text || '').includes('重试后的回答'), c6r.err || c6r.text);
+  t('重试后错误/重试按钮消失', c6r.hasRetry === false, JSON.stringify(c6r));
+
+  // C7. 加载转圈
+  aiMock.answer = '加载测试的回答';
   aiMock.delay = 600;
-  const loadingTest = await page.evaluate(async () => {
-    const btns = document.querySelectorAll('button[title="本地AI建议"]');
-    const b = btns[2] || btns[1];
-    const uid = b.id.replace('ab-', '');
-    const card = document.getElementById('advice-' + uid);
-    if (card && card.style.display === 'none') { b.click(); await new Promise(r => setTimeout(r, 200)); }
-    const aiBtn = document.getElementById('aai-btn-' + uid);
-    if (!aiBtn) return { err: '无问AI按钮' };
-    aiBtn.click();
+  const c7 = await page.evaluate(async () => {
+    const input = document.getElementById('ai-ask-input');
+    input.value = '加载测试';
+    document.getElementById('ai-ask-send').click();
     await new Promise(r => setTimeout(r, 150));
-    const res = document.getElementById('aai-result-' + uid);
+    const res = document.getElementById('ai-ask-result');
     const loadingEl = res.querySelector('.advice-ai-loading');
     const loadingText = loadingEl ? loadingEl.textContent : '';
     await new Promise(r => setTimeout(r, 900));
     return { hasLoading: !!loadingEl, loadingText, finalText: res.innerText };
   });
-  console.log('10. 转圈:', JSON.stringify({ hasLoading: loadingTest.hasLoading, text: (loadingTest.loadingText || '').slice(0, 20) }));
-  t('加载中显示「AI 分析中」转圈', loadingTest.hasLoading === true && (loadingTest.loadingText || '').includes('AI 分析中'), loadingTest.loadingText);
-  t('延迟后显示结果', (loadingTest.finalText || '').includes('延迟后的讲解'), loadingTest.finalText);
+  console.log('C7. 加载:', JSON.stringify({ hasLoading: c7.hasLoading, text: (c7.loadingText || '').slice(0, 20) }));
+  t('加载中显示「AI 分析中」转圈', c7.hasLoading === true && (c7.loadingText || '').includes('AI 分析中'), c7.loadingText);
+  t('延迟后显示结果', (c7.finalText || '').includes('加载测试的回答'), c7.finalText);
 
-  // 11. 390px 无横向溢出（「问 AI」按钮宽 100% 不破版）
-  const overflow2 = await page.evaluate(() => {
+  // C8. 空输入点发送 → toast「先输入问题」且不调 AI
+  const countBefore8 = aiMock.count;
+  const c8 = await page.evaluate(async () => {
+    const input = document.getElementById('ai-ask-input');
+    input.value = '   ';
+    document.getElementById('ai-ask-send').click();
+    await new Promise(r => setTimeout(r, 250));
+    return { toast: document.body.textContent.includes('先输入问题') };
+  });
+  console.log('C8. 空输入:', JSON.stringify(c8));
+  t('空输入点发送 → toast「先输入问题」', c8.toast === true, JSON.stringify(c8));
+  t('空输入不调 AI', aiMock.count === countBefore8, 'count=' + aiMock.count + ' before=' + countBefore8);
+
+  // C9. ✕ 关闭 → 再开另一卡弹层正常（ctx 重置）
+  const c9 = await page.evaluate(async () => {
+    const close = document.querySelector('.ai-ask-close');
+    if (close) close.click();
+    await new Promise(r => setTimeout(r, 200));
+    const removed = !document.getElementById('ai-ask-overlay');
+    const btns = document.querySelectorAll('button[title="本地AI建议"]');
+    const b2 = btns[1] || btns[0];
+    if (!b2) return { removed, reopened: false, title2: '', name2: '' };
+    const uid2 = b2.id.replace('ab-', '');
+    const card2 = document.getElementById('card-' + uid2);
+    const name2 = card2 ? card2.dataset.ex : '';
+    b2.click();
+    await new Promise(r => setTimeout(r, 250));
+    const ov = document.getElementById('ai-ask-overlay');
+    const title2 = ov && ov.querySelector('.ai-ask-title') ? ov.querySelector('.ai-ask-title').textContent : '';
+    window.closeAIActionAsk();
+    return { removed, reopened: !!ov, title2, name2 };
+  });
+  console.log('C9. 关闭重开:', JSON.stringify(c9));
+  t('✕ 关闭移除弹层', c9.removed === true, JSON.stringify(c9));
+  t('再开另一卡弹层正常(头部换名)', c9.reopened === true && (c9.title2 || '').indexOf(c9.name2 || '') >= 0, JSON.stringify(c9));
+
+  // C10. 弹层打开 390px 无横向溢出
+  const c10 = await page.evaluate(async () => {
+    const b = document.querySelector('button[title="本地AI建议"]');
+    if (b) b.click();
+    await new Promise(r => setTimeout(r, 250));
     const body = document.body.scrollWidth;
     const doc = document.documentElement.scrollWidth;
+    window.closeAIActionAsk();
     return { vw: window.innerWidth, body, doc };
   });
-  console.log('11. 横向宽度:', JSON.stringify(overflow2));
-  t('追加后 390px 无横向溢出', overflow2.body <= overflow2.vw && overflow2.doc <= overflow2.vw, JSON.stringify(overflow2));
+  console.log('C10. 弹层溢出:', JSON.stringify(c10));
+  t('AI 弹层打开 390px 无横向溢出', c10.body <= c10.vw && c10.doc <= c10.vw, JSON.stringify(c10));
+
+  // C11. 本地建议卡内「🤖 问 AI」按钮同样打开弹层（任务指定第二入口）
+  const c11 = await page.evaluate(async () => {
+    const sum = document.querySelector('.advice-summary');
+    if (!sum) return { err: '无折叠摘要' };
+    sum.click();
+    await new Promise(r => setTimeout(r, 200));
+    const aiBtn = document.querySelector('.advice-ai-btn');
+    if (!aiBtn) return { err: '无问AI按钮', overlay: !!document.getElementById('ai-ask-overlay') };
+    aiBtn.click();
+    await new Promise(r => setTimeout(r, 250));
+    const opened = !!document.getElementById('ai-ask-overlay');
+    window.closeAIActionAsk();
+    if (sum) sum.click();
+    return { opened };
+  });
+  console.log('C11. 卡内问AI:', JSON.stringify(c11));
+  t('本地卡内「🤖 问 AI」打开弹层', c11.opened === true, JSON.stringify(c11));
+
+  // ===== V2.1 轮C — 图标统一标准 =====
+  const iconInfo = await page.evaluate(async () => {
+    const sum = document.querySelector('.advice-summary');
+    if (sum) { sum.click(); await new Promise(r => setTimeout(r, 200)); }
+    const card = document.querySelector('.group-exercise-card[data-ex]');
+    const btns = card ? [...card.querySelectorAll('.icon-btn')] : [];
+    const aiBtn = btns.find(b => b.textContent === '💡');
+    const favBtn = btns.find(b => b.textContent === '☆' || b.textContent === '⭐');
+    const cb = card ? card.querySelector('.checkbox-custom') : null;
+    const cw = card ? card.querySelector('.checkbox-wrapper') : null;
+    const aai = document.querySelector('.advice-ai-btn');
+    const rect = el => { const r = el.getBoundingClientRect(); return { w: r.width, h: r.height }; };
+    const font = el => parseFloat(getComputedStyle(el).fontSize);
+    const info = {
+      iconCount: btns.length,
+      aiFont: aiBtn ? font(aiBtn) : 0, aiRect: aiBtn ? rect(aiBtn) : { w: 0, h: 0 },
+      favFont: favBtn ? font(favBtn) : 0, favRect: favBtn ? rect(favBtn) : { w: 0, h: 0 },
+      cbW: cb ? rect(cb).w : 0,
+      cwH: cw ? rect(cw).h : 0,
+      aaiH: aai ? rect(aai).h : 0,
+    };
+    if (sum) sum.click();
+    return info;
+  });
+  console.log('I. 图标:', JSON.stringify(iconInfo));
+  t('主卡 icon-btn ≥ 2（收藏+AI）', iconInfo.iconCount >= 2, 'n=' + iconInfo.iconCount);
+  t('AI💡 字号 ≥ 28px', iconInfo.aiFont >= 28, 'font=' + iconInfo.aiFont);
+  t('AI💡 触控区 ≥ 44px', iconInfo.aiRect.w >= 44 && iconInfo.aiRect.h >= 44, JSON.stringify(iconInfo.aiRect));
+  t('☆ 字号 ≥ 28px', iconInfo.favFont >= 28, 'font=' + iconInfo.favFont);
+  t('☆ 触控区 ≥ 44px', iconInfo.favRect.w >= 44 && iconInfo.favRect.h >= 44, JSON.stringify(iconInfo.favRect));
+  t('勾选框 22-24px', iconInfo.cbW >= 22 && iconInfo.cbW <= 24, 'cbW=' + iconInfo.cbW);
+  t('勾选框触控区 ≥ 44px', iconInfo.cwH >= 44, 'cwH=' + iconInfo.cwH);
+  t('问AI按钮 ≥ 40px', iconInfo.aaiH >= 40, 'aaiH=' + iconInfo.aaiH);
 
   // ===== V2.0 阶段3 — AI 教练浮层（底部常驻入口 + 上下文感知对话）=====
-  // 12. FAB 存在且训练页可见
+  // 12. FAB 存在且为 AI 字母徽章（V2.1 轮C：text='AI' + nav-ai/nav-ai-lg，accent 底色）
   const fabInfo = await page.evaluate(() => {
     const fab = document.getElementById('ai-coach-fab');
-    return fab ? { text: fab.textContent, display: getComputedStyle(fab).display } : null;
+    if (!fab) return null;
+    const cs = getComputedStyle(fab);
+    return { text: (fab.textContent || '').trim(), cls: fab.className, display: cs.display, bg: cs.backgroundColor };
   });
   console.log('12. FAB:', JSON.stringify(fabInfo));
-  t('FAB 存在且文案为 AI 教练', fabInfo && (fabInfo.text || '').includes('AI 教练'), JSON.stringify(fabInfo));
-  t('FAB 训练页可见(flex)', fabInfo && fabInfo.display === 'flex', JSON.stringify(fabInfo));
+  t('FAB 存在且文案为 AI 字母', fabInfo && fabInfo.text === 'AI', JSON.stringify(fabInfo));
+  t('FAB 带 nav-ai/nav-ai-lg 徽章类', fabInfo && fabInfo.cls.includes('nav-ai') && fabInfo.cls.includes('nav-ai-lg'), fabInfo && fabInfo.cls);
+  // position:fixed 会把 inline-flex 块化为 flex（CSS Display 3），两者皆视为徽章可见
+  t('FAB 训练页可见(flex/inline-flex)', fabInfo && (fabInfo.display === 'flex' || fabInfo.display === 'inline-flex'), JSON.stringify(fabInfo));
+  t('FAB 徽章 accent 底色(非透明)', fabInfo && fabInfo.bg && fabInfo.bg !== 'rgba(0, 0, 0, 0)', fabInfo && fabInfo.bg);
 
   // 13. 点击 FAB 打开浮层 → 欢迎消息 + 输入框 maxlength=300
   const openInfo = await page.evaluate(() => {
@@ -339,7 +819,7 @@ const { chromium } = require(pwPath);
     }, 400));
   });
   console.log('20. 回训练页:', JSON.stringify(backInfo));
-  t('回训练页 FAB 恢复(flex)', backInfo.fabDisplay === 'flex', JSON.stringify(backInfo));
+  t('回训练页 FAB 恢复(flex/inline-flex)', backInfo.fabDisplay === 'flex' || backInfo.fabDisplay === 'inline-flex', JSON.stringify(backInfo));
 
   // 21. 浮层打开时 390px 无横向溢出
   const overflow3 = await page.evaluate(async () => {
@@ -363,9 +843,9 @@ const { chromium } = require(pwPath);
     await new Promise(r => setTimeout(r, 200));
   });
   const pickerInfo = await page.evaluate(async () => {
-    const btn = document.querySelector('button[title="替换/新增动作"]');
-    if (!btn) return { err: '无➕按钮' };
-    btn.click();
+    const card = [...document.querySelectorAll('.group-exercise-card[data-ex][data-phase="main"]')][0];
+    if (!card) return { err: '无主组动作卡' };
+    window.openExercisePicker(card.dataset.sec, card.dataset.grp, card.dataset.groupid, card.dataset.region, card.dataset.phase);
     await new Promise(r => setTimeout(r, 300));
     const input = document.getElementById('ai-pick-input');
     return {
@@ -431,8 +911,9 @@ const { chromium } = require(pwPath);
 
   // 24. AI 返回库外名 → 被过滤 → 兜底错误 + 重试按钮
   await page.evaluate(async () => {
-    const btn = document.querySelector('button[title="替换/新增动作"]');
-    if (btn) btn.click();
+    const card = [...document.querySelectorAll('.group-exercise-card[data-ex][data-phase="main"]')][0];
+    if (!card) return;
+    window.openExercisePicker(card.dataset.sec, card.dataset.grp, card.dataset.groupid, card.dataset.region, card.dataset.phase);
     await new Promise(r => setTimeout(r, 300));
   });
   aiMock.success = true;
@@ -515,6 +996,115 @@ const { chromium } = require(pwPath);
   });
   console.log('28. 选择器溢出:', JSON.stringify(overflow4));
   t('选择器打开 390px 无横向溢出', overflow4.body <= overflow4.vw && overflow4.doc <= overflow4.vw, JSON.stringify(overflow4));
+
+  // ===== V2.1 轮D — 记录板块：重量×组数×次数 =====
+  // 清理阶段4 残留 overlay（ex-picker 选择器 / AI 弹层 / 长按菜单 / 教练浮层），避免遮挡卡片影响长按
+  await page.evaluate(() => {
+    ['ex-picker-overlay', 'ai-ask-overlay', 'card-menu-overlay', 'coach-overlay'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
+    if (window.closeAICoach) { try { window.closeAICoach(); } catch (e) {} }
+    window.renderTrainingPage();
+  });
+  await page.waitForTimeout(300);
+
+  // D1. 旧数据兼容：历史只有 weight/reps 无 sets → 长按菜单组数输入为空、不报错
+  await page.evaluate(() => {
+    // 与 longPressCard(0) 一致：取第一张任意卡（可能为热身/拉伸卡），确保 recEx 能匹配
+    const card = [...document.querySelectorAll('.group-exercise-card[data-ex]')][0];
+    const gid = card.dataset.groupid, exName = card.dataset.ex;
+    const rec = window.getTodayRecord();
+    rec.exercises = [{ name: exName, groupId: gid, weight: 60, reps: 12 }]; // 无 sets 的旧数据
+    rec.groupSelections = { [gid]: exName };
+    window.saveTodayRecord(rec);
+    window.renderTrainingPage();
+    return { ex: rec.exercises[0] };
+  });
+  await page.waitForTimeout(300);
+  lp = await longPressCard(0);
+  const d1 = await page.evaluate(async () => {
+    const items = [...document.querySelectorAll('#card-menu-overlay .card-menu-item')];
+    const w = items.find(i => i.textContent.includes('组数'));
+    if (w) w.click();
+    await new Promise(r => setTimeout(r, 150));
+    const row = document.querySelector('.card-menu-weight');
+    const inputs = row ? row.querySelectorAll('.weight-input-sm') : [];
+    const setsInput = inputs.length >= 2 ? inputs[1] : null;
+    const repsInput = inputs.length >= 3 ? inputs[2] : null;
+    const out = {
+      inputCount: inputs.length,
+      setsVal: setsInput ? setsInput.value : 'n/a',
+      repsVal: repsInput ? repsInput.value : 'n/a',
+      weightVal: inputs[0] ? inputs[0].value : 'n/a',
+      jsError: false,
+    };
+    window.closeCardMenu();
+    return out;
+  });
+  console.log('D1. 旧数据兼容:', JSON.stringify(d1));
+  t('旧数据(无sets)长按菜单不报错、组数输入为空', d1.inputCount === 3 && d1.setsVal === '' && d1.weightVal === '60', JSON.stringify(d1));
+
+  // D2. AI 复盘 report：有 weight/sets/reps → 「kg × N组×N次」+ 今日总训练量
+  const d2 = await page.evaluate(async () => {
+    const rec = window.getTodayRecord();
+    const card = [...document.querySelectorAll('.group-exercise-card[data-ex][data-phase="main"]')][0];
+    const gid = card.dataset.groupid, exName = card.dataset.ex;
+    rec.exercises = [{ name: exName, groupId: gid, weight: 60, sets: 3, reps: 12, completed: true }];
+    rec.groupSelections = { [gid]: exName };
+    window.saveTodayRecord(rec);
+    window.renderTrainingPage();
+    return { gid, exName };
+  });
+  await page.waitForTimeout(300);
+  aiMock.success = true; aiMock.answer = 'OK'; aiMock.delay = 0;
+  await page.evaluate(() => window.submitForRating());
+  await page.waitForTimeout(600);
+  const report2 = aiMock.lastContent || '';
+  console.log('D2. AI复盘 report:', report2.replace(/\n/g, '\\n').slice(0, 220));
+  t('report 含「60kg × 3组×12次」完整记录', report2.includes('60kg × 3组×12次'), report2.slice(0, 120));
+  t('report 含「今日总训练量：2160 kg」', report2.includes('今日总训练量：2160 kg'), report2.slice(0, 200));
+
+  // D3. 旧数据(仅 weight/reps 无 sets) → report 用旧格式、无训练量行、不报错
+  await page.evaluate(() => {
+    const rec = window.getTodayRecord();
+    const e = rec.exercises[0];
+    delete e.sets; // 模拟旧数据
+    window.saveTodayRecord(rec);
+  });
+  await page.evaluate(() => window.submitForRating());
+  await page.waitForTimeout(600);
+  const report3 = aiMock.lastContent || '';
+  console.log('D3. 旧数据 report:', report3.replace(/\n/g, '\\n').slice(0, 160));
+  t('旧数据 report 用「60kg」旧格式', report3.includes(' 60kg') && !report3.includes('× 3组×12次'), report3.slice(0, 120));
+  t('旧数据(组数0) 无今日总训练量行', !report3.includes('今日总训练量'), report3.slice(0, 160));
+
+  // D4. 历史详情：动作信息带 组×次数（有则显示）
+  const d4 = await page.evaluate(() => {
+    const card = [...document.querySelectorAll('.group-exercise-card[data-ex][data-phase="main"]')][0];
+    const gid = card.dataset.groupid, exName = card.dataset.ex;
+    const records = window.getRecords();
+    records.push({
+      id: 'hist-d4', date: '2026-08-01', type: 'push', completed: true,
+      exercises: [{ name: exName, groupId: gid, weight: 60, sets: 3, reps: 12, completed: true }],
+      groupSelections: { [gid]: exName },
+    });
+    window.saveRecords(records);
+    window.viewHistoryRecord('hist-d4');
+    return { gid, exName };
+  });
+  await page.waitForTimeout(300);
+  const d4content = await page.evaluate(() => document.getElementById('training-content').textContent);
+  const d4check = await page.evaluate(() => {
+    window.backToTraining();
+    const records = window.getRecords();
+    window.saveRecords(records.filter(r => r.id !== 'hist-d4'));
+    window.renderTrainingPage();
+    return true;
+  });
+  console.log('D4. 历史详情含组次:', d4content.includes('3组×12次'), '| 含重量:', d4content.includes('60kg'));
+  t('历史详情动作行带「3组×12次」', d4content.includes('3组×12次'), d4content.slice(0, 200));
+  t('历史详情含重量 60kg', d4content.includes('60kg'), d4content.slice(0, 200));
 
   console.log('=== 控制台错误:', errs.length ? errs.join('\n') : '无');
   console.log(`\n结果: ${pass} 通过 / ${fail} 失败`);

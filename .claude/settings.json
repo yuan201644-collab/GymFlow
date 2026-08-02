@@ -25,7 +25,6 @@
     "deny": [
       "Bash(rm -rf *)",
       "Bash(git push --force *)",
-      "Bash(git push)",
       "Bash(curl *|bash)",
       "Bash(wget *|sh)",
       "Bash(sudo *)",

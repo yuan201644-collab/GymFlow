@@ -7,7 +7,7 @@
 <p align="center"><b>全面 AI 化健身追踪 · 训练页 AI 教练</b></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/版本-v2.0.0-green?style=flat-square">
+  <img src="https://img.shields.io/badge/版本-v2.1.0-green?style=flat-square">
   <img src="https://img.shields.io/badge/AI-GLM4--Flash-blue?style=flat-square">
   <img src="https://img.shields.io/badge/PWA+APK-双端-orange?style=flat-square">
   <img src="https://img.shields.io/badge/数据-本地存储-red?style=flat-square">
@@ -25,6 +25,19 @@ GymFlow 是一个手机端 AI 健身追踪工具。**打开即用，数据本地
 </p>
 
 ---
+
+## v2.1.0 核心亮点
+
+### 👆 左右滑屏切换主页面
+- 训练/AI/功能/我的 4 个主页面左右滑动切换（左滑下一个 / 右滑上一个）
+- 弹层打开、竖向滚动、横向滚动区不误触；桌面鼠标拖拽可测
+
+### 🎨 动作卡片 UI 重构
+- **本地建议折叠摘要**：动作卡默认显示 要点·建议重量·休息 摘要，点开展开完整本地建议卡（动作要领并入）
+- **表面精简 + 长按菜单**：卡片只留 勾选✓ + 收藏☆ + AI💡；跳过/替换/重量收进长按菜单（今日删除 / 永久删除 / 替换动作）
+- **AI 交互升级**：💡 建议改为自由输入框查询（+ 快捷问法），训练页 AI 教练入口改 AI 字母徽章
+- **图标统一标准**：卡片内 28-32px / 勾选 22-24px / 功能 40px，触控区 ≥44px
+- **记录板块升级**：训练记录为 重量(kg) × 组数 × 每组次数，AI 复盘纳入完整记录 + 今日总训练量
 
 ## v2.0.0 核心亮点
 

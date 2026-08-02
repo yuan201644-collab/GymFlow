@@ -318,6 +318,7 @@ function sanitizeRecords(records) {
         skipped: !!e.skipped,
         weight: isFinite(parseFloat(e.weight)) ? parseFloat(e.weight) : 0,
         reps: isFinite(parseInt(e.reps)) ? parseInt(e.reps) : 0,
+        sets: isFinite(parseInt(e.sets)) ? parseInt(e.sets) : 0,
         custom: !!e.custom,
       }));
     }
@@ -395,4 +396,4 @@ function deletePlan(id) {
 
 // ========== 版本管理 ==========
 
-const APP_VERSION = '2.0';
+const APP_VERSION = '2.1';

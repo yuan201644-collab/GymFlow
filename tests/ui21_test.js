@@ -17,11 +17,11 @@ const { chromium } = require(pwPath);
   console.log('1. AI 导航:', navAI);
   t('导航 AI 用字母徽章无🤖', navAI.includes('nav-ai') && navAI.includes('>AI<') && !navAI.includes('🤖'), navAI);
 
-  // 2. 页面 🤖 均来自功能按钮（问AI按钮/FAB），无游离残留
-  //   V2.0 阶段2/3 起训练页每卡有「🤖 问 AI」+ 底部「🤖 AI 教练」FAB，属预期 UI
+  // 2. 页面 🤖 均来自功能按钮（问AI按钮），无游离残留
+  //   V2.1 轮C：FAB 换为 AI 字母徽章（不含 🤖），故只计 .advice-ai-btn
   const robotInfo = await page.evaluate(() => {
     const all = document.body.textContent.split('🤖').length - 1;
-    const feature = document.querySelectorAll('.advice-ai-btn').length + (document.getElementById('ai-coach-fab') ? 1 : 0);
+    const feature = document.querySelectorAll('.advice-ai-btn').length;
     return { all, feature };
   });
   t('页面 🤖 均在功能按钮内（无游离残留）', robotInfo.all > 0 && robotInfo.all === robotInfo.feature, JSON.stringify(robotInfo));
@@ -45,11 +45,15 @@ const { chromium } = require(pwPath);
   const daySwitchIcons = await page.evaluate(() => [...document.querySelectorAll('.day-switch-btn, [class*=day]')].slice(0,8).map(e => e.textContent.trim().slice(0,3)).join(','));
   console.log('4. 日切换器图标:', daySwitchIcons);
 
-  // 5. 弹层动画类：打开替换选择器
+  // 5. 弹层动画类：打开替换选择器（V2.1 轮B：组头 ➕ 已移除，直调 openExercisePicker）
   const overlayAnim = await page.evaluate(async () => {
-    const gh = [...document.querySelectorAll('.group-header')].find(h => h.textContent.includes('胸大肌'));
-    const btn = gh.querySelector('.group-right button');
-    btn.click();
+    const s = window.getSettings();
+    if (!s.userInfo) s.userInfo = {};
+    s.userInfo.equipment = '商业健身房(器械很全)';
+    window.saveSettings(s);
+    const card = [...document.querySelectorAll('.group-exercise-card[data-ex][data-phase="main"]')][0];
+    if (!card) return { err: 'no-main-card' };
+    window.openExercisePicker(card.dataset.sec, card.dataset.grp, card.dataset.groupid, card.dataset.region, card.dataset.phase);
     await new Promise(r => setTimeout(r, 250));
     const ov = document.getElementById('ex-picker-overlay');
     const sheet = ov ? ov.querySelector('.sheet-fadeUp') : null;
@@ -61,12 +65,12 @@ const { chromium } = require(pwPath);
   console.log('5. 替换选择器动画:', JSON.stringify(overlayAnim));
   t('弹层 overlay-fade + sheet-fadeUp', overlayAnim.hasFade && overlayAnim.hasSheet);
 
-  // 6. 按钮 btn-pop
+  // 6. 按钮 btn-pop（V2.1 轮B：组头➕与卡片⏭已移入长按菜单，表面仅剩 💡 带 btn-pop）
   await page.evaluate(() => window.renderTrainingPage());
   await page.waitForTimeout(300);
   const btnPop = await page.evaluate(() => document.querySelectorAll('.btn-pop').length);
   console.log('6. btn-pop 按钮数:', btnPop);
-  t('➕/⏭ 有 btn-pop', btnPop >= 2, 'btn-pop=' + btnPop);
+  t('表面 btn-pop 仅剩 💡（>=1）', btnPop >= 1, 'btn-pop=' + btnPop);
 
   // 7. AI 顾问页徽章
   await page.evaluate(() => { try { window.navigateTo && window.navigateTo('ai'); } catch(e) {} });

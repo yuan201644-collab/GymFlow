@@ -46,7 +46,7 @@ function navigateTo(page) {
   if (bar) bar.style.display = (page === 'training') ? 'flex' : 'none';
   // AI 教练浮层入口仅训练页显示；切离训练页时收起浮层（防浮层残留其它页）
   const fab = document.getElementById('ai-coach-fab');
-  if (fab) fab.style.display = (page === 'training') ? 'flex' : 'none';
+  if (fab) fab.style.display = (page === 'training') ? 'inline-flex' : 'none';
   if (page !== 'training' && typeof closeAICoach === 'function') closeAICoach();
 
   switch (page) {

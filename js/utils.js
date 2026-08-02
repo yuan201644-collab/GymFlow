@@ -202,6 +202,24 @@ function matchDbExercise(name) {
   return cands[0] || null;
 }
 
+// ============================================
+// 训练量计算（V2.1 轮D，纯函数，供 AI 复盘与历史显示复用）
+// ============================================
+// 单动作训练量 = 重量×组数×每组次数（任一缺失/非正 → 0）
+function calcExerciseVolume(weight, sets, reps) {
+  const w = parseFloat(weight) || 0, s = parseInt(sets) || 0, r = parseInt(reps) || 0;
+  return (w > 0 && s > 0 && r > 0) ? w * s * r : 0;
+}
+// 今日总训练量 = Σ 各动作训练量
+function calcTrainingVolume(exercises) {
+  return (exercises || []).reduce((sum, e) => sum + calcExerciseVolume(e && e.weight, e && e.sets, e && e.reps), 0);
+}
+// 组×次数格式化：无效 → ''；有效 → '3组×12次'（供 report 与历史显示复用，保证格式一致）
+function formatSetsReps(sets, reps) {
+  const s = parseInt(sets) || 0, r = parseInt(reps) || 0;
+  return (s > 0 && r > 0) ? s + '组×' + r + '次' : '';
+}
+
 // action: {name, tip, sets, equipment}  record: 今日训练记录
 // ctx: {equipment, phase, region, restSec, records, db, isAvailable}（records/db/isAvailable 可注入，便于单测）
 function getActionAdvice(action, record, ctx) {
@@ -221,7 +239,10 @@ function getActionAdvice(action, record, ctx) {
     const lastRec = done[done.length - 1].exercises.find(e => e.name === action.name && e.weight);
     if (lastRec && lastRec.weight) {
       const w = parseFloat(lastRec.weight) || 0;
-      weight = { last: w, suggest: w + 2.5, text: '上次 ' + w + 'kg，建议 ' + (w + 2.5) + 'kg' };
+      const sr = formatSetsReps(lastRec.sets, lastRec.reps);
+      weight = sr
+        ? { last: w, suggest: w + 2.5, text: '上次 ' + w + 'kg × ' + sr + '，建议 ' + (w + 2.5) + 'kg' }
+        : { last: w, suggest: w + 2.5, text: '上次 ' + w + 'kg，建议 ' + (w + 2.5) + 'kg' };
     }
   }
 
@@ -248,4 +269,12 @@ function getActionAdvice(action, record, ctx) {
   }).slice(0, 2).map(ex => ({ name: ex.name, equipment: ex.equipment, region: ex.region, mechanics: ex.mechanics, difficulty: ex.difficulty }));
 
   return { points, weight, rest, replacements };
+}
+
+// 动作卡折叠摘要（V2.1 轮A）：💡 要点 · 建议60kg · 休息120s
+function buildAdviceSummary(advice) {
+  if (!advice) return '💡 本地建议';
+  const w = advice.weight && advice.weight.suggest != null ? '建议' + advice.weight.suggest + 'kg' : '轻重量起步';
+  const r = advice.rest ? '休息' + advice.rest.sec + 's' : '';
+  return '💡 要点 · ' + w + (r ? ' · ' + r : '');
 }

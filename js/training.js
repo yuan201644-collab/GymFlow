@@ -866,7 +866,7 @@ function renderTrainingPage() {
 
       html += `<div class="group-header ${groupDone?'group-done':''}" onclick="toggleGroup('${secIdx}-${grpIdx}')" id="gh-${secIdx}-${grpIdx}">`;
       html += `<span class="group-target-label">${groupDone?'✅':'🎯'} ${group.label}</span>`;
-      html += `<div class="group-right"><span class="group-pick-hint">${pickHint}</span>${(record.type!=='rest'&&(section.type==='main'||section.type==='warmup'||section.type==='stretch'))?`<button class="fav-star-btn btn-pop" onclick="event.stopPropagation();openExercisePicker('${secIdx}','${grpIdx}','${groupId}','${(group.region||'').replace(/'/g,"\\'")}','${section.type}')" title="替换/新增动作">➕</button>`:''}<span class="group-expand-icon" id="ge-${secIdx}-${grpIdx}">▼</span></div></div>`;
+      html += `<div class="group-right"><span class="group-pick-hint">${pickHint}</span><span class="group-expand-icon" id="ge-${secIdx}-${grpIdx}">▼</span></div></div>`;
 
       html += `<div class="group-exercises" id="gx-${secIdx}-${grpIdx}">`;
 
@@ -881,8 +881,6 @@ function renderTrainingPage() {
         const exRec = record.exercises.find(e => e.name === ex.name && e.groupId === groupId);
         const exDone = exRec ? exRec.completed : false;
         const exSkipped = exRec ? exRec.skipped : false;
-        const exWeight = exRec ? (exRec.weight || '') : '';
-        const exReps = exRec ? (exRec.reps || '') : '';
         const isSelected = ex.name === currentEx.name;
         const uid = secIdx + '-' + grpIdx + '-' + exIdx;
 
@@ -890,17 +888,14 @@ function renderTrainingPage() {
         const advice = getActionAdvice(ex, record, Object.assign({ phase: section.type, region: group.region || '' }, adviceCtx));
         const isRestDay = record.type === 'rest';
 
-        html += `<div class="card group-exercise-card ${exDone?'completed':''} ${exSkipped?'exercise-skipped':''}" style="margin-bottom:6px;${!isSelected?'opacity:0.55;':''}" id="card-${uid}">`;
+        html += `<div class="card group-exercise-card ${exDone?'completed':''} ${exSkipped?'exercise-skipped':''}" style="margin-bottom:6px;${!isSelected?'opacity:0.55;':''}" id="card-${uid}" data-sec="${secIdx}" data-grp="${grpIdx}" data-groupid="${escAttr(groupId)}" data-ex="${escAttr(ex.name)}" data-phase="${section.type}" data-region="${escAttr(group.region || '')}">`;
         html += `<div class="card-header"><div class="checkbox-wrapper" onclick="selectAndToggle('${secIdx}','${grpIdx}','${exIdx}','${groupId}','${escAttr(ex.name)}')">`;
         html += `<div class="checkbox-custom ${exDone?'checked':''}" id="check-${uid}">${exDone?'✓':''}</div>`;
         html += `<div style="flex:1;"><div class="card-title" style="font-size:14px;${exDone?'text-decoration:line-through;color:var(--accent);':''}${exSkipped?'text-decoration:line-through;color:var(--muted);':''}">${ex.name}${exSkipped?'<span class="card-default-tag" style="background:var(--border);color:var(--muted);">已跳过</span>':''}${ex.default?'<span class="card-default-tag">推荐</span>':''}</div>`;
         if(ex.equipment) html += `<span class="card-equipment">${ex.equipment}</span>`;
         html += `<div class="card-meta">${ex.sets}</div>`;
-        if(section.type==='main'&&ex.equipment){
-          html += `<div class="weight-row" onclick="stopPropagation(event)"><span class="weight-label">🏋️</span><input type="number" class="weight-input-sm" value="${exWeight}" onchange="updateExerciseWeight('${groupId}','${escAttr(ex.name)}',this.value)" onfocus="this.select()" step="5" min="0" max="500" placeholder="${getLastWeightHint(ex.name)}"><span class="weight-unit">kg</span><span class="weight-label" style="margin-left:6px;">次</span><input type="number" class="weight-input-sm" value="${exReps}" onchange="updateExerciseReps('${groupId}','${escAttr(ex.name)}',this.value)" onfocus="this.select()" step="1" min="0" max="60" style="width:52px;"></div>`;
-        }
-        html += `</div><div style="display:flex;align-items:center;gap:2px;">${isRestDay?'':`<button class="fav-star-btn btn-pop" id="ab-${uid}" onclick="event.stopPropagation();toggleAdvice('${uid}')" title="本地AI建议">💡</button>`}<button class="fav-star-btn skip-btn btn-pop ${exSkipped?'skip-active':''}" onclick="event.stopPropagation();toggleSkip('${secIdx}','${grpIdx}','${groupId}','${escAttr(ex.name)}')" title="跳过此动作">⏭</button><button class="fav-star-btn" data-ex="${escAttr(ex.name)}" onclick="event.stopPropagation();var el=this;try{toggleFavorite(this.getAttribute('data-ex'));el.textContent=isFavorite(this.getAttribute('data-ex'))?'⭐':'☆';el.classList.add('pop');setTimeout(function(){el.classList.remove('pop')},500)}catch(e){}">☆</button></div></div></div>`;
-        if(ex.tip) html += `<div class="card-tip">💡 ${ex.tip}</div>`;
+        html += `</div><div style="display:flex;align-items:center;gap:2px;">${isRestDay?'':`<button class="icon-btn btn-pop" id="ab-${uid}" onclick="event.stopPropagation();openAIActionAsk('${uid}','${escAttr(ex.name)}','${escAttr(ex.tip || '')}')" title="本地AI建议">💡</button>`}<button class="icon-btn" data-ex="${escAttr(ex.name)}" onclick="event.stopPropagation();var el=this;try{toggleFavorite(this.getAttribute('data-ex'));el.textContent=isFavorite(this.getAttribute('data-ex'))?'⭐':'☆';el.classList.add('pop');setTimeout(function(){el.classList.remove('pop')},500)}catch(e){}">☆</button></div></div></div>`;
+        if(!isRestDay) html += `<div class="advice-summary" id="as-${uid}" onclick="event.stopPropagation();toggleAdvice('${uid}')">${buildAdviceSummary(advice)}</div>`;
         if(!isRestDay){
           html += `<div class="advice-card" id="advice-${uid}" style="display:none;">`;
           html += `<div class="advice-title">💡 本地建议</div>`;
@@ -910,16 +905,9 @@ function renderTrainingPage() {
           if (advice.replacements.length) {
             html += `<div class="advice-item"><span class="advice-label">替换</span><span>${advice.replacements.map(r => `<span class="advice-repl">${escapeHtml(r.name)}</span>`).join('')}</span></div>`;
           }
-          // 缓存命中时预填 AI 讲解（重复问不重复调，re-render 后仍可见）
-          let cachedAIA = '';
-          try {
-            const cc = JSON.parse(localStorage.getItem('fitness_ai_action_cache') || '{}')[ex.name];
-            if (cc && Date.now() - (cc.ts || 0) < 7 * 24 * 3600 * 1000) cachedAIA = aiAnswerHtml(cc.answer);
-          } catch (e) {}
           html += `<div class="advice-ai-row">
-            <button class="advice-ai-btn" id="aai-btn-${uid}" onclick="event.stopPropagation();askActionAI('${escAttr(ex.name)}','${escAttr(ex.tip || '')}','${uid}')">🤖 问 AI</button>
+            <button class="advice-ai-btn" id="aai-btn-${uid}" onclick="event.stopPropagation();openAIActionAsk('${uid}','${escAttr(ex.name)}','${escAttr(ex.tip || '')}')">🤖 问 AI</button>
           </div>`;
-          html += `<div class="advice-ai-result" id="aai-result-${uid}">${cachedAIA}</div>`;
           html += `</div>`;
         }
         html += `</div>`;
@@ -959,7 +947,7 @@ function renderTrainingPage() {
   // 初始化收藏星标状态
   if (typeof isFavorite === 'function') {
     setTimeout(() => {
-      document.querySelectorAll('.fav-star-btn').forEach(btn => {
+      document.querySelectorAll('.group-exercise-card .icon-btn').forEach(btn => {
         const name = btn.getAttribute('data-ex') || '';
         if (name && isFavorite(name)) btn.textContent = '⭐';
       });
@@ -980,14 +968,14 @@ function renderBottomBar(completedGroups, totalGroups) {
     <button class="btn btn-outline" style="flex:1;" onclick="submitForRating()">📝 评分</button>
     <button class="btn btn-accent" style="flex:1;" id="finish-btn" onclick="finishTraining()">${allDone?'✅ 完成训练':'🏁 结束训练('+completedGroups+'/'+totalGroups+')'}</button>
   `;
-  // AI 教练浮层入口（V2.0 阶段3）：与 bottom-bar 同级挂到 #app
+  // AI 教练入口（V2.0 阶段3）：与 bottom-bar 同级挂到 #app；V2.1 轮C 换为 AI 字母徽章（复用 .nav-ai/.nav-ai-lg）
   let fab = document.getElementById('ai-coach-fab');
   if (!fab) {
     fab = document.createElement('button');
     fab.id = 'ai-coach-fab';
-    fab.className = 'ai-coach-fab';
+    fab.className = 'ai-coach-fab nav-ai nav-ai-lg';
     fab.setAttribute('onclick', 'openAICoach()');
-    fab.textContent = '🤖 AI 教练';
+    fab.textContent = 'AI';
     document.getElementById('app').appendChild(fab);
   }
 }
@@ -1136,6 +1124,15 @@ function updateExerciseReps(groupId, exName, value) {
   saveTodayRecord(record);
 }
 
+// 组数录入（V2.1 轮D）
+function updateExerciseSets(groupId, exName, value) {
+  const record = getTodayRecord();
+  let recEx = record.exercises.find(e => e.name === exName && e.groupId === groupId);
+  if (!recEx) { recEx = { name: exName, groupId: groupId, completed: false }; record.exercises.push(recEx); }
+  recEx.sets = parseInt(value) || 0;
+  saveTodayRecord(record);
+}
+
 // 建议重量提示：该动作最近一次历史重量（15.6）
 function getLastWeightHint(exName) {
   const records = getRecords().filter(r => r.completed && r.exercises && r.exercises.some(e => e.name === exName && e.weight));
@@ -1154,33 +1151,15 @@ function toggleAdvice(uid) {
   if (btn) btn.style.opacity = open ? '' : '1';
 }
 
-// 动作级跳过（15.3）
+// 动作级跳过（15.3）：保留为置位辅助宿主（V2.1 轮B 起表面不再引用，入口移至长按菜单）
 function toggleSkip(secIdx, grpIdx, groupId, exName) {
   const record = getTodayRecord();
   let recEx = record.exercises.find(e => e.name === exName && e.groupId === groupId);
   if (!recEx) { recEx = { name: exName, groupId: groupId, completed: false }; record.exercises.push(recEx); }
   recEx.skipped = !recEx.skipped;
-  if (recEx.skipped) { recEx.completed = false; showSkipOption(groupId, exName); }
+  if (recEx.skipped) recEx.completed = false;
   saveTodayRecord(record);
   renderTrainingPage();
-}
-
-// 跳过后弹轻量选项：仅今天 / 以后也别推荐（15.3）
-function showSkipOption(groupId, exName) {
-  const old = document.getElementById('skip-option-overlay');
-  if (old) old.remove();
-  const overlay = document.createElement('div');
-  overlay.id = 'skip-option-overlay';
-  overlay.className = 'overlay-fade';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;';
-  overlay.innerHTML = `<div class="sheet-fadeUp" style="background:var(--surface);border-radius:16px;padding:20px;max-width:300px;width:90%;text-align:center;">
-    <div style="font-size:32px;margin-bottom:8px;">⏭</div>
-    <h3 style="margin-bottom:4px;">已跳过「${exName}」</h3>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">今天先不练这个动作</p>
-    <button class="btn btn-outline btn-sm" style="width:100%;margin-bottom:8px;" onclick="document.getElementById('skip-option-overlay').remove()">仅今天跳过</button>
-    <button class="btn btn-accent btn-sm" style="width:100%;" onclick="persistDislike('${exName.replace(/'/g, "\\'")}');document.getElementById('skip-option-overlay').remove()">以后也别推荐</button>
-  </div>`;
-  document.body.appendChild(overlay);
 }
 
 // 「以后也别推荐」→ 写入持久偏好，引擎 buildContext 合并进 dislike（15.3）
@@ -1190,6 +1169,207 @@ function persistDislike(name) {
   if (!s.userDislike.includes(name)) s.userDislike.push(name);
   saveSettings(s);
   showToast('已记住：以后不再推荐「' + name + '」', 'success');
+}
+
+// ============================================
+// V2.1 轮B — 动作卡长按菜单（替代 ⏭/➕/重量输入表面入口）
+// 长按 ~500ms 弹出卡片菜单：今日删除/永久删除/替换动作/重量次数
+// 事件委托一次性注册（镜像 swipe.js），避免 re-render 重复绑定
+// ============================================
+let _lpTimer = null, _lpCard = null, _lpStartX = 0, _lpStartY = 0;
+let _menuCard = null, _menuOpenAt = 0;
+
+function initCardLongPress() {
+  document.addEventListener('mousedown', onLpStart, { passive: true });
+  document.addEventListener('touchstart', onLpStart, { passive: true });
+  document.addEventListener('mousemove', onLpMove, { passive: true });
+  document.addEventListener('touchmove', onLpMove, { passive: true });
+  document.addEventListener('mouseup', onLpEnd, { passive: true });
+  document.addEventListener('touchend', onLpEnd, { passive: true });
+  document.addEventListener('touchcancel', onLpEnd, { passive: true });
+}
+
+function clearLongPress() {
+  if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+  _lpCard = null;
+}
+
+// 按下：命中动作卡 → 忽略可交互目标 → 启动 500ms 计时
+function onLpStart(e) {
+  if (_lpTimer) clearLongPress();
+  if (document.getElementById('card-menu-overlay')) return;
+  const target = e.target;
+  if (!target || !target.closest) return;
+  // 可交互元素上的按下不触发长按（勾选框图标/按钮/输入/建议行）。
+  // P1：忽略列表用 .checkbox-custom（仅勾选框图标）而非 .checkbox-wrapper，
+  // 因标题/器械/meta 都渲染在 .checkbox-wrapper 内，整块排除会让主体区域长按失效。
+  if (target.closest('.checkbox-custom, button, input, .advice-summary, .advice-card')) return;
+  const card = target.closest('.group-exercise-card');
+  // 历史详情/编辑卡也复用 .group-exercise-card 类，但无 data-* 长按上下文，不触发菜单
+  if (!card || !card.dataset.ex) return;
+  _lpCard = card;
+  const pt = e.touches ? e.touches[0] : e;
+  _lpStartX = pt.clientX; _lpStartY = pt.clientY;
+  _lpTimer = setTimeout(function () {
+    _lpTimer = null;
+    openCardMenu(card);
+  }, 500);
+}
+
+// 移动超过 10px（竖滑/横滑）→ 取消长按，避免与滚动/滑屏冲突
+function onLpMove(e) {
+  if (!_lpTimer || !_lpCard) return;
+  const pt = e.touches ? e.touches[0] : e;
+  const dx = Math.abs(pt.clientX - _lpStartX);
+  const dy = Math.abs(pt.clientY - _lpStartY);
+  if (dx > 10 || dy > 10) clearLongPress();
+}
+
+// 抬起/松开 → 清计时（若菜单已触发则保持打开）
+function onLpEnd() {
+  clearLongPress();
+}
+
+// 打开长按菜单：卡片弹出动画 + 底部弹层
+function openCardMenu(card) {
+  if (!card) return;
+  _menuCard = card;
+  // P1：长按松手后浏览器会补发一次 click，落在卡片内会触发 .checkbox-wrapper 的
+  // selectAndToggle 误勾选。此处用 document 一次性 capture 拦截该 click；
+  // 仅当目标在长按卡片内才拦截（菜单项在 overlay 中，不受影响），镜像 swipe.js 的 swallowed 模式。
+  document.addEventListener('click', function swallowLpClick(ev) {
+    if (card.contains(ev.target)) {
+      ev.stopPropagation();
+      ev.preventDefault();
+    }
+    document.removeEventListener('click', swallowLpClick, true);
+  }, true);
+  card.classList.add('card-menu-open');
+  const old = document.getElementById('card-menu-overlay');
+  if (old) old.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'card-menu-overlay';
+  overlay.className = 'overlay-fade';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;';
+  overlay.addEventListener('click', function (e) {
+    // 松开瞬间的 click 会落在遮罩上，短时内忽略，避免菜单刚开就被关
+    if (e.target === overlay && Date.now() - _menuOpenAt > 350) closeCardMenu();
+  });
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet-fadeUp';
+  sheet.style.cssText = 'background:var(--surface);border-radius:16px 16px 0 0;width:100%;max-width:680px;margin:0 auto;padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px));';
+  renderCardMenuItems(sheet, card);
+  overlay.appendChild(sheet);
+  document.body.appendChild(overlay);
+  _menuOpenAt = Date.now();
+}
+
+// 渲染菜单项（今日删除/恢复、永久删除、替换动作、重量/次数）
+// 设计注：重量/次数行对所有卡可用（含休息/无器械），比旧 main+有器械 条件略放宽，行为更一致
+function renderCardMenuItems(sheet, card) {
+  const sec = card.dataset.sec;
+  const grp = card.dataset.grp;
+  const groupId = card.dataset.groupid;
+  const exName = card.dataset.ex;
+  const phase = card.dataset.phase || 'main';
+  const region = card.dataset.region || '';
+  const skipped = card.classList.contains('exercise-skipped');
+  const rec = getTodayRecord();
+  const recEx = rec.exercises.find(e => e.name === exName && e.groupId === groupId);
+  const exWeight = recEx && recEx.weight ? recEx.weight : '';
+  const exSets = recEx && recEx.sets ? recEx.sets : '';
+  const exReps = recEx && recEx.reps ? recEx.reps : '';
+  const hint = getLastWeightHint(exName);
+  sheet.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border);">
+      <b style="font-size:15px;flex:1;">${escapeHtml(exName)}</b>
+      <button class="fav-star-btn" onclick="closeCardMenu()">✕</button>
+    </div>
+    <button class="card-menu-item" onclick="closeCardMenu();${skipped ? 'restoreToday' : 'skipToday'}('${sec}','${grp}','${escAttr(groupId)}','${escAttr(exName)}')">${skipped ? '↩️ 今日恢复' : '⏭ 今日删除'}</button>
+    <button class="card-menu-item" onclick="confirmDislike('${escAttr(exName)}')">🗑 永久删除</button>
+    <button class="card-menu-item" onclick="closeCardMenu();openExercisePicker('${sec}','${grp}','${escAttr(groupId)}','${escAttr(region)}','${phase}')">➕ 替换动作</button>
+    <button class="card-menu-item" onclick="toggleCardMenuWeight(this)">⚖️ 重量 · 组数 · 次数</button>
+    <div class="card-menu-weight" style="display:none;">
+      <span class="weight-label">⚖️</span>
+      <input type="number" class="weight-input-sm" value="${exWeight}" onchange="updateExerciseWeight('${escAttr(groupId)}','${escAttr(exName)}',this.value)" onfocus="this.select()" step="5" min="0" max="500" placeholder="${hint}">
+      <span class="weight-unit">kg</span>
+      <span class="weight-label">组数</span>
+      <input type="number" class="weight-input-sm" value="${exSets}" onchange="updateExerciseSets('${escAttr(groupId)}','${escAttr(exName)}',this.value)" onfocus="this.select()" step="1" min="0" max="20" style="width:44px;">
+      <span class="weight-label">🔁</span>
+      <input type="number" class="weight-input-sm" value="${exReps}" onchange="updateExerciseReps('${escAttr(groupId)}','${escAttr(exName)}',this.value)" onfocus="this.select()" step="1" min="0" max="60" style="width:48px;">
+    </div>
+  `;
+}
+
+// 菜单内重量/次数输入行展开/收起
+function toggleCardMenuWeight(btn) {
+  const row = btn.nextElementSibling;
+  if (row && row.classList.contains('card-menu-weight')) {
+    row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+  }
+}
+
+// 关闭长按菜单：移除弹层 + 去掉卡片弹出动画
+function closeCardMenu() {
+  const ov = document.getElementById('card-menu-overlay');
+  if (ov) ov.remove();
+  if (_menuCard) { _menuCard.classList.remove('card-menu-open'); _menuCard = null; }
+}
+
+// 今日删除（原「仅今天跳过」）：显式置 skipped
+function skipToday(secIdx, grpIdx, groupId, exName) {
+  const record = getTodayRecord();
+  let recEx = record.exercises.find(e => e.name === exName && e.groupId === groupId);
+  if (!recEx) { recEx = { name: exName, groupId: groupId, completed: false }; record.exercises.push(recEx); }
+  recEx.skipped = true;
+  recEx.completed = false;
+  saveTodayRecord(record);
+  renderTrainingPage();
+}
+
+// 今日恢复：显式取消 skipped
+function restoreToday(secIdx, grpIdx, groupId, exName) {
+  const record = getTodayRecord();
+  let recEx = record.exercises.find(e => e.name === exName && e.groupId === groupId);
+  if (!recEx) { recEx = { name: exName, groupId: groupId, completed: false }; record.exercises.push(recEx); }
+  recEx.skipped = false;
+  saveTodayRecord(record);
+  renderTrainingPage();
+}
+
+// 永久删除内联确认层（防误删，写 userDislike 前 confirm）
+function confirmDislike(exName) {
+  const ov = document.getElementById('card-menu-overlay');
+  if (!ov) return;
+  const sheet = ov.querySelector('.sheet-fadeUp');
+  if (!sheet) return;
+  sheet.innerHTML = `
+    <div style="padding:20px;text-align:center;">
+      <div style="font-size:28px;margin-bottom:8px;">🗑</div>
+      <h3 style="margin-bottom:4px;">确定以后不再推荐「${escapeHtml(exName)}」？</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">该动作将加入黑名单，本地建议/替换选择器不再出现</p>
+      <button class="btn btn-outline btn-sm" style="width:100%;margin-bottom:8px;" onclick="cancelConfirmDislike()">取消</button>
+      <button class="btn btn-danger btn-sm" style="width:100%;" onclick="doConfirmDislike('${escAttr(exName)}')">确定</button>
+    </div>
+  `;
+}
+
+// 确认删除：写黑名单 + 今日删除 + 关菜单
+function doConfirmDislike(exName) {
+  const card = _menuCard;
+  persistDislike(exName);
+  if (card) skipToday(card.dataset.sec, card.dataset.grp, card.dataset.groupid, exName);
+  closeCardMenu();
+}
+
+// 取消删除：回到菜单项
+function cancelConfirmDislike() {
+  const ov = document.getElementById('card-menu-overlay');
+  const card = _menuCard;
+  if (ov && card) {
+    const sheet = ov.querySelector('.sheet-fadeUp');
+    if (sheet) renderCardMenuItems(sheet, card);
+  }
 }
 
 // ── 15.5 替换 / 新增动作：同部位 + 设备可用 选择器 ──
@@ -1359,8 +1539,12 @@ async function submitForRating() {
     const done = isGroupCompleted(g, record);
     const ex = getSelectedExercise(g, record);
     const recEx = record.exercises.find(e => e.name===ex.name && e.groupId===g.id);
-    const w = recEx?.weight||0;
-    const line = g.label + '：' + ex.name + (w>0?' '+w+'kg':'');
+    const w = recEx?.weight||0, sets = recEx?.sets||0, reps = recEx?.reps||0;
+    const sr = formatSetsReps(sets, reps);
+    let line = g.label + '：' + ex.name;
+    if (w > 0 && sr) line += ' ' + w + 'kg × ' + sr;
+    else if (w > 0) line += ' ' + w + 'kg';          // 旧数据只有重量
+    else if (sr) line += ' ' + sr;                    // 无重量但有组次（自重动作）
     if(done) completed.push(line); else incomplete.push(line);
   });
 
@@ -1369,6 +1553,8 @@ async function submitForRating() {
   report += '\n\n---以下未完成---\n';
   report += incomplete.length?incomplete.join('\n'):'（全部完成！）';
   report += '\n\n部位完成率：'+completed.length+'/'+allGroups.length;
+  const vol = calcTrainingVolume(record.exercises);
+  if (vol > 0) report += '\n\n📦 今日总训练量：' + vol + ' kg（Σ 重量×组数×次数）';
   if(cardio.done) report += '\n\n### 🏃 有氧（附加项）\n✅ '+ (cardio.duration||0) +'分钟 · 坡度'+(cardio.incline||0)+'% · '+(cardio.distance||0)+'km';
   else report += '\n\n### 🏃 有氧（附加项）\n⬜ 未进行';
   report += '\n\n请输出3行训练小结（每行不超过30字）：\n✅ 完成度与亮点\n📊 与近期对比\n💡 明日建议\n然后给出评分（满分100）和简短评价。格式：【小结】... 【评分】XX分 【评价】...';
@@ -1540,10 +1726,13 @@ function renderHistoryDetail(record) {
           const recEx = record.exercises.find(e => e.name===ex.name && e.groupId===group.id);
           const isDone = recEx ? recEx.completed : false;
           const w = recEx ? (recEx.weight||'') : '';
+          const s = recEx ? (recEx.sets||'') : '';
+          const r = recEx ? (recEx.reps||'') : '';
+          const sr = formatSetsReps(recEx && recEx.sets, recEx && recEx.reps);
           if(historyEditMode){
-            h += '<div class="card group-exercise-card '+(isDone?'completed':'')+'" style="margin-bottom:6px;"><div style="display:flex;align-items:center;gap:8px;"><div class="checkbox-custom '+(isDone?'checked':'')+'" onclick="toggleHistEx(\''+escAttr(record.id)+'\',\''+escAttr(group.id)+'\',\''+escAttr(ex.name)+'\',this)" style="cursor:pointer;">'+(isDone?'✓':'')+'</div><div style="flex:1;"><div class="card-title" style="font-size:14px;">'+ex.name+'</div><div class="card-meta">'+ex.sets+'</div>'+(section.type==='main'&&ex.equipment?'<div class="weight-row"><input type="number" class="weight-input-sm" value="'+w+'" onchange="updateHistWeight(\''+escAttr(record.id)+'\',\''+escAttr(group.id)+'\',\''+escAttr(ex.name)+'\',this.value)" onfocus="this.select()" step="5"> <span class="weight-unit">kg</span></div>':'')+'</div><button class="history-delete-ex" onclick="deleteHistEx(\''+escAttr(record.id)+'\',\''+escAttr(group.id)+'\',\''+escAttr(ex.name)+'\')" title="删除">🗑️</button></div></div>';
+            h += '<div class="card group-exercise-card '+(isDone?'completed':'')+'" style="margin-bottom:6px;"><div style="display:flex;align-items:center;gap:8px;"><div class="checkbox-custom '+(isDone?'checked':'')+'" onclick="toggleHistEx(\''+escAttr(record.id)+'\',\''+escAttr(group.id)+'\',\''+escAttr(ex.name)+'\',this)" style="cursor:pointer;">'+(isDone?'✓':'')+'</div><div style="flex:1;"><div class="card-title" style="font-size:14px;">'+ex.name+'</div><div class="card-meta">'+ex.sets+'</div>'+(section.type==='main'&&ex.equipment?'<div class="weight-row"><input type="number" class="weight-input-sm" value="'+w+'" onchange="updateHistWeight(\''+escAttr(record.id)+'\',\''+escAttr(group.id)+'\',\''+escAttr(ex.name)+'\',this.value)" onfocus="this.select()" step="5"> <span class="weight-unit">kg</span><span class="weight-label">组数</span><input type="number" class="weight-input-sm" value="'+s+'" onchange="updateHistSets(\''+escAttr(record.id)+'\',\''+escAttr(group.id)+'\',\''+escAttr(ex.name)+'\',this.value)" onfocus="this.select()" step="1" min="0" max="20" style="width:44px;"><span class="weight-label">🔁</span><input type="number" class="weight-input-sm" value="'+r+'" onchange="updateHistReps(\''+escAttr(record.id)+'\',\''+escAttr(group.id)+'\',\''+escAttr(ex.name)+'\',this.value)" onfocus="this.select()" step="1" min="0" max="60" style="width:48px;"></div>':'')+'</div><button class="history-delete-ex" onclick="deleteHistEx(\''+escAttr(record.id)+'\',\''+escAttr(group.id)+'\',\''+escAttr(ex.name)+'\')" title="删除">🗑️</button></div></div>';
           }else{
-            h += '<div class="card group-exercise-card '+(isDone?'completed':'')+'" style="opacity:'+(isDone?'1':'0.45')+';margin-bottom:6px;"><div style="display:flex;align-items:center;gap:8px;"><div class="checkbox-custom '+(isDone?'checked':'')+'" style="width:22px;height:22px;font-size:12px;">'+(isDone?'✓':'')+'</div><div><div class="card-title" style="font-size:14px;'+(isDone?'':'text-decoration:line-through;opacity:0.5;')+'">'+ex.name+'</div><div class="card-meta">'+ex.sets+(w?' · '+w+'kg':'')+'</div></div></div></div>';
+            h += '<div class="card group-exercise-card '+(isDone?'completed':'')+'" style="opacity:'+(isDone?'1':'0.45')+';margin-bottom:6px;"><div style="display:flex;align-items:center;gap:8px;"><div class="checkbox-custom '+(isDone?'checked':'')+'" style="width:22px;height:22px;font-size:12px;">'+(isDone?'✓':'')+'</div><div><div class="card-title" style="font-size:14px;'+(isDone?'':'text-decoration:line-through;opacity:0.5;')+'">'+ex.name+'</div><div class="card-meta">'+ex.sets+(w?' · '+w+'kg':'')+(sr?' · '+sr:'')+'</div></div></div></div>';
           }
         });
       });
@@ -1577,6 +1766,21 @@ function updateHistWeight(recordId, groupId, exName, value) {
   let recEx = r.exercises.find(e=>e.name===exName && e.groupId===groupId);
   if(!recEx){ recEx = {name:exName,groupId:groupId,completed:false}; r.exercises.push(recEx); }
   recEx.weight = parseFloat(value)||0; saveRecords(records);
+}
+
+// 历史详情编辑：组数/次数补录（V2.1 轮D）
+function updateHistSets(recordId, groupId, exName, value) {
+  const records = getRecords(); const r = records.find(r=>r.id===recordId); if(!r) return;
+  let recEx = r.exercises.find(e=>e.name===exName && e.groupId===groupId);
+  if(!recEx){ recEx = {name:exName,groupId:groupId,completed:false}; r.exercises.push(recEx); }
+  recEx.sets = parseInt(value)||0; saveRecords(records);
+}
+
+function updateHistReps(recordId, groupId, exName, value) {
+  const records = getRecords(); const r = records.find(r=>r.id===recordId); if(!r) return;
+  let recEx = r.exercises.find(e=>e.name===exName && e.groupId===groupId);
+  if(!recEx){ recEx = {name:exName,groupId:groupId,completed:false}; r.exercises.push(recEx); }
+  recEx.reps = parseInt(value)||0; saveRecords(records);
 }
 
 function deleteHistEx(recordId, groupId, exName) {
@@ -1641,4 +1845,7 @@ function getCoachLog() {
 function saveCoachLog(log) {
   localStorage.setItem('fitness_coach_log', JSON.stringify(log.slice(-12)));
 }
+
+// 长按菜单一次性委托注册（镜像 swipe.js，re-render 不重复绑定）
+document.addEventListener('DOMContentLoaded', initCardLongPress);
 

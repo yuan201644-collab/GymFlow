@@ -20,23 +20,17 @@ const { chromium } = require(pwPath);
   let pass = 0, fail = 0;
   const t = (n, c, d) => { if (c) pass++; else { fail++; console.log(`  ❌ ${n} ${d || ''}`); } };
 
-  // 1. 各段组是否有 ➕ 按钮
+  // 1. 组头按钮：V2.1 轮B 起组头 ➕ 已移入长按菜单，组头不再有按钮
   const btnInfo = await page.evaluate(() => {
     const out = [];
     document.querySelectorAll('.group-header').forEach(gh => {
       const gr = gh.querySelector('.group-right');
-      const btn = gr ? gr.querySelector('button') : null;
-      if (btn) out.push({ label: gh.textContent.replace(/\s+/g, '').slice(0, 12), icon: btn.textContent, title: btn.title });
+      out.push({ label: gh.textContent.replace(/\s+/g, '').slice(0, 12), hasBtn: !!(gr && gr.querySelector('button')) });
     });
     return out;
   });
-  const warmupBtns = btnInfo.filter(b => b.label.includes('预拉伸') || b.label.includes('激活') || b.label.includes('预热'));
-  const mainBtns = btnInfo.filter(b => b.label.includes('胸大肌') || b.label.includes('三角肌') || b.label.includes('肱三头'));
-  const stretchBtns = btnInfo.filter(b => b.label.includes('拉伸'));
-  console.log('1. 各段 ➕ 按钮:', JSON.stringify(btnInfo.slice(0, 4)), '…');
-  t('热身组有 ➕', warmupBtns.length > 0 && warmupBtns.every(b => b.icon === '➕'), JSON.stringify(warmupBtns[0]));
-  t('主组有 ➕', mainBtns.length > 0 && mainBtns.every(b => b.icon === '➕'));
-  t('拉伸组有 ➕', stretchBtns.length > 0 && stretchBtns.every(b => b.icon === '➕'));
+  console.log('1. 组头按钮:', JSON.stringify(btnInfo.slice(0, 4)), '…');
+  t('组头无 ➕ 按钮（已收进长按菜单）', btnInfo.length > 0 && btnInfo.every(b => !b.hasBtn), JSON.stringify(btnInfo));
 
   // 2. 图标区分：组级无 🔄，清除进度仍 🔄
   const groupNoReset = await page.$$eval('.group-right button', els => els.filter(e => e.textContent.includes('🔄')).length);
@@ -47,9 +41,9 @@ const { chromium } = require(pwPath);
 
   // 3. 选择器按 phase 过滤：从热身组打开 → 全是 warmup 动作
   const warmupPhase = await page.evaluate(async () => {
-    const gh = [...document.querySelectorAll('.group-header')].find(h => h.textContent.includes('预拉伸'));
-    const btn = gh.querySelector('.group-right button');
-    btn.click();
+    const card = [...document.querySelectorAll('.group-exercise-card[data-ex][data-phase="warmup"]')][0];
+    if (!card) return { err: 'no-warmup-card', count: document.querySelectorAll('.group-exercise-card').length };
+    window.openExercisePicker(card.dataset.sec, card.dataset.grp, card.dataset.groupid, card.dataset.region, card.dataset.phase);
     await new Promise(r => setTimeout(r, 300));
     const eqDlg = document.getElementById('ex-picker-overlay')?.textContent?.includes('你的器械条件');
     if (eqDlg) { const btns = [...document.querySelectorAll('#ex-picker-overlay button')]; if (btns[0]) btns[0].click(); }
@@ -66,9 +60,9 @@ const { chromium } = require(pwPath);
 
   // 4. 拉伸组选择器 → 全 stretch
   const stretchPhase = await page.evaluate(async () => {
-    const gh = [...document.querySelectorAll('.group-header')].find(h => h.textContent.includes('拉伸') && !h.textContent.includes('预拉伸'));
-    const btn = gh.querySelector('.group-right button');
-    btn.click();
+    const card = [...document.querySelectorAll('.group-exercise-card[data-ex][data-phase="stretch"]')][0];
+    if (!card) return { err: 'no-stretch-card', count: document.querySelectorAll('.group-exercise-card').length };
+    window.openExercisePicker(card.dataset.sec, card.dataset.grp, card.dataset.groupid, card.dataset.region, card.dataset.phase);
     await new Promise(r => setTimeout(r, 300));
     const eqDlg = document.getElementById('ex-picker-overlay')?.textContent?.includes('你的器械条件');
     if (eqDlg) { const btns = [...document.querySelectorAll('#ex-picker-overlay button')]; if (btns[0]) btns[0].click(); }
@@ -85,9 +79,9 @@ const { chromium } = require(pwPath);
 
   // 5. 主组选择器仍 region+phase 过滤
   const mainPhase = await page.evaluate(async () => {
-    const gh = [...document.querySelectorAll('.group-header')].find(h => h.textContent.includes('胸大肌'));
-    const btn = gh.querySelector('.group-right button');
-    btn.click();
+    const card = [...document.querySelectorAll('.group-exercise-card[data-ex][data-phase="main"]')][0];
+    if (!card) return { err: 'no-main-card', count: document.querySelectorAll('.group-exercise-card').length };
+    window.openExercisePicker(card.dataset.sec, card.dataset.grp, card.dataset.groupid, card.dataset.region, card.dataset.phase);
     await new Promise(r => setTimeout(r, 300));
     const eqDlg = document.getElementById('ex-picker-overlay')?.textContent?.includes('你的器械条件');
     if (eqDlg) { const btns = [...document.querySelectorAll('#ex-picker-overlay button')]; if (btns[0]) btns[0].click(); }

@@ -236,9 +236,9 @@ function getAIActionCache() {
   try { return JSON.parse(localStorage.getItem(AI_ACTION_CACHE_KEY)) || {}; }
   catch { return {}; }
 }
-function setAIActionCache(name, answer) {
+function setAIActionCache(key, answer) {
   const cache = getAIActionCache();
-  cache[name] = { answer, ts: Date.now() };
+  cache[key] = { answer, ts: Date.now() };
   // 防无限膨胀：只留最新 20 条
   const keys = Object.keys(cache);
   if (keys.length > 20) {
@@ -246,6 +246,11 @@ function setAIActionCache(name, answer) {
     sorted.slice(0, keys.length - 20).forEach(k => delete cache[k]);
   }
   try { localStorage.setItem(AI_ACTION_CACHE_KEY, JSON.stringify(cache)); } catch (e) {}
+}
+// 缓存键：默认「讲解要点」沿用旧键 name（旧缓存继续有效）；自定义问题用 name##question，互不覆盖
+function actionCacheKey(name, question) {
+  const q = (question || '').trim();
+  return q && q !== '讲解要点' ? name + '##' + q : name;
 }
 // AI 回复 → 安全 HTML（escapeHtml 转义 + 换行→<br>，复用审计 P2-1 范式）
 function aiAnswerHtml(answer) {
@@ -255,7 +260,8 @@ function aiAnswerHtml(answer) {
 // 构建动作讲解 prompt（纯函数，可单测）
 // action: {name, tip, sets, equipment}
 // ctx: {equipment, records, bodyProfile, issues, todayRecord}
-function buildTrainingPrompt(action, ctx) {
+// question: 自由输入问题（V2.1 轮C）；空/「讲解要点」走默认讲解语
+function buildTrainingPrompt(action, ctx, question) {
   const name = action.name || '';
   const db = (ctx && ctx.db) || (typeof EXERCISE_DB !== 'undefined' ? EXERCISE_DB : []);
   const dbEx = matchDbExercise(name); // 复用 utils.js：精确 → 全半角归一 → 模糊
@@ -288,8 +294,15 @@ function buildTrainingPrompt(action, ctx) {
   const postureTags = (bp && bp.postureTags) || [];
   const issues = (ctx && ctx.issues) || '';
 
+  // V2.1 轮C：有具体问题走「用户问题」分支；默认/「讲解要点」维持阶段2讲解语。
+  // 提问分支首行带动作名，满足验证点「prompt 含动作名与用户问题」。
+  const q = (question || '').trim();
+  const askLine = (q && q !== '讲解要点')
+    ? '用户问题：' + q + '\n动作「' + name + '」。请结合我的训练情况/历史/体态，用100-150字简洁回答（手机阅读）。'
+    : '请用100-150字讲解动作「' + name + '」的动作要领，并结合我的情况给1条针对性建议（手机阅读，简洁口语化）。';
+
   const lines = [
-    '请用100-150字讲解动作「' + name + '」的动作要领，并结合我的情况给1条针对性建议（手机阅读，简洁口语化）。',
+    askLine,
     '动作要点：' + (tip || '保持标准姿势，感受目标肌群发力'),
     equipment ? '器械：' + equipment : null,
     difficulty ? '难度：' + difficulty : null,
@@ -303,21 +316,76 @@ function buildTrainingPrompt(action, ctx) {
   return lines.join('\n');
 }
 
-// 「问 AI」按钮入口（training.js 的 onclick 调用）
-async function askActionAI(name, tip, uid) {
-  const resultEl = document.getElementById('aai-result-' + uid);
-  const btnEl = document.getElementById('aai-btn-' + uid);
+// ===== 💡 训练页「问 AI」自由输入弹层（V2.1 轮C，L1 点按调 AI）=====
+// 模块级问询上下文：暂存当前弹层的动作与问题，供重试复用（不拼用户输入进 onclick，防引号注入）
+let _aiAskCtx = null;
+
+// 打开动作问询弹层（💡 / 卡内「🤖 问 AI」统一入口）
+function openAIActionAsk(uid, name, tip) {
+  closeAIActionAsk();
+  _aiAskCtx = { uid: uid, name: name, tip: tip || '', question: '' };
+  const overlay = document.createElement('div');
+  overlay.id = 'ai-ask-overlay';
+  overlay.innerHTML =
+    '<div class="ai-ask-backdrop overlay-fade" onclick="closeAIActionAsk()"></div>' +
+    '<div class="ai-ask-sheet sheet-fadeUp">' +
+      '<div class="ai-ask-header">' +
+        '<span class="ai-ask-title">💡 ' + escapeHtml(name) + '</span>' +
+        '<button class="ai-ask-close" onclick="closeAIActionAsk()" aria-label="关闭">✕</button>' +
+      '</div>' +
+      '<div class="ai-ask-quicks">' +
+        '<button class="ai-ask-quick" data-q="讲解要点" onclick="quickAIActionAsk(\'讲解要点\')">讲解要点</button>' +
+        '<button class="ai-ask-quick" data-q="建议重量" onclick="quickAIActionAsk(\'建议重量\')">建议重量</button>' +
+      '</div>' +
+      '<div class="ai-ask-input-row">' +
+        '<input id="ai-ask-input" maxlength="200" placeholder="输入你想问的问题…" autocomplete="off" onkeydown="if(event.key===\'Enter\')sendAIActionAsk()">' +
+        '<button id="ai-ask-send" onclick="sendAIActionAsk()">发送</button>' +
+      '</div>' +
+      '<div class="ai-ask-result" id="ai-ask-result"></div>' +
+    '</div>';
+  document.getElementById('app').appendChild(overlay);
+  setTimeout(() => { const input = document.getElementById('ai-ask-input'); if (input) input.focus(); }, 150);
+}
+
+function closeAIActionAsk() {
+  const overlay = document.getElementById('ai-ask-overlay');
+  if (overlay) overlay.remove();
+  _aiAskCtx = null;
+}
+
+// 输入框发送：空输入提示不调 AI；非空写入 ctx 后请求
+function sendAIActionAsk() {
+  const input = document.getElementById('ai-ask-input');
+  const q = (input && input.value ? input.value : '').trim();
+  if (!q) { showToast('先输入问题'); if (input) input.focus(); return; }
+  if (!_aiAskCtx) return;
+  _aiAskCtx.question = q;
+  askActionAIFree();
+}
+
+// 快捷问法 chips：填输入框 + 写入 ctx + 直接请求
+function quickAIActionAsk(q) {
+  const input = document.getElementById('ai-ask-input');
+  if (input) input.value = q;
+  if (!_aiAskCtx) return;
+  _aiAskCtx.question = q;
+  askActionAIFree();
+}
+
+async function askActionAIFree() {
+  if (!_aiAskCtx) return;
+  const resultEl = document.getElementById('ai-ask-result');
   if (!resultEl || resultEl.dataset.loading === '1') return; // 防连点
+  const name = _aiAskCtx.name, tip = _aiAskCtx.tip, question = _aiAskCtx.question;
+  const key = actionCacheKey(name, question);
   // 缓存命中 → 直接展示
-  const cached = getAIActionCache()[name];
+  const cached = getAIActionCache()[key];
   if (cached && Date.now() - (cached.ts || 0) < AI_ACTION_CACHE_TTL) {
     resultEl.innerHTML = aiAnswerHtml(cached.answer);
     return;
   }
-  // 加载中：按钮禁用 + 转圈
   resultEl.dataset.loading = '1';
   resultEl.innerHTML = '<div class="advice-ai-loading">🤖 AI 分析中<span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
-  if (btnEl) btnEl.style.display = 'none';
 
   // 组装 ctx（读当前数据，供 prompt）
   const s = (typeof getSettings === 'function') ? getSettings() : {};
@@ -328,26 +396,28 @@ async function askActionAI(name, tip, uid) {
     bodyProfile: (typeof getBodyProfile === 'function') ? getBodyProfile() : null,
     issues: (s.userInfo || {}).issues || '',
   };
-  const prompt = buildTrainingPrompt({ name: name, tip: tip }, ctx);
+  const prompt = buildTrainingPrompt({ name: name, tip: tip }, ctx, question);
 
   try {
     const resp = await aiFetch('/api/ask', { password: getAIPassword(), deviceId: getDeviceId(), content: prompt });
     const data = await resp.json();
     delete resultEl.dataset.loading;
-    if (btnEl) btnEl.style.display = '';
     if (data.success) {
-      setAIActionCache(name, data.answer);
+      setAIActionCache(key, data.answer);
       resultEl.innerHTML = aiAnswerHtml(data.answer);
     } else {
       resultEl.innerHTML = '<div class="advice-ai-err">⚠️ ' + escapeHtml(data.error || '请求失败') + '</div>'
-        + '<button class="advice-ai-retry" onclick="askActionAI(\'' + escAttr(name) + '\',\'' + escAttr(tip || '') + '\',\'' + uid + '\')">🔄 重试</button>';
+        + '<button class="advice-ai-retry" onclick="retryAIActionAsk()">🔄 重试</button>';
     }
   } catch (e) {
     delete resultEl.dataset.loading;
-    if (btnEl) btnEl.style.display = '';
     resultEl.innerHTML = '<div class="advice-ai-err">⚠️ 无法连接 AI 服务，请确认后端已启动</div>'
-      + '<button class="advice-ai-retry" onclick="askActionAI(\'' + escAttr(name) + '\',\'' + escAttr(tip || '') + '\',\'' + uid + '\')">🔄 重试</button>';
+      + '<button class="advice-ai-retry" onclick="retryAIActionAsk()">🔄 重试</button>';
   }
+}
+
+function retryAIActionAsk() {
+  askActionAIFree();
 }
 
 // ===== 🤖 训练页 AI 教练浮层（V2.0 阶段3，上下文感知对话）=====
