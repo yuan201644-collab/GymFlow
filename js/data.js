@@ -160,38 +160,6 @@ function deleteRecord(id) {
   saveRecords(filtered);
 }
 
-/**
- * 更新某个动作的打卡数据
- */
-function updateExerciseRecord(dateStr, exerciseName, updates) {
-  const records = getRecords();
-  const record = records.find(r => r.date === dateStr);
-  if (!record) return;
-
-  let ex = record.exercises.find(e => e.name === exerciseName);
-  if (!ex) {
-    ex = {
-      name: exerciseName,
-      weight: 0,
-      sets: 0,
-      reps: '',
-      completed: false,
-    };
-    record.exercises.push(ex);
-  }
-
-  Object.assign(ex, updates);
-
-  // 检查是否全部完成
-  const plan = getTrainingPlan(record.type);
-  const allExercises = getAllExercises(plan);
-  record.completed = allExercises.every(ae =>
-    record.exercises.find(e => e.name === ae.name && e.completed)
-  );
-
-  saveRecords(records);
-  return record;
-}
 
 /**
  * 获取所有训练过的日期集合
@@ -300,8 +268,8 @@ function importAllData(jsonStr) {
       throw new Error('数据格式无效');
     }
     saveSettings(data.settings || DEFAULT_SETTINGS);
-    saveRecords(data.records);
-    saveWeights(data.weights);
+    saveRecords(sanitizeRecords(data.records)); // P2-2：导入清洗（过滤恶意/畸形数据）
+    saveWeights(sanitizeWeights(data.weights));
     if (data.plans) savePlans((Array.isArray(data.plans) ? data.plans : []).map(sanitizePlan).filter(Boolean));
     if (data.activePlan) setActivePlan(data.activePlan);
     if (data.aiServer) localStorage.setItem('fitness_ai_server', data.aiServer);
@@ -331,6 +299,44 @@ function resetAllData() {
 // ========== 训练方案库 ==========
 
 // 清洗可能畸形的方案数据（旧格式 / 手动编辑 / 导入异常），幂等，不破坏正常结构
+// P2-2 导入清洗：强制数组、过滤 null、id 重建、weight 数字、动作名截断
+function sanitizeRecords(records) {
+  if (!Array.isArray(records)) return [];
+  return records.filter(r => r && typeof r === 'object' && r.date).map(r => {
+    const clean = {
+      id: (r.id && String(r.id)) || generateId(),
+      date: String(r.date).slice(0, 10),
+      type: String(r.type || 'push').slice(0, 20),
+      completed: !!r.completed,
+      exercises: [],
+    };
+    if (Array.isArray(r.exercises)) {
+      clean.exercises = r.exercises.filter(e => e && typeof e === 'object' && e.name).map(e => ({
+        name: String(e.name).slice(0, 50),
+        groupId: e.groupId ? String(e.groupId) : '',
+        completed: !!e.completed,
+        skipped: !!e.skipped,
+        weight: isFinite(parseFloat(e.weight)) ? parseFloat(e.weight) : 0,
+        reps: isFinite(parseInt(e.reps)) ? parseInt(e.reps) : 0,
+        custom: !!e.custom,
+      }));
+    }
+    if (r.cardio && typeof r.cardio === 'object') {
+      clean.cardio = { done: !!r.cardio.done, duration: parseFloat(r.cardio.duration) || 0, incline: parseFloat(r.cardio.incline) || 0, distance: parseFloat(r.cardio.distance) || 0 };
+    }
+    return clean;
+  });
+}
+
+function sanitizeWeights(weights) {
+  if (!Array.isArray(weights)) return [];
+  return weights.filter(w => w && typeof w === 'object' && w.weight).map(w => ({
+    id: (w.id && String(w.id)) || generateId(),
+    date: String(w.date || todayStr()).slice(0, 10),
+    weight: parseFloat(w.weight) || 0,
+  }));
+}
+
 function sanitizePlan(plan) {
   if (!plan || typeof plan !== 'object') return null;
   if (!Array.isArray(plan.days)) plan.days = [];
@@ -389,17 +395,4 @@ function deletePlan(id) {
 
 // ========== 版本管理 ==========
 
-const APP_VERSION = '1.5';
-
-function getStoredVersion() {
-  return localStorage.getItem('fitness_version') || '0';
-}
-
-function checkVersionUpdate() {
-  const stored = getStoredVersion();
-  if (stored !== APP_VERSION) {
-    localStorage.setItem('fitness_version', APP_VERSION);
-    return stored !== '0'; // 非首次使用才有更新提示
-  }
-  return false;
-}
+const APP_VERSION = '1.7'; // P2-3：与 CACHE_NAME(fitness-v7) 对齐实际版本线，最终以测试端指派为准

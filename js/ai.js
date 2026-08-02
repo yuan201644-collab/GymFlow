@@ -5,19 +5,6 @@
 let aiMessages = [];
 let aiLoading = false;
 
-// 默认地址：网页端用 localhost（连本机后端）；APK/手机端用隧道地址
-const DEFAULT_AI_SERVER_LOCAL = 'http://localhost:3000';
-const DEFAULT_AI_SERVER_TUNNEL = 'https://ai.gym-flow.xyz';
-
-function getAIServer() {
-  const saved = localStorage.getItem('fitness_ai_server');
-  if (saved) return saved;
-  // Capacitor APK 环境（window.Capacitor 存在）→ 用云端地址
-  if (typeof window !== 'undefined' && window.Capacitor) {
-    return DEFAULT_AI_SERVER_TUNNEL;
-  }
-  return DEFAULT_AI_SERVER_LOCAL;
-}
 
 // ── 双线（改进报告 §18）：云端 Worker 24/7 为主 + 本地 localhost 回退（网页端） ──
 const AI_ENDPOINTS = { cloud: 'https://ai.gym-flow.xyz', local: 'http://localhost:3000' };
@@ -53,7 +40,7 @@ function showAITutorial() {
   if (localStorage.getItem('ai_tutorial_done')) return;
   const fc = document.getElementById('ai-content');
   let h = '<div style="text-align:center;padding:20px;">';
-  h += '<div style="font-size:48px;margin-bottom:12px;">🤖</div>';
+  h += '<div style="margin-bottom:12px;"><span class="nav-ai nav-ai-lg">AI</span></div>';
   h += '<h2 style="margin-bottom:8px;">AI 健身顾问</h2>';
   h += '<p style="margin-bottom:16px;">基于智谱 GLM-4-Flash 免费模型</p>';
   h += '<div class="card" style="text-align:left;margin-bottom:10px;"><b>💡 我能帮你什么</b><br><span style="font-size:13px;color:var(--muted);">训练动作推荐 · 饮食建议 · 体态矫正 · 伤病注意事项 · 训练计划优化</span></div>';
@@ -84,7 +71,7 @@ function renderAIPage() {
 
   const c = document.getElementById('ai-content');
   let h = '<div style="display:flex;flex-direction:column;height:calc(100dvh - 105px);">';
-  h += '<div><h1 class="section-title" style="margin-bottom:2px;">🤖 AI 健身顾问</h1>';
+  h += '<div><h1 class="section-title" style="margin-bottom:2px;"><span class="nav-ai" style="margin-right:4px;">AI</span> 健身顾问</h1>';
   h += '<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">GLM-4-Flash · 专注健身问答</div></div>';
 
   h += '<div class="chat-box" id="chat-box">';
@@ -195,7 +182,7 @@ function appendChatMessage(role, content) {
   const interval = setInterval(() => {
     if (i <= content.length) {
       const shown = content.slice(0, i);
-      bubble.innerHTML = shown.replace(/\n/g, '<br>');
+      bubble.innerHTML = escapeHtml(shown).replace(/\n/g, '<br>');
       box.scrollTop = box.scrollHeight;
       i++;
     } else {

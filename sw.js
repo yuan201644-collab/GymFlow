@@ -2,7 +2,7 @@
    Service Worker — 离线缓存
    ============================================ */
 
-const CACHE_NAME = 'fitness-v5';
+const CACHE_NAME = 'fitness-v7';
 const ASSETS = [
   './',
   './index.html',

@@ -10,7 +10,7 @@
 module.exports = {
   apiKey: '智谱API密钥',   // 从 https://open.bigmodel.cn → API Keys 获取
   password: 'gymflow2024',  // 自定义访问密码，APK 需携带
-  maxPerDay: 100,          // 单设备每日最大次数
+  maxPerDay: 120,          // 单设备每日最大次数
 };
 ```
 
@@ -27,7 +27,7 @@ node server.js
 🏋️  GymFlow AI Server v2 已启动
     http://localhost:3000
     模型: glm-4-flash（免费）
-    限流: 100次/设备/天
+    限流: 120次/设备/天
     POST /api/ask
 ```
 
@@ -55,7 +55,7 @@ node server.js
 {
   "success": true,
   "answer": "练腿日注意：1. 热身充分...",
-  "usage": { "used": 5, "remaining": 95 }
+  "usage": { "used": 5, "remaining": 115 }
 }
 ```
 

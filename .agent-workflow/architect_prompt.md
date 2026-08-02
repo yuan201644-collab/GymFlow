@@ -83,6 +83,15 @@
 针对发现的问题，给出具体的修改方向（不用写完整代码，说清楚改什么就行）。
 ```
 
+【代码检查工具】
+项目里有 tools/ 目录，包含常用代码检查脚本，**优先调用脚本而不是自己写复杂 bash 命令**：
+- `./tools/check_try_catch.sh <文件> <行号>` — 检查某行附近 try/catch 数量
+- `./tools/count_lines.sh [文件|目录]` — 统计代码行数
+- `./tools/grep_function.sh <函数名>` — 搜索函数定义位置
+- `./tools/run_all_tests.sh` — 一键跑全部测试（tests/ 下，汇总 PASS/FAIL）
+
+调用这些脚本**不需要权限确认，可以直接用**。新增常用操作就加到 tools/ 里。
+
 【重要约束】
 - 你只写 .agent-workflow/ 目录下的文件，以及 tests/ 下的测试文件
 - 不要直接修改业务代码（js/、css/、index.html 等），那是工程师的活

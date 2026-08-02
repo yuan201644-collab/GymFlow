@@ -503,6 +503,20 @@ function checkPlanAgainstSpec(plan, ctx) {
 // ══════════════════════════════════════════
 // buildPlan：组装五层
 // ══════════════════════════════════════════
+// 自定义方案 day 图标（§21.1：推/拉/腿/胸/背等区分）
+function dayEmoji(label) {
+  if (label.includes('推')) return '🏋️';
+  if (label.includes('拉')) return '🏹';
+  if (label.includes('腿')) return '🦵';
+  if (label.includes('胸')) return '🏋️';
+  if (label.includes('背')) return '🏹';
+  if (label.includes('手臂')) return '💪';
+  if (label.includes('肩')) return '💪';
+  if (label.includes('全身')) return '🔥';
+  if (label.includes('休息')) return '🧘';
+  return '🏋️';
+}
+
 function buildPlan(ctx) {
   const tplKey = DECISION.templateKey(ctx);
   const template = TEMPLATES[tplKey];
@@ -572,7 +586,7 @@ function buildPlan(ctx) {
       }
       if (c2.length > 0) sections.push({ type: 'cardio', title: '有氧燃脂(20分钟)', groups: [{ label: '有氧', pickHint: '2选1', exercises: c2 }] });
     }
-    return { label: day.label, sections };
+    return { label: day.label, emoji: dayEmoji(day.label), sections };
   });
 
   // 休息日

@@ -41,7 +41,9 @@ export default {
     if (!deviceId || !content || !content.trim()) return json({ error: '缺少必填参数: password, deviceId, content' }, 400);
 
     // 3. 限流
-    const maxPerDay = parseInt(env.MAX_PER_DAY || '100', 10);
+    // 注意：此处默认值仅在未设置 Cloudflare Secret MAX_PER_DAY 时生效；
+    // 云端部署时必须把 Secret MAX_PER_DAY 同步设为 120，否则线上仍按 Secret 配置走。
+    const maxPerDay = parseInt(env.MAX_PER_DAY || '120', 10);
     const used = rateMap.get(deviceId) || 0;
     if (used >= maxPerDay) return json({ error: '今日使用额度已满，次日自动恢复', usage: { used, limit: maxPerDay } }, 429);
 

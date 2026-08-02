@@ -170,3 +170,13 @@ function fuzzySearchExercises(query, list) {
   results.sort((a, b) => b.score - a.score);
   return results.map(r => r.ex);
 }
+
+// HTML 文本内容转义（innerHTML 用）——审计 P2-1：防 AI 回复/用户数据注入
+function escapeHtml(str) {
+  return String(str == null ? '' : str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// onclick 属性参数转义（JS 字符串内单引号）——审计 P3：防 id/动作名逃逸属性
+function escAttr(str) {
+  return String(str == null ? '' : str).replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/&/g, '&amp;');
+}

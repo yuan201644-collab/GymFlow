@@ -12,5 +12,5 @@ module.exports = {
   password: 'gymflow2024',
 
   // 单设备每日最大调用次数
-  maxPerDay: 100,
+  maxPerDay: 120,
 };

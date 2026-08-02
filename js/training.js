@@ -170,7 +170,7 @@ const TRAINING_PLANS = {
   pull: {
     label: '拉日',
     subtitle: '背 + 肩后束 + 二头',
-    emoji: '🏋️',
+    emoji: '🏹',
     sections: [
       {
         type: 'warmup',
@@ -338,7 +338,7 @@ const TRAINING_PLANS = {
   legs: {
     label: '臀腿日',
     subtitle: '臀 + 腿',
-    emoji: '🏋️',
+    emoji: '🦵',
     sections: [
       {
         type: 'warmup',
@@ -614,7 +614,7 @@ function getTrainingPlan(type) {
         return {
           label: day.label,
           subtitle: ap.name,
-          emoji: '📋',
+          emoji: day.emoji || '📋',
           sections: (() => {
             const dayIdx = idx;
             // 数据防御：清洗可能畸形的 day 数据
@@ -859,7 +859,7 @@ function renderTrainingPage() {
 
       html += `<div class="group-header ${groupDone?'group-done':''}" onclick="toggleGroup('${secIdx}-${grpIdx}')" id="gh-${secIdx}-${grpIdx}">`;
       html += `<span class="group-target-label">${groupDone?'✅':'🎯'} ${group.label}</span>`;
-      html += `<div class="group-right"><span class="group-pick-hint">${pickHint}</span>${section.type==='main'?`<button class="fav-star-btn" onclick="event.stopPropagation();openExercisePicker('${secIdx}','${grpIdx}','${groupId}','${(group.region||'').replace(/'/g,"\\'")}')" title="替换/新增动作">🔄</button>`:''}<span class="group-expand-icon" id="ge-${secIdx}-${grpIdx}">▼</span></div></div>`;
+      html += `<div class="group-right"><span class="group-pick-hint">${pickHint}</span>${(record.type!=='rest'&&(section.type==='main'||section.type==='warmup'||section.type==='stretch'))?`<button class="fav-star-btn btn-pop" onclick="event.stopPropagation();openExercisePicker('${secIdx}','${grpIdx}','${groupId}','${(group.region||'').replace(/'/g,"\\'")}','${section.type}')" title="替换/新增动作">➕</button>`:''}<span class="group-expand-icon" id="ge-${secIdx}-${grpIdx}">▼</span></div></div>`;
 
       html += `<div class="group-exercises" id="gx-${secIdx}-${grpIdx}">`;
 
@@ -880,15 +880,15 @@ function renderTrainingPage() {
         const uid = secIdx + '-' + grpIdx + '-' + exIdx;
 
         html += `<div class="card group-exercise-card ${exDone?'completed':''} ${exSkipped?'exercise-skipped':''}" style="margin-bottom:6px;${!isSelected?'opacity:0.55;':''}" id="card-${uid}">`;
-        html += `<div class="card-header"><div class="checkbox-wrapper" onclick="selectAndToggle('${secIdx}','${grpIdx}','${exIdx}','${groupId}','${escapeHtml(ex.name)}')">`;
+        html += `<div class="card-header"><div class="checkbox-wrapper" onclick="selectAndToggle('${secIdx}','${grpIdx}','${exIdx}','${groupId}','${escAttr(ex.name)}')">`;
         html += `<div class="checkbox-custom ${exDone?'checked':''}" id="check-${uid}">${exDone?'✓':''}</div>`;
         html += `<div style="flex:1;"><div class="card-title" style="font-size:14px;${exDone?'text-decoration:line-through;color:var(--accent);':''}${exSkipped?'text-decoration:line-through;color:var(--muted);':''}">${ex.name}${exSkipped?'<span class="card-default-tag" style="background:var(--border);color:var(--muted);">已跳过</span>':''}${ex.default?'<span class="card-default-tag">推荐</span>':''}</div>`;
         if(ex.equipment) html += `<span class="card-equipment">${ex.equipment}</span>`;
         html += `<div class="card-meta">${ex.sets}</div>`;
         if(section.type==='main'&&ex.equipment){
-          html += `<div class="weight-row" onclick="stopPropagation(event)"><span class="weight-label">🏋️</span><input type="number" class="weight-input-sm" value="${exWeight}" onchange="updateExerciseWeight('${groupId}','${escapeHtml(ex.name)}',this.value)" onfocus="this.select()" step="5" min="0" max="500" placeholder="${getLastWeightHint(ex.name)}"><span class="weight-unit">kg</span><span class="weight-label" style="margin-left:6px;">次</span><input type="number" class="weight-input-sm" value="${exReps}" onchange="updateExerciseReps('${groupId}','${escapeHtml(ex.name)}',this.value)" onfocus="this.select()" step="1" min="0" max="60" style="width:52px;"></div>`;
+          html += `<div class="weight-row" onclick="stopPropagation(event)"><span class="weight-label">🏋️</span><input type="number" class="weight-input-sm" value="${exWeight}" onchange="updateExerciseWeight('${groupId}','${escAttr(ex.name)}',this.value)" onfocus="this.select()" step="5" min="0" max="500" placeholder="${getLastWeightHint(ex.name)}"><span class="weight-unit">kg</span><span class="weight-label" style="margin-left:6px;">次</span><input type="number" class="weight-input-sm" value="${exReps}" onchange="updateExerciseReps('${groupId}','${escAttr(ex.name)}',this.value)" onfocus="this.select()" step="1" min="0" max="60" style="width:52px;"></div>`;
         }
-        html += `</div><div style="display:flex;align-items:center;gap:2px;"><button class="fav-star-btn skip-btn ${exSkipped?'skip-active':''}" onclick="event.stopPropagation();toggleSkip('${secIdx}','${grpIdx}','${groupId}','${escapeHtml(ex.name)}')" title="跳过此动作">⏭</button><button class="fav-star-btn" data-ex="${escapeHtml(ex.name)}" onclick="event.stopPropagation();var el=this;try{toggleFavorite(this.getAttribute('data-ex'));el.textContent=isFavorite(this.getAttribute('data-ex'))?'⭐':'☆';el.classList.add('pop');setTimeout(function(){el.classList.remove('pop')},500)}catch(e){}">☆</button></div></div></div>`;
+        html += `</div><div style="display:flex;align-items:center;gap:2px;"><button class="fav-star-btn skip-btn btn-pop ${exSkipped?'skip-active':''}" onclick="event.stopPropagation();toggleSkip('${secIdx}','${grpIdx}','${groupId}','${escAttr(ex.name)}')" title="跳过此动作">⏭</button><button class="fav-star-btn" data-ex="${escAttr(ex.name)}" onclick="event.stopPropagation();var el=this;try{toggleFavorite(this.getAttribute('data-ex'));el.textContent=isFavorite(this.getAttribute('data-ex'))?'⭐':'☆';el.classList.add('pop');setTimeout(function(){el.classList.remove('pop')},500)}catch(e){}">☆</button></div></div></div>`;
         if(ex.tip) html += `<div class="card-tip">💡 ${ex.tip}</div>`;
         html += `</div>`;
       });
@@ -1119,8 +1119,9 @@ function showSkipOption(groupId, exName) {
   if (old) old.remove();
   const overlay = document.createElement('div');
   overlay.id = 'skip-option-overlay';
+  overlay.className = 'overlay-fade';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;';
-  overlay.innerHTML = `<div style="background:var(--surface);border-radius:16px;padding:20px;max-width:300px;width:90%;text-align:center;">
+  overlay.innerHTML = `<div class="sheet-fadeUp" style="background:var(--surface);border-radius:16px;padding:20px;max-width:300px;width:90%;text-align:center;">
     <div style="font-size:32px;margin-bottom:8px;">⏭</div>
     <h3 style="margin-bottom:4px;">已跳过「${exName}」</h3>
     <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">今天先不练这个动作</p>
@@ -1140,28 +1141,29 @@ function persistDislike(name) {
 }
 
 // ── 15.5 替换 / 新增动作：同部位 + 设备可用 选择器 ──
-function openExercisePicker(secIdx, grpIdx, groupId, region) {
+function openExercisePicker(secIdx, grpIdx, groupId, region, phase) {
   const s = getSettings();
   const eq = (s.userInfo || {}).equipment;
-  if (!eq) { showEquipmentPicker(secIdx, grpIdx, groupId, region); return; } // P2-3：首次先确认设备
-  openExercisePickerInner(secIdx, grpIdx, groupId, region, eq);
+  if (!eq) { showEquipmentPicker(secIdx, grpIdx, groupId, region, phase); return; } // P2-3：首次先确认设备
+  openExercisePickerInner(secIdx, grpIdx, groupId, region, eq, phase);
 }
 
 // P2-3：设备偏好首次弹选择，存 settings.userInfo.equipment，之后过滤用保存值
-function showEquipmentPicker(secIdx, grpIdx, groupId, region) {
+function showEquipmentPicker(secIdx, grpIdx, groupId, region, phase) {
   const old = document.getElementById('ex-picker-overlay');
   if (old) old.remove();
   const options = ['商业健身房(器械很全)', '社区健身房(基础器械够用)', '家庭健身(哑铃+弹力带+引体架)', '纯自重训练(无器械)'];
   const overlay = document.createElement('div');
   overlay.id = 'ex-picker-overlay';
+  overlay.className = 'overlay-fade';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;';
-  overlay.innerHTML = `<div style="background:var(--surface);border-radius:16px;padding:20px;max-width:320px;width:90%;text-align:center;">
+  overlay.innerHTML = `<div class="sheet-fadeUp" style="background:var(--surface);border-radius:16px;padding:20px;max-width:320px;width:90%;text-align:center;">
     <div style="font-size:30px;margin-bottom:8px;">🏋️</div>
     <h3 style="margin-bottom:4px;">你的器械条件？</h3>
     <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">用于过滤可替换/新增的动作</p>
     ${options.map((o, i) => `<button class="btn btn-outline btn-sm" style="width:100%;margin-bottom:8px;" onclick="setEquipmentPref(${i})">${o}</button>`).join('')}
   </div>`;
-  window._pickerCtx = { secIdx, grpIdx, groupId, region };
+  window._pickerCtx = { secIdx, grpIdx, groupId, region, phase };
   document.body.appendChild(overlay);
 }
 
@@ -1174,32 +1176,34 @@ function setEquipmentPref(idx) {
   const ov = document.getElementById('ex-picker-overlay');
   if (ov) ov.remove();
   const c = window._pickerCtx || {};
-  openExercisePickerInner(c.secIdx, c.grpIdx, c.groupId, c.region, options[idx]);
+  openExercisePickerInner(c.secIdx, c.grpIdx, c.groupId, c.region, options[idx], c.phase);
 }
 
-function openExercisePickerInner(secIdx, grpIdx, groupId, region, eqPref) {
+function openExercisePickerInner(secIdx, grpIdx, groupId, region, eqPref, phase) {
   const old = document.getElementById('ex-picker-overlay');
   if (old) old.remove();
   const ctx = { equipment: eqPref };
+  const targetPhase = phase || 'main'; // §20：按段 phase 过滤（warmup/stretch/main）
   const regionFilter = [region || ''];
   const cands = EXERCISE_DB.filter(ex => {
-    if (ex.phase !== 'main') return false;
+    if (ex.phase !== targetPhase) return false;
     const r = ex.region || '';
-    // P3：同子部位精确匹配——组 region 带子部位（如 胸.中胸）只换同子部位；无子部位（如 胸）匹配同大区
-    if (!regionFilter.some(f => f && (r === f || r.startsWith(f + '.')))) return false;
+    // region 过滤仅主组生效（热身/拉伸组无 region 跳过，按 phase+设备+模糊搜索选；P3 主组同子部位精确）
+    if (targetPhase === 'main' && !regionFilter.some(f => f && (r === f || r.startsWith(f + '.')))) return false;
     if (typeof isEquipmentAvailable === 'function' && !isEquipmentAvailable(ex, ctx)) return false;
     return true;
   });
   const renderList = (kw) => {
     const list = kw ? fuzzySearchExercises(kw, cands) : cands; // 第16节：模糊搜索（候选已是同部位+设备过滤子集）
     return list.slice(0, 50).map(e =>
-      `<div class="card ex-card" style="padding:10px 14px;margin-bottom:6px;" onclick="addCustomExercise('${groupId}','${escapeHtml(e.name)}')"><div style="font-size:14px;font-weight:600;">${e.name}</div><div class="card-meta">${e.equipment} · ${e.mechanics} · ${e.difficulty}</div></div>`
+      `<div class="card ex-card" style="padding:10px 14px;margin-bottom:6px;" onclick="addCustomExercise('${groupId}','${escAttr(e.name)}')"><div style="font-size:14px;font-weight:600;">${e.name}</div><div class="card-meta">${e.equipment} · ${e.mechanics} · ${e.difficulty}</div></div>`
     ).join('') || '<p class="text-muted text-center" style="padding:20px;">无可用动作</p>';
   };
   const overlay = document.createElement('div');
   overlay.id = 'ex-picker-overlay';
+  overlay.className = 'overlay-fade';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.85);display:flex;flex-direction:column;';
-  overlay.innerHTML = `<div style="background:var(--surface);height:100%;max-height:88vh;display:flex;flex-direction:column;border-radius:16px 16px 0 0;margin-top:auto;">
+  overlay.innerHTML = `<div class="sheet-fadeUp" style="background:var(--surface);height:100%;max-height:88vh;display:flex;flex-direction:column;border-radius:16px 16px 0 0;margin-top:auto;">
     <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;"><b>替换/新增动作</b><span style="color:var(--muted);font-size:12px;">${region || '该部位'} · ${eqPref.replace(/\(.*/,'')}</span><button class="fav-star-btn" onclick="document.getElementById('ex-picker-overlay').remove()">✕</button></div>
     <input type="text" class="form-input" placeholder="搜索动作..." oninput="filterPicker(this.value)" style="margin:12px 16px 8px;">
     <div style="flex:1;overflow-y:auto;padding:0 16px 16px;" id="ex-picker-list">${renderList('')}</div>
@@ -1277,7 +1281,7 @@ async function submitForRating() {
     const d = await resp.json();
     if(d.success){
       record.aiRating = d.answer; record.aiSummary = d.answer; saveTodayRecord(record);
-      if(rs) rs.innerHTML = '<div class="rating-card"><div class="rating-card-header"><span>📊 AI 复盘小结</span><span class="rating-refresh" onclick="submitForRating()">🔄 重评</span></div><div class="rating-card-body">'+d.answer.replace(/\n/g,'<br>')+'</div></div>';
+      if(rs) rs.innerHTML = '<div class="rating-card"><div class="rating-card-header"><span>📊 AI 复盘小结</span><span class="rating-refresh" onclick="submitForRating()">🔄 重评</span></div><div class="rating-card-body">'+escapeHtml(d.answer).replace(/\n/g,'<br>')+'</div></div>';
     }else{
       if(rs) rs.innerHTML = '<div class="rating-card" style="border-color:var(--danger);"><div class="rating-card-header">⚠️ 评分失败</div><div class="rating-card-body">'+d.error+'</div><button class="btn btn-outline mt-8" onclick="submitForRating()">重试</button></div>';
     }
@@ -1377,7 +1381,7 @@ function renderHistoryList() {
   else records.forEach(r => {
     const plan = getTrainingPlan(r.type);
     const exDone = r.exercises.filter(e=>e.completed).length;
-    h += '<div class="card history-card '+ (r.completed?'history-done':'') +'" onclick="viewHistoryRecord(\''+r.id+'\')"><div class="flex-between"><div><div style="font-weight:700;font-size:15px;">'+plan.emoji+' '+plan.label+' · '+formatDate(r.date)+'</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(r.completed?'✅':'⬜')+' · '+exDone+'个动作</div></div><div style="font-size:20px;color:var(--muted);">→</div></div></div>';
+    h += '<div class="card history-card '+ (r.completed?'history-done':'') +'" onclick="viewHistoryRecord(\''+escAttr(r.id)+'\')"><div class="flex-between"><div><div style="font-weight:700;font-size:15px;">'+plan.emoji+' '+plan.label+' · '+formatDate(r.date)+'</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(r.completed?'✅':'⬜')+' · '+exDone+'个动作</div></div><div style="font-size:20px;color:var(--muted);">→</div></div></div>';
   });
   container.innerHTML = h;
 }
@@ -1428,7 +1432,7 @@ function renderHistoryDetail(record) {
   const plan = getTrainingPlan(record.type);
   const allFlat = getAllExercisesFlat(plan);
   let h = '<div class="history-topbar"><button class="history-back-btn" onclick="showHistory()">← 返回</button><span class="history-title">'+plan.emoji+' '+plan.label+' · '+formatDate(record.date)+'</span>';
-  h += '<div style="display:flex;gap:6px;"><button class="history-edit-btn" onclick="toggleHistEdit(\''+record.id+'\')">'+(historyEditMode?'💾 保存':'✏️ 编辑')+'</button><button class="btn btn-sm btn-outline" onclick="navigateTo(\'training\');backToTraining()" style="min-height:36px;">📍 今天</button></div></div>';
+  h += '<div style="display:flex;gap:6px;"><button class="history-edit-btn" onclick="toggleHistEdit(\''+escAttr(record.id)+'\')">'+(historyEditMode?'💾 保存':'✏️ 编辑')+'</button><button class="btn btn-sm btn-outline" onclick="navigateTo(\'training\');backToTraining()" style="min-height:36px;">📍 今天</button></div></div>';
 
   if (allFlat.length > 0) {
     plan.sections.forEach(section => {
@@ -1440,7 +1444,7 @@ function renderHistoryDetail(record) {
           const isDone = recEx ? recEx.completed : false;
           const w = recEx ? (recEx.weight||'') : '';
           if(historyEditMode){
-            h += '<div class="card group-exercise-card '+(isDone?'completed':'')+'" style="margin-bottom:6px;"><div style="display:flex;align-items:center;gap:8px;"><div class="checkbox-custom '+(isDone?'checked':'')+'" onclick="toggleHistEx(\''+record.id+'\',\''+group.id+'\',\''+escapeHtml(ex.name)+'\',this)" style="cursor:pointer;">'+(isDone?'✓':'')+'</div><div style="flex:1;"><div class="card-title" style="font-size:14px;">'+ex.name+'</div><div class="card-meta">'+ex.sets+'</div>'+(section.type==='main'&&ex.equipment?'<div class="weight-row"><input type="number" class="weight-input-sm" value="'+w+'" onchange="updateHistWeight(\''+record.id+'\',\''+group.id+'\',\''+escapeHtml(ex.name)+'\',this.value)" onfocus="this.select()" step="5"> <span class="weight-unit">kg</span></div>':'')+'</div><button class="history-delete-ex" onclick="deleteHistEx(\''+record.id+'\',\''+group.id+'\',\''+escapeHtml(ex.name)+'\')" title="删除">🗑️</button></div></div>';
+            h += '<div class="card group-exercise-card '+(isDone?'completed':'')+'" style="margin-bottom:6px;"><div style="display:flex;align-items:center;gap:8px;"><div class="checkbox-custom '+(isDone?'checked':'')+'" onclick="toggleHistEx(\''+escAttr(record.id)+'\',\''+escAttr(group.id)+'\',\''+escAttr(ex.name)+'\',this)" style="cursor:pointer;">'+(isDone?'✓':'')+'</div><div style="flex:1;"><div class="card-title" style="font-size:14px;">'+ex.name+'</div><div class="card-meta">'+ex.sets+'</div>'+(section.type==='main'&&ex.equipment?'<div class="weight-row"><input type="number" class="weight-input-sm" value="'+w+'" onchange="updateHistWeight(\''+escAttr(record.id)+'\',\''+escAttr(group.id)+'\',\''+escAttr(ex.name)+'\',this.value)" onfocus="this.select()" step="5"> <span class="weight-unit">kg</span></div>':'')+'</div><button class="history-delete-ex" onclick="deleteHistEx(\''+escAttr(record.id)+'\',\''+escAttr(group.id)+'\',\''+escAttr(ex.name)+'\')" title="删除">🗑️</button></div></div>';
           }else{
             h += '<div class="card group-exercise-card '+(isDone?'completed':'')+'" style="opacity:'+(isDone?'1':'0.45')+';margin-bottom:6px;"><div style="display:flex;align-items:center;gap:8px;"><div class="checkbox-custom '+(isDone?'checked':'')+'" style="width:22px;height:22px;font-size:12px;">'+(isDone?'✓':'')+'</div><div><div class="card-title" style="font-size:14px;'+(isDone?'':'text-decoration:line-through;opacity:0.5;')+'">'+ex.name+'</div><div class="card-meta">'+ex.sets+(w?' · '+w+'kg':'')+'</div></div></div></div>';
           }
@@ -1451,7 +1455,7 @@ function renderHistoryDetail(record) {
   } else {
     h += '<p class="text-muted mt-16">该日无训练数据</p>';
   }
-  h += '<button class="btn btn-danger mt-16" onclick="deleteHistoryRecord(\''+record.id+'\')">🗑️ 删除此记录</button>';
+  h += '<button class="btn btn-danger mt-16" onclick="deleteHistoryRecord(\''+escAttr(record.id)+'\')">🗑️ 删除此记录</button>';
   container.innerHTML = h;
 }
 
@@ -1525,7 +1529,7 @@ async function generateWeeklyReport() {
     const d = await resp.json();
     if (d.success) {
       const log = getCoachLog(); log.push({ week: monday.toISOString().slice(0,10), summary: d.answer }); saveCoachLog(log);
-      if (rs) rs.innerHTML = '<div class="rating-card"><div class="rating-card-header"><span>📊 本周训练周报</span></div><div class="rating-card-body">'+d.answer.replace(/\n/g,'<br>')+'</div></div>';
+      if (rs) rs.innerHTML = '<div class="rating-card"><div class="rating-card-header"><span>📊 本周训练周报</span></div><div class="rating-card-body">'+escapeHtml(d.answer).replace(/\n/g,'<br>')+'</div></div>';
     } else {
       if (rs) rs.innerHTML = '<div class="rating-card" style="border-color:var(--danger);"><div class="rating-card-header">⚠️ 生成失败</div><div class="rating-card-body">'+d.error+'</div></div>';
     }
@@ -1541,6 +1545,3 @@ function saveCoachLog(log) {
   localStorage.setItem('fitness_coach_log', JSON.stringify(log.slice(-12)));
 }
 
-function escapeHtml(str) {
-  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-}

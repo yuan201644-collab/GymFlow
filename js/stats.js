@@ -5,63 +5,6 @@
 let typeChart = null;
 let calendarYear, calendarMonth;
 
-function renderStatsPage() {
-  const container = document.getElementById('stats-content');
-  const counts = getTypeCounts();
-  const streak = getStreak();
-
-  const now = new Date();
-  calendarYear = now.getFullYear();
-  calendarMonth = now.getMonth();
-
-  let html = `
-    <h1 class="section-title">📊 数据统计</h1>
-
-    <!-- 统计卡片 -->
-    <div class="stat-cards">
-      <div class="stat-card">
-        <div class="stat-number">${counts.total}</div>
-        <div class="stat-label">累计训练天数</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number">${streak}</div>
-        <div class="stat-label">连续打卡</div>
-        ${streak > 0 ? `<div class="stat-fire">🔥 已连续 ${streak} 天</div>` : ''}
-      </div>
-    </div>
-
-    <!-- 各部位训练次数 -->
-    <div class="chart-container mb-16">
-      <h3 class="mb-16" style="font-size:15px;">各部位训练次数</h3>
-      <canvas id="type-chart"></canvas>
-    </div>
-
-    <!-- 体重变化（如果有多条记录） -->
-    <div id="stats-weight-chart"></div>
-
-    <!-- 月度训练日历 -->
-    <div class="card">
-      <div class="calendar-header">
-        <span class="calendar-month" id="cal-month-label"></span>
-        <div class="calendar-nav">
-          <button onclick="navigateCalendar(-1)">◀</button>
-          <button onclick="navigateCalendar(1)">▶</button>
-        </div>
-      </div>
-      <div class="calendar-grid" id="cal-grid"></div>
-      <div class="cal-legend" id="cal-legend" style="display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:12px;color:var(--muted);"></div>
-    </div>
-  `;
-
-  container.innerHTML = html;
-
-  // 渲染图表
-  setTimeout(() => {
-    renderTypeChart(counts);
-    renderStatsWeightChart();
-    renderCalendar();
-  }, 100);
-}
 
 function renderTypeChart(counts) {
   const canvas = document.getElementById('type-chart');

@@ -53,7 +53,7 @@ function renderTutorialSlide() {
 
   overlay.innerHTML = `
     <div style="text-align:center;max-width:340px;animation:fadeUp 0.3s var(--ease-out);">
-      <div style="font-size:64px;margin-bottom:16px;">${s.emoji}</div>
+      <div style="font-size:64px;margin-bottom:16px;">${s.emoji==='🤖'?'<span class="nav-ai nav-ai-lg">AI</span>':s.emoji}</div>
       <h2 style="margin-bottom:8px;">${s.title}</h2>
       <p style="margin-bottom:24px;line-height:1.8;">${s.text}</p>
       <div style="display:flex;gap:4px;justify-content:center;margin-bottom:20px;">

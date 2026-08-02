@@ -62,7 +62,7 @@ function renderMePage() {
   const infoMissing = !u.gender || !u.age || !u.height;
   let h = '<h1 class="section-title">👤 我的</h1>';
   if (infoMissing) {
-    h += `<div class="fresh-install-banner" style="margin-bottom:12px;"><div class="fresh-install-icon">🤖</div><div class="fresh-install-text"><b>信息未完善</b><br>让 AI 帮你了解自己，完善基础资料</div><button class="btn btn-sm btn-outline" onclick="startInfoWizard()" style="width:auto;flex-shrink:0;">AI 填写</button></div>`;
+    h += `<div class="fresh-install-banner" style="margin-bottom:12px;"><div class="fresh-install-icon"><span class="nav-ai">AI</span></div><div class="fresh-install-text"><b>信息未完善</b><br>让 AI 帮你了解自己，完善基础资料</div><button class="btn btn-sm btn-outline" onclick="startInfoWizard()" style="width:auto;flex-shrink:0;">AI 填写</button></div>`;
   }
   h += `<div class="me-section"><h3>基本信息${infoMissing?' <span style="font-size:11px;color:#ffb74d;">未完善</span>':''}</h3><div class="user-info-grid">`;
   h += `<div class="user-info-item" onclick="editUserInfo('gender')"><div class="label">性别</div><div class="value">${u.gender||'点击设置'}</div></div>`;
@@ -115,7 +115,7 @@ function showInfoWizardDialog() {
   overlay.id = 'info-wizard-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `<div style="background:var(--surface);border-radius:var(--radius);padding:24px;max-width:340px;width:90%;animation:fadeUp .3s var(--ease-out);text-align:center;">
-    <div style="font-size:40px;margin-bottom:12px;">🤖</div>
+    <div style="margin-bottom:12px;"><span class="nav-ai nav-ai-lg">AI</span></div>
     <h3 style="margin-bottom:4px;">完善个人信息 (${infoWizard.step+1}/${INFO_STEPS.length})</h3>
     <p style="margin-bottom:16px;">${step.question}</p>
     <input type="text" class="form-input" id="info-wizard-input" placeholder="${step.hint}" autofocus onkeydown="if(event.key==='Enter')infoWizardNext()" style="text-align:center;font-size:18px;">
@@ -246,25 +246,30 @@ function openFeatureModule(id) {
   if (!mod) return;
   const c = document.getElementById('features-content');
   let h = `<div class="sub-page-header"><button class="history-back-btn" onclick="renderFeaturesPage()">← 功能</button><span class="history-title">${mod.icon} ${mod.label}</span><span></span></div>`;
-  // §19：可折叠「使用说明」卡（首访展开、二次折叠、可再展开，按模块记忆）
-  if (mod.help) {
-    const seenKey = 'fitness_help_seen_' + id;
-    const isFirst = !localStorage.getItem(seenKey);
-    if (isFirst) localStorage.setItem(seenKey, '1'); // 首访看过一次，下次折叠（不打扰）
-    const collapsed = isFirst ? false : localStorage.getItem(seenKey) === '1';
-    h += `<div class="card help-card" style="margin:12px 0;">
-      <div class="help-header" onclick="toggleHelp('${id}')" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer;">
-        <span style="font-weight:600;font-size:14px;">ℹ️ 使用说明</span><span id="help-icon-${id}">${collapsed?'▶':'▼'}</span>
-      </div>
-      <div id="help-body-${id}"${collapsed?' style="display:none;"':''}>
-        <p style="font-size:13px;color:var(--muted);margin:0 14px 8px;">${mod.help.intro}</p>
-        <ol style="margin:0 30px 12px;padding:0;font-size:13px;color:var(--muted);">${mod.help.steps.map(s=>`<li style="margin-bottom:4px;">${s}</li>`).join('')}</ol>
-      </div>
-    </div>`;
-  }
   c.innerHTML = h;
   mod.render(c);
+  // §19：说明卡 render 后插入 sub-page-header 之后（兼容替换式/追加式 render，P1 修复）
+  if (mod.help) insertHelpCard(mod, c);
   c.scrollIntoView({ behavior: 'smooth' });
+}
+
+// §19：插入可折叠「使用说明」卡（首访展开、二次折叠、可再展开，按模块记忆）
+function insertHelpCard(mod, container) {
+  const seenKey = 'fitness_help_seen_' + mod.id;
+  const isFirst = !localStorage.getItem(seenKey);
+  if (isFirst) localStorage.setItem(seenKey, '1'); // 首访看过一次，下次折叠（不打扰）
+  const collapsed = isFirst ? false : localStorage.getItem(seenKey) === '1';
+  const headerEl = container.querySelector('.sub-page-header');
+  if (!headerEl) return;
+  headerEl.insertAdjacentHTML('afterend', `<div class="card help-card" style="margin:12px 0;">
+    <div class="help-header" onclick="toggleHelp('${mod.id}')" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer;">
+      <span style="font-weight:600;font-size:14px;">ℹ️ 使用说明</span><span id="help-icon-${mod.id}">${collapsed?'▶':'▼'}</span>
+    </div>
+    <div id="help-body-${mod.id}"${collapsed?' style="display:none;"':''}>
+      <p style="font-size:13px;color:var(--muted);margin:0 14px 8px;">${mod.help.intro}</p>
+      <ol style="margin:0 30px 12px;padding:0;font-size:13px;color:var(--muted);">${mod.help.steps.map(s=>`<li style="margin-bottom:4px;">${s}</li>`).join('')}</ol>
+    </div>
+  </div>`);
 }
 
 // §19：切换使用说明展开/折叠
@@ -391,7 +396,7 @@ function renderWeightModule(container) {
   if (ws.length >= 2) h += `<div class="chart-container"><canvas id="chart-weight-dual"></canvas></div>`;
   if (ws.length > 0) {
     ws.slice().reverse().forEach(w => { const b = calcBMI(w.weight); const cat = getBMICategory(b);
-      h += `<div class="weight-list-item"><div><div class="weight-date">${formatDate(w.date)}</div><div style="font-size:12px;color:${cat.color};">BMI ${b.toFixed(1)} · ${cat.label}</div></div><div class="weight-value">${w.weight}<span>kg</span></div><button class="btn-delete" onclick="handleDeleteWeight('${w.id}');openFeatureModule('weight')">🗑️</button></div>`;
+      h += `<div class="weight-list-item"><div><div class="weight-date">${formatDate(w.date)}</div><div style="font-size:12px;color:${cat.color};">BMI ${b.toFixed(1)} · ${cat.label}</div></div><div class="weight-value">${w.weight}<span>kg</span></div><button class="btn-delete" onclick="handleDeleteWeight('${escAttr(w.id)}');openFeatureModule('weight')">🗑️</button></div>`;
     });
   } else h += `<div class="empty-state"><span class="empty-icon">📋</span><p>暂无体重记录</p></div>`;
   container.innerHTML += h;
@@ -818,19 +823,6 @@ function addWeightFromFeatures() {
 // ── 旧函数占位 ──
 // 旧函数占位（已迁移到 FEATURE_MODULES）
 
-function renderStatsInMe(sub) {
-  const counts = getTypeCounts();
-  let h = `<div class="me-section mt-16"><div style="display:flex;justify-content:space-between;align-items:center;"><h3>📊 数据统计</h3><span style="font-size:12px;color:var(--accent);cursor:pointer;" onclick="sub.innerHTML='';sub.scrollIntoView({behavior:'smooth'})">收起</span></div>`;
-  h += `<div class="stat-cards"><div class="stat-card"><div class="stat-number">${counts.total}</div><div class="stat-label">累计训练天数</div></div><div class="stat-card"><div class="stat-number">${getStreak()}</div><div class="stat-label">连续打卡</div></div></div>`;
-  h += `<div class="chart-container"><h3 style="font-size:15px;margin-bottom:12px;">各部位训练次数</h3><canvas id="type-chart-me"></canvas></div>`;
-  h += `<div class="chart-container"><h3 style="font-size:15px;margin-bottom:12px;">体重变化</h3><canvas id="weight-chart-me"></canvas></div>`;
-  sub.innerHTML = h;
-  setTimeout(() => {
-    renderTypeChartCanvas('type-chart-me', counts);
-    renderWeightChartCanvas('weight-chart-me');
-  }, 100);
-}
-
 function renderWeightInMe(sub) {
   let h = `<div class="me-section mt-16"><div style="display:flex;justify-content:space-between;align-items:center;"><h3>⚖️ 体重追踪</h3><span style="font-size:12px;color:var(--accent);cursor:pointer;" onclick="sub.innerHTML='';sub.scrollIntoView({behavior:'smooth'})">收起</span></div>`;
   const weights = getWeights();
@@ -844,7 +836,7 @@ function renderWeightInMe(sub) {
   if (weights.length > 0) {
     weights.slice().reverse().forEach(w => {
       const b = calcBMI(w.weight); const cat = getBMICategory(b);
-      h += `<div class="weight-list-item"><div><div class="weight-date">${formatDate(w.date)}</div><div style="font-size:12px;color:${cat.color};">BMI ${b.toFixed(1)} · ${cat.label}</div></div><div class="weight-value">${w.weight}<span>kg</span></div><button class="btn-delete" onclick="handleDeleteWeight('${w.id}');renderWeightInMe(sub)">🗑️</button></div>`;
+      h += `<div class="weight-list-item"><div><div class="weight-date">${formatDate(w.date)}</div><div style="font-size:12px;color:${cat.color};">BMI ${b.toFixed(1)} · ${cat.label}</div></div><div class="weight-value">${w.weight}<span>kg</span></div><button class="btn-delete" onclick="handleDeleteWeight('${escAttr(w.id)}');renderWeightInMe(sub)">🗑️</button></div>`;
     });
   } else {
     h += `<p class="text-muted text-center mt-16">暂无记录</p>`;
@@ -929,31 +921,6 @@ function addWeightFromMe() {
   renderMePage();
 }
 
-function renderSettingsInMe(sub) {
-  let h = `<div class="me-section mt-16"><div style="display:flex;justify-content:space-between;align-items:center;"><h3>⚙️ 设置</h3><span style="font-size:12px;color:var(--accent);cursor:pointer;" onclick="sub.innerHTML='';sub.scrollIntoView({behavior:'smooth'})">收起</span></div>`;
-  // Theme
-  h += `<h3 style="font-size:12px;color:var(--muted);margin-bottom:6px;">主题外观</h3><div class="theme-switcher mb-16">`;
-  ['auto','light','dark'].forEach(t=>{const icons={auto:'🔄',light:'☀️',dark:'🌙'};const labels={auto:'跟随系统',light:'浅色',dark:'深色'};h+=`<button class="theme-btn ${getTheme()===t?'active':''}" onclick="setTheme('${t}');renderMePage()"><span class="theme-icon">${icons[t]}</span>${labels[t]}</button>`});
-  h += `</div>`;
-  // AI
-  h += `<h3 style="font-size:12px;color:var(--muted);margin-bottom:6px;">AI 服务</h3>`;
-  h += `<input type="text" class="form-input mb-8" id="ai-server-input-s" value="${localStorage.getItem('fitness_ai_server')||(typeof window!=='undefined'&&window.Capacitor?'https://fathers-resistance-integral-valves.trycloudflare.com':'http://localhost:3000')}" onchange="saveAIConfigS()" placeholder="API地址">`;
-  h += `<input type="text" class="form-input mb-8" id="ai-password-input-s" value="${localStorage.getItem('fitness_ai_password')||'gymflow2024'}" onchange="saveAIConfigS()" placeholder="密码">`;
-  // Data
-  h += `<h3 style="font-size:12px;color:var(--muted);margin-bottom:6px;">数据管理</h3><div style="display:flex;flex-direction:column;gap:8px;">`;
-  h += `<button class="btn btn-outline btn-sm" onclick="exportData()">📤 导出数据</button><div style="font-size:10px;color:var(--muted);">↓ 保存到「下载」文件夹</div>`;
-  h += `<button class="btn btn-outline btn-sm" onclick="importData()">📥 导入数据</button>`;
-  h += `<button class="btn btn-danger btn-sm" onclick="resetData()">⚠️ 重置数据</button></div>`;
-  h += `<p class="about-text mt-16">GymFlow v${APP_VERSION} · 三分化训练追踪 · 本地存储</p>`;
-  h += `<input type="file" id="import-file-input" accept=".json" style="display:none" onchange="handleImportFile(event)">`;
-  sub.innerHTML = h;
-}
-
-function saveAIConfigS() {
-  localStorage.setItem('fitness_ai_server', document.getElementById('ai-server-input-s')?.value||'');
-  localStorage.setItem('fitness_ai_password', document.getElementById('ai-password-input-s')?.value||'');
-}
-
 // ── Theme ──
 function getTheme(){ return localStorage.getItem('fitness_theme')||'auto'; }
 function applyTheme(t){ localStorage.setItem('fitness_theme',t); if(t==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',t); }
@@ -1011,6 +978,6 @@ function resetData(){if(!confirm('确定删除所有数据？不可恢复！'))r
 function showToast(msg,type='success'){const c=document.getElementById('toast');const t=document.createElement('div');t.className=`toast-item ${type}`;t.textContent=msg;c.appendChild(t);setTimeout(()=>t.remove(),2200)}
 
 // ── PWA ──
-function registerPWA(){if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').then(r=>console.log('SW registered'),()=>{})})}}
+function registerPWA(){if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})})}}
 
 document.addEventListener('DOMContentLoaded', initApp);

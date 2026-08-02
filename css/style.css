@@ -118,6 +118,17 @@ h1{font-size:22px;font-weight:700;letter-spacing:-.3px}h2{font-size:18px;font-we
 .group-header.just-done{animation:groupPop .6s var(--ease-out)}
 @keyframes groupPop{0%{transform:scale(1)}15%{transform:scale(1.03);background:rgba(0,200,83,.08);border-radius:8px}100%{transform:scale(1);background:transparent}}
 .group-exercises{overflow:hidden;transition:all .35s var(--ease-out)}
+/* §21.2 AI 字母徽章（替代 🤖 emoji，全面统一） */
+.nav-ai{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;border-radius:7px;background:var(--accent);color:#000;font-weight:800;font-size:14px;letter-spacing:.5px;line-height:1;vertical-align:middle}
+.nav-ai-lg{min-width:52px;height:52px;font-size:30px;border-radius:14px}
+/* §21.4 弹层入场动画（遮罩淡入 + 内容上浮） */
+@keyframes overlayFade{from{opacity:0}to{opacity:1}}
+@keyframes sheetFadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.overlay-fade{animation:overlayFade .3s var(--ease-out)}
+.sheet-fadeUp{animation:sheetFadeUp .3s var(--ease-out)}
+/* §21.4 按钮点击反馈（➕/⏭ 等） */
+.btn-pop:active{animation:btnPop .3s var(--ease-out)}
+@keyframes btnPop{0%{transform:scale(1)}50%{transform:scale(.8)}100%{transform:scale(1)}}
 .group-exercise-card{transition:all .3s var(--ease-out),opacity .25s var(--ease-out)}
 .group-exercise-card.collapse-hide{max-height:0!important;opacity:0;margin-bottom:0!important;padding-top:0!important;padding-bottom:0!important;border-width:0!important;overflow:hidden}
 .group-exercise-card.exercise-skipped{opacity:.45;filter:saturate(.3)}
