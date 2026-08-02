@@ -227,13 +227,14 @@ GymFlow/
   2. **提交前必须先询问用户确认**，不要默认自动 push
 - ⚠️ **发布政策（2026-08-02，按版本类型 + 分工）**：
   - **PATCH（1.7.0→1.7.1）**：测试端本地 git commit 即可；**不 push、不打 APK**
-  - **MINOR（1.7→1.8）/ MAJOR（1→2）**：测试端指派版本 + 同步常量 + 写待办 → **开发端执行 commit + push + 打包 APK**（MAJOR 另需用户确认）
+  - **MINOR（1.7→1.8）/ MAJOR（1→2）**：测试端指派版本 + 同步常量 + **commit + push**（push 前先问用户确认）→ **开发端负责打包 APK**（MAJOR 另需用户确认）
   - **紧急 PATCH**（修崩溃/数据丢失）：可单独 push + 打包（例外）
   - 无论 PATCH/MINOR，每次 commit 仍同步 `APP_VERSION` / `CACHE_NAME` / CHANGELOG
-  - **分工确认（2026-08-02）**：PATCH 本地提交由测试端做；MINOR/MAJOR 的 push + 打包由开发端（VSCode）执行。`.claude/settings.json` 已允许 `git push`（需确认），开发端可执行 push；版本号仍由用户+测试端指派，开发端不自行 bump。
+  - **分工确认（2026-08-02 修订）**：**commit + push 由测试端（架构师）执行**（push 前先问用户确认）；**打包 APK 由开发端执行**（需 native 工具链：`npx cap sync android && gradlew assembleDebug`）。工程师已 headless 化（全自动工作流内），不再需要切 VSCode 手动 push。版本号仍由用户+测试端指派，开发端不自行 bump。
 - ⚠️ **版本号（2026-08-01）**：开发端**只实现功能、不 bump 版本**。版本指派/大版本确认/发版时机由「用户 + 测试端」决定（标准见 `C:\Users\86133\Desktop\测试gym\GymFlow改进报告.md` §17 三步判断法）。发版时按清单同步 `APP_VERSION` / `CACHE_NAME` / CHANGELOG / README；若测试端指派版本与代码不一致，上报用户，勿自行对齐。
 - ✅ **V2.0.0 已发布（2026-08-02）**：已提交（`6a3a13c` AI 4 阶段 + `4bc9a90` README）并 push。用户确认。
-- 🔔 **待办（2026-08-02，测试端指派给开发端）**：**V2.1.0 发布（含 v2.0.1 滑屏 + V2.1 卡片重构四轮）**——用户已确认。工作区累积：v2.0.1（js/swipe.js、tests/swipe_test.js、index.html、css #app transform）+ V2.1 四轮（advice card/长按菜单/AI输入/记录板块）+ AGENT_WORKFLOW_GUIDE.md + .claude/settings.json（git push deny 移除）。版本常量已同步（APP_VERSION=2.1、CACHE_NAME=fitness-v9、CHANGELOG v2.1.0 含 v2.0.1）。请：① 检查 `git diff` 确认改动；② commit（建议按 v2.0.1 / v2.1 各轮分逻辑提交，或一个 v2.1.0 提交）；③ push GitHub + 打包 APK。执行前先询问用户确认（push + APK 一起做、先问）。
+- ✅ **V2.1.0 已发布（2026-08-02）**：已提交 `596a3a6`（含 v2.0.1 滑屏 + V2.1 四轮）并 push。用户确认。
+- 🔔 **待办（2026-08-02，测试端指派给开发端）**：**工作流 v2（`89510e6`）已本地提交，未 push**（异常恢复/可观测性/成本控制 + guide 更新；PATCH 级，按政策本地即可）。下次 MINOR push 时一并带上，或按需单独 push。
 
 ---
 
