@@ -17,7 +17,7 @@
      * 测试要点（哪些地方需要重点测）
    - 方案写完后，更新 status.json：
      phase = "coding"
-     last_updated = 当前时间
+     last_updated = 当前时间（**必须用 `date '+%Y-%m-%d %H:%M'` 命令取真实时钟，禁止估时间**）
      task_summary = 任务一句话摘要
 
 3. 如果 phase = "testing"（迭代中的测试阶段）：
@@ -47,7 +47,7 @@
      status.json 设 iteration += 1, phase = "coding"
    - 如果没通过且 iteration >= max_iterations：
      status.json 设 phase = "failed"
-   - 每次都更新 last_updated
+   - 每次都更新 last_updated（**必须用 `date '+%Y-%m-%d %H:%M'` 取真实时钟**）
 
 5. 改完 status.json 后，你的工作就完成了。等待对方agent干活，
    不要主动做对方的事。

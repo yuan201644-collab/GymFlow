@@ -18,7 +18,7 @@
      * 小步快跑，一次只改方案里说的内容
    - 改完后，更新 status.json：
      phase = "testing"
-     last_updated = 当前时间
+     last_updated = 当前时间（**必须用 `date '+%Y-%m-%d %H:%M'` 命令取真实时钟，禁止估时间**）
 
 3. 改完 status.json 后，你的工作就完成了。等待架构师测试，
    不要主动做测试的事。

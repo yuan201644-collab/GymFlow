@@ -188,9 +188,12 @@ GymFlow 的 `tests/` 有：`engine_test.js`（42 画像回归）、`fuzzy_test.j
 5. **PowerShell 跑 bash**：`&&` 是 bash 语法，PowerShell 用 `;`；且 PowerShell 的 `bash` 可能路由到 WSL（没装发行版会报错）。用 `bash ./脚本.sh` 或 git-bash。
 6. **status.json 解析**：用 `jq`（fallback grep），别硬解。
 7. **测试脚本两份拷贝会漂移**（测试端目录 + 项目 tests/）——尽量只维护一份（放项目里）。
+8. **时间戳必须用 `date`**：agent 估时间会倒挂（done 比 handoff 还早），prompts 里强制 `date '+%Y-%m-%d %H:%M'`（§4.2）。
+9. **Windows 的 `python3` 是占位 stub**：`/WindowsApps/python3` 打开应用商店，不是真 Python（`python` 如 `d/python/python` 才是）。脚本校验 JSON 时**逐个尝试 jq→python3→python，任一成功即通过**，别用 if/elif（python3 存在但失败会跳过真 python）。
 
 ---
 
+## 9. 适配到 Python + Vue + TS 项目
 ## 9. 适配到 Python + Vue + TS 项目
 
 | GymFlow（前端/Node） | 目标项目（Python+Vue+TS） |
@@ -203,9 +206,50 @@ GymFlow 的 `tests/` 有：`engine_test.js`（42 画像回归）、`fuzzy_test.j
 
 > 其余（.agent-workflow 结构、状态机、prompts 模板、orchestrator 脚本、权限配置、治理策略）**与语言无关，可直接照搬**。
 
+### 9.1 Python + Vue + TS 特有坑
+
+1. **Python 虚拟环境**：Agent 跑测试**用 `python -m pytest`**（自动走当前解释器，**不需要激活 venv**）——比 `source .venv/bin/activate` 稳，避免"忘了激活"。
+2. **TypeScript 类型检查**：把 `tsc --noEmit` **纳入测试套件**（`run_all_tests.sh` 里加一项）——类型错误在测试阶段就拦住，别留到运行时。
+3. **前后端联调测试**：起真后端（`uvicorn` 等）→ 前端 Playwright 打过去 → 后端真服务或 mock。比全 mock 更接近真实，架构师 prompt 里注明"联调测试要起后端"。
+4. **Python 的 python3 stub**：见 §8.9（用真 `python`）。
+5. **Vue 组件测试**：`@vue/test-utils` + vitest；E2E 用 Playwright（前端本地起 dev server）。
+
 ---
 
 ## 10. 快速上手清单
+
+- [ ] `.agent-workflow/` 6 文件建好（status.json 初始 planning）
+- [ ] `orchestrator.sh` + `orchestrator_auto.sh`（+x）
+- [ ] `.claude/settings.json` 权限配置
+- [ ] `tools/run_all_tests.sh` 按目标语言写好
+- [ ] 两个 prompt 里测试命令换成目标项目
+- [ ] 用一个小 task 跑通一轮（半自动先，再全自动）
+- [ ] 确认 `claude -p` 参数正确（见 §8.1）
+
+---
+
+## 11. 进阶特性（v2，按需采用）
+
+### 11.1 异常恢复
+- **断点续跑**：orchestrator 读 status.json 决定从哪个 phase 继续——**天然支持**（进程重启不从头开始）。注意：agent 改一半崩了（phase 还在 coding）→ **重跑当前 phase**（让工程师续跑），**不是回退上一 phase**（会丢弃已改代码）。
+- **status.json 损坏防护**：orchestrator 启动时 `validate_status()` 用 jq/python 校验，解析失败报"建议 `git checkout` 恢复"并退出。
+- **卡住判定**：按 phase 设超时警告（planning 20min / coding 45min / testing 30min，首次跑可 ×1.5 缓冲）。只是警告，硬截止靠单 agent `timeout`。
+
+### 11.2 任务拆分
+- **判断标准**：改动 **>5 个文件 或 跨 2+ 模块 → 拆**；一个 task 应是"一轮能测完"的粒度。
+- **反例**：别为拆而拆——单个独立函数的 bug 拆两轮反而增加 overhead。
+- **子任务依赖**：task.md 开头写「前置：轮X已完成」，各子任务独立迭代、累积提交。
+- 实例：GymFlow V2.1 拆 A/B/C/D 四轮。
+
+### 11.3 可观测性
+- **history.log**：orchestrator 每次 phase 切换追加一行（时间 + phase + iteration + 耗时），整个 task 时间线一目了然。
+- **每 agent 日志**：`logs/iteration-<N>-<phase>.log`（agent 完整输出）。
+- **失败快照**：phase=failed/超限时自动存 `logs/failure-<时间戳>/`，含 status.json + plan.md + test_report.md + task.md + git.diff——复盘时"改了啥、为啥挂、方案对不对"全齐。
+
+### 11.4 成本控制
+- **迭代上限**：`max_iterations=3`（默认）。
+- **预算上限**：orchestrator 调 claude 加 `--max-budget-usd $MAX_BUDGET_PER_AGENT`（建议 $3，6x 余量防误杀、失控能止损）。
+- **模型路由**（可选）：简单任务小模型/复杂任务大模型，用 `claude -p --model <模型>`。**仅当项目配了多模型才有价值**，默认不启用。
 
 - [ ] `.agent-workflow/` 6 文件建好（status.json 初始 planning）
 - [ ] `orchestrator.sh` + `orchestrator_auto.sh`（+x）
