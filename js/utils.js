@@ -180,3 +180,72 @@ function escapeHtml(str) {
 function escAttr(str) {
   return String(str == null ? '' : str).replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/&/g, '&amp;');
 }
+
+// ============================================
+// 动作卡本地 AI 建议（L0，纯本地计算，V2.0 阶段1）
+// ============================================
+
+// 全/半角括号归一（方案动作名常用全角括号「（）」，动作库统一半角"( )"）
+function normalizeParens(str) {
+  return String(str == null ? '' : str).replace(/[（）]/g, m => m === '（' ? '(' : ')');
+}
+
+// 在 EXERCISE_DB 中匹配同名动作（先精确，再全/半角归一精确，最后模糊兜底）
+function matchDbExercise(name) {
+  if (typeof EXERCISE_DB === 'undefined' || !EXERCISE_DB) return null;
+  const exact = EXERCISE_DB.find(e => e.name === name);
+  if (exact) return exact;
+  const nm = normalizeParens(name);
+  const norm = EXERCISE_DB.find(e => e.name === nm || normalizeParens(e.name) === nm);
+  if (norm) return norm;
+  const cands = fuzzySearchExercises(name, EXERCISE_DB);
+  return cands[0] || null;
+}
+
+// action: {name, tip, sets, equipment}  record: 今日训练记录
+// ctx: {equipment, phase, region, restSec, records, db, isAvailable}（records/db/isAvailable 可注入，便于单测）
+function getActionAdvice(action, record, ctx) {
+  const db = (ctx && ctx.db) || (typeof EXERCISE_DB !== 'undefined' ? EXERCISE_DB : []);
+  const dbEx = matchDbExercise(action.name);
+
+  // 1. 动作要点
+  let points = action.tip || '';
+  if (!points && dbEx) points = dbEx.mechanics + '为主 · ' + dbEx.difficulty + '难度 · ' + (dbEx.risk === '高' ? '注意⚠️高风险' : '标准动作');
+  if (!points) points = '保持标准姿势，感受目标肌群发力，全程控制节奏';
+
+  // 2. 建议重量：最近一次历史重量 + 2.5kg（复用 getLastWeightHint 逻辑扩展）
+  const records = (ctx && ctx.records) || (typeof getRecords === 'function' ? getRecords() : []);
+  const done = records.filter(r => r && r.completed && r.exercises && r.exercises.some(e => e.name === action.name && e.weight));
+  let weight = { last: null, suggest: null, text: '首次做，轻重量起步' };
+  if (done.length > 0) {
+    const lastRec = done[done.length - 1].exercises.find(e => e.name === action.name && e.weight);
+    if (lastRec && lastRec.weight) {
+      const w = parseFloat(lastRec.weight) || 0;
+      weight = { last: w, suggest: w + 2.5, text: '上次 ' + w + 'kg，建议 ' + (w + 2.5) + 'kg' };
+    }
+  }
+
+  // 3. 组间休息：孤立 60s / 复合 120s（方案 restSec 可覆盖）
+  const isIsolation = dbEx && dbEx.type === '孤立';
+  const restSec = isIsolation ? 60 : ((ctx && ctx.restSec) || 120);
+  const rest = { sec: restSec, text: isIsolation ? '孤立动作 · 组间休息约60秒' : '复合动作 · 组间休息约' + restSec + '秒' };
+
+  // 4. 替换动作：同 phase + 主组同 region + 设备可用，1-2 个（复用替换选择器过滤逻辑；排除自身）
+  const phase = (ctx && ctx.phase) || 'main';
+  const region = (ctx && ctx.region) || (dbEx && dbEx.region) || '';
+  const eqPref = (ctx && ctx.equipment) || '商业健身房(器械很全)';
+  const isAvail = (ctx && ctx.isAvailable) || (typeof isEquipmentAvailable === 'function' ? isEquipmentAvailable : () => true);
+  const eqCtx = { equipment: eqPref };
+  const an = normalizeParens(action.name);
+  const replacements = db.filter(ex => {
+    if (!ex || ex.phase !== phase || normalizeParens(ex.name) === an) return false;
+    if (phase === 'main' && region) {
+      const r = ex.region || '';
+      if (!(r === region || r.startsWith(region + '.') || region.startsWith(r + '.'))) return false;
+    }
+    if (!isAvail(ex, eqCtx)) return false;
+    return true;
+  }).slice(0, 2).map(ex => ({ name: ex.name, equipment: ex.equipment, region: ex.region, mechanics: ex.mechanics, difficulty: ex.difficulty }));
+
+  return { points, weight, rest, replacements };
+}

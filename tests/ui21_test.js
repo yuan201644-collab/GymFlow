@@ -17,9 +17,14 @@ const { chromium } = require(pwPath);
   console.log('1. AI 导航:', navAI);
   t('导航 AI 用字母徽章无🤖', navAI.includes('nav-ai') && navAI.includes('>AI<') && !navAI.includes('🤖'), navAI);
 
-  // 2. 页面无 🤖 残留（渲染后）
-  const robotCount = await page.evaluate(() => document.body.textContent.split('🤖').length - 1);
-  t('页面无 🤖 残留', robotCount === 0, '残留 ' + robotCount);
+  // 2. 页面 🤖 均来自功能按钮（问AI按钮/FAB），无游离残留
+  //   V2.0 阶段2/3 起训练页每卡有「🤖 问 AI」+ 底部「🤖 AI 教练」FAB，属预期 UI
+  const robotInfo = await page.evaluate(() => {
+    const all = document.body.textContent.split('🤖').length - 1;
+    const feature = document.querySelectorAll('.advice-ai-btn').length + (document.getElementById('ai-coach-fab') ? 1 : 0);
+    return { all, feature };
+  });
+  t('页面 🤖 均在功能按钮内（无游离残留）', robotInfo.all > 0 && robotInfo.all === robotInfo.feature, JSON.stringify(robotInfo));
 
   // 3. 默认方案日图标：推/拉/腿 各异
   const dayEmojis = await page.evaluate(() => {

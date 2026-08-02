@@ -44,6 +44,10 @@ function navigateTo(page) {
   // 底部评分栏仅在训练页显示
   const bar = document.getElementById('bottom-bar');
   if (bar) bar.style.display = (page === 'training') ? 'flex' : 'none';
+  // AI 教练浮层入口仅训练页显示；切离训练页时收起浮层（防浮层残留其它页）
+  const fab = document.getElementById('ai-coach-fab');
+  if (fab) fab.style.display = (page === 'training') ? 'flex' : 'none';
+  if (page !== 'training' && typeof closeAICoach === 'function') closeAICoach();
 
   switch (page) {
     case 'training': renderTrainingPage(); break;

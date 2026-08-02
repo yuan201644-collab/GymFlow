@@ -9,3 +9,6 @@ server/data.json
 
 # Cloudflare Wrangler 构建产物
 server/.wrangler/
+
+# Agent 工作流日志（瞬态）
+.agent-workflow/logs/

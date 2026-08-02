@@ -395,4 +395,4 @@ function deletePlan(id) {
 
 // ========== 版本管理 ==========
 
-const APP_VERSION = '1.7'; // P2-3：与 CACHE_NAME(fitness-v7) 对齐实际版本线，最终以测试端指派为准
+const APP_VERSION = '2.0';

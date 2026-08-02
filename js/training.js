@@ -760,6 +760,13 @@ function renderTrainingPage() {
   const plan = getTrainingPlan(record.type);
   if (!record.groupSelections) { record.groupSelections = {}; saveTodayRecord(record); }
 
+  // 本地 AI 建议上下文（V2.0 阶段1）：设备偏好读一次，供动作卡建议复用
+  const _s = getSettings();
+  const adviceCtx = {
+    equipment: (_s.userInfo || {}).equipment || '商业健身房(器械很全)',
+    restSec: plan.restSec || 120,
+  };
+
   const allGroups = getAllGroups(plan);
   const totalGroups = allGroups.length;
   let completedGroups = 0, skippedGroups = 0;
@@ -879,6 +886,10 @@ function renderTrainingPage() {
         const isSelected = ex.name === currentEx.name;
         const uid = secIdx + '-' + grpIdx + '-' + exIdx;
 
+        // 本地 AI 建议预生成（V2.0 阶段1）：纯本地计算，渲染时一次算好展开无闪烁
+        const advice = getActionAdvice(ex, record, Object.assign({ phase: section.type, region: group.region || '' }, adviceCtx));
+        const isRestDay = record.type === 'rest';
+
         html += `<div class="card group-exercise-card ${exDone?'completed':''} ${exSkipped?'exercise-skipped':''}" style="margin-bottom:6px;${!isSelected?'opacity:0.55;':''}" id="card-${uid}">`;
         html += `<div class="card-header"><div class="checkbox-wrapper" onclick="selectAndToggle('${secIdx}','${grpIdx}','${exIdx}','${groupId}','${escAttr(ex.name)}')">`;
         html += `<div class="checkbox-custom ${exDone?'checked':''}" id="check-${uid}">${exDone?'✓':''}</div>`;
@@ -888,8 +899,29 @@ function renderTrainingPage() {
         if(section.type==='main'&&ex.equipment){
           html += `<div class="weight-row" onclick="stopPropagation(event)"><span class="weight-label">🏋️</span><input type="number" class="weight-input-sm" value="${exWeight}" onchange="updateExerciseWeight('${groupId}','${escAttr(ex.name)}',this.value)" onfocus="this.select()" step="5" min="0" max="500" placeholder="${getLastWeightHint(ex.name)}"><span class="weight-unit">kg</span><span class="weight-label" style="margin-left:6px;">次</span><input type="number" class="weight-input-sm" value="${exReps}" onchange="updateExerciseReps('${groupId}','${escAttr(ex.name)}',this.value)" onfocus="this.select()" step="1" min="0" max="60" style="width:52px;"></div>`;
         }
-        html += `</div><div style="display:flex;align-items:center;gap:2px;"><button class="fav-star-btn skip-btn btn-pop ${exSkipped?'skip-active':''}" onclick="event.stopPropagation();toggleSkip('${secIdx}','${grpIdx}','${groupId}','${escAttr(ex.name)}')" title="跳过此动作">⏭</button><button class="fav-star-btn" data-ex="${escAttr(ex.name)}" onclick="event.stopPropagation();var el=this;try{toggleFavorite(this.getAttribute('data-ex'));el.textContent=isFavorite(this.getAttribute('data-ex'))?'⭐':'☆';el.classList.add('pop');setTimeout(function(){el.classList.remove('pop')},500)}catch(e){}">☆</button></div></div></div>`;
+        html += `</div><div style="display:flex;align-items:center;gap:2px;">${isRestDay?'':`<button class="fav-star-btn btn-pop" id="ab-${uid}" onclick="event.stopPropagation();toggleAdvice('${uid}')" title="本地AI建议">💡</button>`}<button class="fav-star-btn skip-btn btn-pop ${exSkipped?'skip-active':''}" onclick="event.stopPropagation();toggleSkip('${secIdx}','${grpIdx}','${groupId}','${escAttr(ex.name)}')" title="跳过此动作">⏭</button><button class="fav-star-btn" data-ex="${escAttr(ex.name)}" onclick="event.stopPropagation();var el=this;try{toggleFavorite(this.getAttribute('data-ex'));el.textContent=isFavorite(this.getAttribute('data-ex'))?'⭐':'☆';el.classList.add('pop');setTimeout(function(){el.classList.remove('pop')},500)}catch(e){}">☆</button></div></div></div>`;
         if(ex.tip) html += `<div class="card-tip">💡 ${ex.tip}</div>`;
+        if(!isRestDay){
+          html += `<div class="advice-card" id="advice-${uid}" style="display:none;">`;
+          html += `<div class="advice-title">💡 本地建议</div>`;
+          html += `<div class="advice-item"><span class="advice-label">要点</span><span>${escapeHtml(advice.points)}</span></div>`;
+          html += `<div class="advice-item"><span class="advice-label">重量</span><span>${advice.weight.text}</span></div>`;
+          html += `<div class="advice-item"><span class="advice-label">休息</span><span>${advice.rest.text}</span></div>`;
+          if (advice.replacements.length) {
+            html += `<div class="advice-item"><span class="advice-label">替换</span><span>${advice.replacements.map(r => `<span class="advice-repl">${escapeHtml(r.name)}</span>`).join('')}</span></div>`;
+          }
+          // 缓存命中时预填 AI 讲解（重复问不重复调，re-render 后仍可见）
+          let cachedAIA = '';
+          try {
+            const cc = JSON.parse(localStorage.getItem('fitness_ai_action_cache') || '{}')[ex.name];
+            if (cc && Date.now() - (cc.ts || 0) < 7 * 24 * 3600 * 1000) cachedAIA = aiAnswerHtml(cc.answer);
+          } catch (e) {}
+          html += `<div class="advice-ai-row">
+            <button class="advice-ai-btn" id="aai-btn-${uid}" onclick="event.stopPropagation();askActionAI('${escAttr(ex.name)}','${escAttr(ex.tip || '')}','${uid}')">🤖 问 AI</button>
+          </div>`;
+          html += `<div class="advice-ai-result" id="aai-result-${uid}">${cachedAIA}</div>`;
+          html += `</div>`;
+        }
         html += `</div>`;
       });
 
@@ -948,6 +980,16 @@ function renderBottomBar(completedGroups, totalGroups) {
     <button class="btn btn-outline" style="flex:1;" onclick="submitForRating()">📝 评分</button>
     <button class="btn btn-accent" style="flex:1;" id="finish-btn" onclick="finishTraining()">${allDone?'✅ 完成训练':'🏁 结束训练('+completedGroups+'/'+totalGroups+')'}</button>
   `;
+  // AI 教练浮层入口（V2.0 阶段3）：与 bottom-bar 同级挂到 #app
+  let fab = document.getElementById('ai-coach-fab');
+  if (!fab) {
+    fab = document.createElement('button');
+    fab.id = 'ai-coach-fab';
+    fab.className = 'ai-coach-fab';
+    fab.setAttribute('onclick', 'openAICoach()');
+    fab.textContent = '🤖 AI 教练';
+    document.getElementById('app').appendChild(fab);
+  }
 }
 
 function toggleGroup(uid) {
@@ -1102,6 +1144,16 @@ function getLastWeightHint(exName) {
   return last && last.weight ? '上次 ' + last.weight + 'kg' : '';
 }
 
+// 动作卡本地 AI 建议展开/收起（V2.0 阶段1）
+function toggleAdvice(uid) {
+  const el = document.getElementById('advice-' + uid);
+  const btn = document.getElementById('ab-' + uid);
+  if (!el) return;
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  if (btn) btn.style.opacity = open ? '' : '1';
+}
+
 // 动作级跳过（15.3）
 function toggleSkip(secIdx, grpIdx, groupId, exName) {
   const record = getTodayRecord();
@@ -1206,9 +1258,16 @@ function openExercisePickerInner(secIdx, grpIdx, groupId, region, eqPref, phase)
   overlay.innerHTML = `<div class="sheet-fadeUp" style="background:var(--surface);height:100%;max-height:88vh;display:flex;flex-direction:column;border-radius:16px 16px 0 0;margin-top:auto;">
     <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;"><b>替换/新增动作</b><span style="color:var(--muted);font-size:12px;">${region || '该部位'} · ${eqPref.replace(/\(.*/,'')}</span><button class="fav-star-btn" onclick="document.getElementById('ex-picker-overlay').remove()">✕</button></div>
     <input type="text" class="form-input" placeholder="搜索动作..." oninput="filterPicker(this.value)" style="margin:12px 16px 8px;">
+    <div style="margin:0 16px 8px;display:flex;gap:8px;">
+      <input type="text" class="form-input" id="ai-pick-input" placeholder="用文字描述你想要的，AI 推荐动作" maxlength="100" onkeydown="if(event.key==='Enter')askPickerAI()" style="flex:1;height:44px;">
+      <button class="ai-pick-btn" onclick="askPickerAI()">🤖 推荐</button>
+    </div>
+    <div id="ai-pick-result" style="margin:0 16px 8px;"></div>
     <div style="flex:1;overflow-y:auto;padding:0 16px 16px;" id="ex-picker-list">${renderList('')}</div>
   </div>`;
   window._pickerCands = cands;
+  window._pickerCtx = { groupId, region, phase: targetPhase, eqPref };
+  window._pickerAIBusy = false;
   window._pickerRender = renderList;
   document.body.appendChild(overlay);
 }
@@ -1216,6 +1275,44 @@ function openExercisePickerInner(secIdx, grpIdx, groupId, region, eqPref, phase)
 function filterPicker(kw) {
   const listEl = document.getElementById('ex-picker-list');
   if (listEl && window._pickerRender) listEl.innerHTML = window._pickerRender(kw.trim());
+}
+
+// 「AI 描述」推荐替换动作：读描述 → 调 AI → 渲染推荐（点选即替换，复用 addCustomExercise）
+async function askPickerAI() {
+  const input = document.getElementById('ai-pick-input');
+  const result = document.getElementById('ai-pick-result');
+  const desc = (input && input.value ? input.value : '').trim();
+  if (!desc) { if (result) result.innerHTML = '<div class="ai-pick-err">请先输入描述</div>'; return; }
+  if (window._pickerAIBusy) return;
+  const cands = Array.isArray(window._pickerCands) ? window._pickerCands : [];
+  if (cands.length === 0) { if (result) result.innerHTML = '<div class="ai-pick-err">当前没有可选动作</div>'; return; }
+  const ctx = window._pickerCtx || {};
+  const groupId = ctx.groupId;
+  window._pickerAIBusy = true;
+  const content = buildPickerAIPrompt(desc, ctx, cands);
+  if (result) result.innerHTML = '<div class="ai-pick-loading">🤖 AI 分析中<span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
+  try {
+    const resp = await aiFetch('/api/ask', { password: getAIPassword(), deviceId: getDeviceId(), content });
+    const data = await resp.json();
+    if (data && data.success) {
+      const names = parsePickerAINames(data.answer, cands);
+      if (names.length) {
+        let h = '<div class="ai-pick-title">🤖 AI 推荐（点选即替换）</div>';
+        names.forEach(n => {
+          const ex = cands.find(c => c && c.name === n) || {};
+          h += '<div class="card ex-card ai-pick-reco" onclick="addCustomExercise(\'' + escAttr(groupId) + '\',\'' + escAttr(n) + '\')"><div style="font-size:14px;font-weight:600;">' + escapeHtml(n) + '</div><div class="card-meta">' + escapeHtml(ex.equipment || '') + '</div></div>';
+        });
+        if (result) result.innerHTML = h;
+      } else {
+        if (result) result.innerHTML = '<div class="ai-pick-err">⚠️ AI 未能识别出候选池内的替代动作，可换种描述重试或直接搜索选择</div><button class="ai-pick-retry" onclick="askPickerAI()">🔄 重试</button>';
+      }
+    } else {
+      if (result) result.innerHTML = '<div class="ai-pick-err">⚠️ ' + escapeHtml((data && data.error) || '请求失败') + '</div><button class="ai-pick-retry" onclick="askPickerAI()">🔄 重试</button>';
+    }
+  } catch (e) {
+    if (result) result.innerHTML = '<div class="ai-pick-err">⚠️ 无法连接 AI 服务，请确认后端已启动</div><button class="ai-pick-retry" onclick="askPickerAI()">🔄 重试</button>';
+  }
+  window._pickerAIBusy = false;
 }
 
 // 选中动作 → 写入当日记录（custom），并设为组当前选中；仅当日有效，不写回方案

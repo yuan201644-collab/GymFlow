@@ -26,12 +26,15 @@ run_test() {
 run_test "engine_test.js"
 run_test "fuzzy_test.js"
 run_test "ai_worker_test.js"
+run_test "advice_test.js"
+run_test "advice_ai_test.js"
 
 # UI测试（Playwright）
 run_test "patch20_test.js"
 run_test "ui21_test.js"
 run_test "help_ui_test.js"
 run_test "ai_dual_ui.js"
+run_test "advice_ui_test.js"
 
 echo "===== 测试汇总 ====="
 echo "通过: $PASS"

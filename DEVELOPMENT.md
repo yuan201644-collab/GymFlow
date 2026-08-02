@@ -225,13 +225,14 @@ GymFlow/
 - ⚠️ **重要**：用户要求（2026-08-01）：
   1. **提交 GitHub 与打包 APK 总是一起做**（改动完成 → 询问 → 一起执行 push + 打包）
   2. **提交前必须先询问用户确认**，不要默认自动 push
-- ⚠️ **发布政策（2026-08-02，按版本类型）**：
-  - **PATCH（1.7.0→1.7.1）**：本地 git commit 必须；**不必须 push GitHub / 打包 APK**（随下一个 MINOR 批量 push）
-  - **MINOR（1.7→1.8）/ MAJOR（1→2）**：push GitHub + 打包 APK 必须（MAJOR 另需用户确认）
+- ⚠️ **发布政策（2026-08-02，按版本类型 + 分工）**：
+  - **PATCH（1.7.0→1.7.1）**：测试端本地 git commit 即可；**不 push、不打 APK**
+  - **MINOR（1.7→1.8）/ MAJOR（1→2）**：测试端指派版本 + 同步常量 + 写待办 → **开发端执行 commit + push + 打包 APK**（MAJOR 另需用户确认）
   - **紧急 PATCH**（修崩溃/数据丢失）：可单独 push + 打包（例外）
   - 无论 PATCH/MINOR，每次 commit 仍同步 `APP_VERSION` / `CACHE_NAME` / CHANGELOG
+  - **分工确认（2026-08-02）**：PATCH 本地提交由测试端做；MINOR/MAJOR 的 push + 打包由开发端（VSCode）执行。`.claude/settings.json` 已允许 `git push`（需确认），开发端可执行 push；版本号仍由用户+测试端指派，开发端不自行 bump。
 - ⚠️ **版本号（2026-08-01）**：开发端**只实现功能、不 bump 版本**。版本指派/大版本确认/发版时机由「用户 + 测试端」决定（标准见 `C:\Users\86133\Desktop\测试gym\GymFlow改进报告.md` §17 三步判断法）。发版时按清单同步 `APP_VERSION` / `CACHE_NAME` / CHANGELOG / README；若测试端指派版本与代码不一致，上报用户，勿自行对齐。
-- 🔔 **待办（2026-08-02，测试端指派给开发端）**：**v1.5.0（模糊搜索）已本地提交 `f37286f`，需 push GitHub + 打包 APK**。执行前先询问用户确认（遵循本节约定：push + APK 一起做、先问）。
+- 🔔 **待办（2026-08-02，测试端指派给开发端）**：**V2.0.0（训练页 AI 化）发布**——用户已确认。工作区累积了 V2.0 阶段 1-4 改动（ai.js/training.js/utils.js/css/app.js + tests/advice_*.js + tools/run_all_tests.sh），且版本常量已同步（APP_VERSION=2.0、CACHE_NAME=fitness-v8、CHANGELOG v2.0.0）。请：① 检查 `git diff` 确认改动；② commit（建议按阶段分 1-4 个逻辑提交，或一个 v2.0.0 提交）；③ push GitHub + 打包 APK（本地还有 `1d2c8ad` 框架、`500d5ec` V1.0批次、`c18a770` 工作流修复未推，一并推）。执行前先询问用户确认（遵循本节约定：push + APK 一起做、先问）。
 
 ---
 

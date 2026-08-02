@@ -227,3 +227,455 @@ function checkAIIntentAndNavigate(userText) {
   }
   return false;
 }
+
+// ===== 💡 训练页「问 AI」动作讲解（V2.0 阶段2，L1 点按调 AI）=====
+const AI_ACTION_CACHE_KEY = 'fitness_ai_action_cache';
+const AI_ACTION_CACHE_TTL = 7 * 24 * 3600 * 1000; // 7 天
+
+function getAIActionCache() {
+  try { return JSON.parse(localStorage.getItem(AI_ACTION_CACHE_KEY)) || {}; }
+  catch { return {}; }
+}
+function setAIActionCache(name, answer) {
+  const cache = getAIActionCache();
+  cache[name] = { answer, ts: Date.now() };
+  // 防无限膨胀：只留最新 20 条
+  const keys = Object.keys(cache);
+  if (keys.length > 20) {
+    const sorted = keys.sort((a, b) => (cache[a].ts || 0) - (cache[b].ts || 0));
+    sorted.slice(0, keys.length - 20).forEach(k => delete cache[k]);
+  }
+  try { localStorage.setItem(AI_ACTION_CACHE_KEY, JSON.stringify(cache)); } catch (e) {}
+}
+// AI 回复 → 安全 HTML（escapeHtml 转义 + 换行→<br>，复用审计 P2-1 范式）
+function aiAnswerHtml(answer) {
+  return escapeHtml(answer).replace(/\n/g, '<br>');
+}
+
+// 构建动作讲解 prompt（纯函数，可单测）
+// action: {name, tip, sets, equipment}
+// ctx: {equipment, records, bodyProfile, issues, todayRecord}
+function buildTrainingPrompt(action, ctx) {
+  const name = action.name || '';
+  const db = (ctx && ctx.db) || (typeof EXERCISE_DB !== 'undefined' ? EXERCISE_DB : []);
+  const dbEx = matchDbExercise(name); // 复用 utils.js：精确 → 全半角归一 → 模糊
+  const tip = action.tip || (dbEx && dbEx.mechanics) || '';
+  const equipment = (ctx && ctx.equipment) || action.equipment || (dbEx && dbEx.equipment) || '';
+  const difficulty = (dbEx && dbEx.difficulty) || '';
+
+  // 历史：该动作最近一条已完成记录（重量/次数，有则带）
+  const records = (ctx && ctx.records) || [];
+  let historyText = '';
+  const done = records.filter(r => r && r.completed && r.exercises && r.exercises.some(e => e.name === name));
+  if (done.length) {
+    const lastRec = done[done.length - 1];
+    const lastEx = lastRec.exercises.find(e => e.name === name);
+    if (lastEx && (lastEx.weight || lastEx.reps)) {
+      historyText = '最近 ' + lastRec.date + ' ' + (lastEx.weight || '?') + 'kg × ' + (lastEx.reps || '?') + '次';
+    }
+  }
+
+  // 今日完成度（可选）
+  const todayRec = (ctx && ctx.todayRecord) || null;
+  let todayText = '';
+  if (todayRec && todayRec.exercises) {
+    const todayEx = todayRec.exercises.find(e => e.name === name);
+    if (todayEx) todayText = '今日已完成' + (todayEx.completed ? '✅' : '⏳进行中');
+  }
+
+  // 体态画像 / 伤病（用户有则带）
+  const bp = (ctx && ctx.bodyProfile) || null;
+  const postureTags = (bp && bp.postureTags) || [];
+  const issues = (ctx && ctx.issues) || '';
+
+  const lines = [
+    '请用100-150字讲解动作「' + name + '」的动作要领，并结合我的情况给1条针对性建议（手机阅读，简洁口语化）。',
+    '动作要点：' + (tip || '保持标准姿势，感受目标肌群发力'),
+    equipment ? '器械：' + equipment : null,
+    difficulty ? '难度：' + difficulty : null,
+    historyText ? '我的历史：' + historyText : null,
+    todayText,
+    postureTags.length ? '体态问题：' + postureTags.join('、') : null,
+    issues ? '需注意：' + issues : null,
+    '要求：先给动作要领，再给1条针对我的建议；总字数100-150字。',
+  ].filter(Boolean);
+
+  return lines.join('\n');
+}
+
+// 「问 AI」按钮入口（training.js 的 onclick 调用）
+async function askActionAI(name, tip, uid) {
+  const resultEl = document.getElementById('aai-result-' + uid);
+  const btnEl = document.getElementById('aai-btn-' + uid);
+  if (!resultEl || resultEl.dataset.loading === '1') return; // 防连点
+  // 缓存命中 → 直接展示
+  const cached = getAIActionCache()[name];
+  if (cached && Date.now() - (cached.ts || 0) < AI_ACTION_CACHE_TTL) {
+    resultEl.innerHTML = aiAnswerHtml(cached.answer);
+    return;
+  }
+  // 加载中：按钮禁用 + 转圈
+  resultEl.dataset.loading = '1';
+  resultEl.innerHTML = '<div class="advice-ai-loading">🤖 AI 分析中<span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
+  if (btnEl) btnEl.style.display = 'none';
+
+  // 组装 ctx（读当前数据，供 prompt）
+  const s = (typeof getSettings === 'function') ? getSettings() : {};
+  const ctx = {
+    equipment: (s.userInfo || {}).equipment || '',
+    records: (typeof getRecords === 'function') ? getRecords() : [],
+    todayRecord: (typeof getTodayRecord === 'function') ? getTodayRecord() : null,
+    bodyProfile: (typeof getBodyProfile === 'function') ? getBodyProfile() : null,
+    issues: (s.userInfo || {}).issues || '',
+  };
+  const prompt = buildTrainingPrompt({ name: name, tip: tip }, ctx);
+
+  try {
+    const resp = await aiFetch('/api/ask', { password: getAIPassword(), deviceId: getDeviceId(), content: prompt });
+    const data = await resp.json();
+    delete resultEl.dataset.loading;
+    if (btnEl) btnEl.style.display = '';
+    if (data.success) {
+      setAIActionCache(name, data.answer);
+      resultEl.innerHTML = aiAnswerHtml(data.answer);
+    } else {
+      resultEl.innerHTML = '<div class="advice-ai-err">⚠️ ' + escapeHtml(data.error || '请求失败') + '</div>'
+        + '<button class="advice-ai-retry" onclick="askActionAI(\'' + escAttr(name) + '\',\'' + escAttr(tip || '') + '\',\'' + uid + '\')">🔄 重试</button>';
+    }
+  } catch (e) {
+    delete resultEl.dataset.loading;
+    if (btnEl) btnEl.style.display = '';
+    resultEl.innerHTML = '<div class="advice-ai-err">⚠️ 无法连接 AI 服务，请确认后端已启动</div>'
+      + '<button class="advice-ai-retry" onclick="askActionAI(\'' + escAttr(name) + '\',\'' + escAttr(tip || '') + '\',\'' + uid + '\')">🔄 重试</button>';
+  }
+}
+
+// ===== 🤖 训练页 AI 教练浮层（V2.0 阶段3，上下文感知对话）=====
+// 注：方案文档里浮层消息数组叫 coachMessages，但该名已被 app.js 的「AI训练方案」占用，
+// 全局 let 重复声明会 SyntaxError，故这里改用 aiCoachMessages / aiCoachLoading。
+let aiCoachMessages = [];
+let aiCoachLoading = false;
+let aiCoachPendingContent = ''; // 失败重试复用同一 content
+
+// 组装当前训练上下文（纯函数，可单测）
+// opts 可注入 {plan, record, records, bodyProfile, settings}，缺省时容错读全局函数
+function buildCoachContext(opts) {
+  opts = opts || {};
+  const record = opts.record !== undefined ? opts.record : (typeof getTodayRecord === 'function' ? getTodayRecord() : null);
+  const plan = opts.plan !== undefined ? opts.plan : (record && typeof getTrainingPlan === 'function' ? getTrainingPlan(record.type) : null);
+  const records = opts.records !== undefined ? opts.records : (typeof getRecords === 'function' ? getRecords() : []);
+  const bp = opts.bodyProfile !== undefined ? opts.bodyProfile : (typeof getBodyProfile === 'function' ? getBodyProfile() : null);
+  const settings = opts.settings !== undefined ? opts.settings : (typeof getSettings === 'function' ? getSettings() : {});
+  const activePlanId = opts.activePlanId !== undefined ? opts.activePlanId : (typeof getActivePlanId === 'function' ? getActivePlanId() : 'default');
+
+  const lines = [];
+  const groups = plan ? (typeof getAllGroups === 'function' ? getAllGroups(plan) : localPlanGroups(plan)) : [];
+
+  // 【当前训练】
+  if (record && plan) {
+    let cur = '【当前训练】方案：' + (activePlanId === 'default' ? '默认三分化' : (plan.subtitle || '自定义方案'));
+    cur += ' ｜ 今日：' + (record.type === 'rest' ? '休息日' : plan.label + (plan.subtitle ? '（' + plan.subtitle + '）' : ''));
+    if (typeof record.type === 'string' && record.type.indexOf('custom_') === 0) {
+      const dayIdx = parseInt(record.type.replace('custom_', ''), 10);
+      if (!isNaN(dayIdx)) cur += ' ｜ 第' + (dayIdx + 1) + '个训练日';
+    }
+    lines.push(cur);
+  }
+
+  if (record && plan && record.type !== 'rest') {
+    // 完成度（复用阶段1口径 isGroupCompleted；vm 单测环境无 training.js 时容错自算）
+    const groupDone = (typeof isGroupCompleted === 'function') ? isGroupCompleted : localGroupCompleted;
+    let doneCount = 0;
+    groups.forEach(g => { if (groupDone(g, record)) doneCount++; });
+    if (groups.length) lines.push('完成度：' + doneCount + '/' + groups.length + ' 部位已完成');
+
+    // 今日已完成/未完成：遍历 record.exercises，每组只列当前选中动作（去重）
+    const currentSel = {};
+    groups.forEach(g => {
+      const gexs = g.exercises || [];
+      if (gexs.length === 0) return;
+      let sel = record.groupSelections && record.groupSelections[g.id];
+      const isCustomSel = sel && (record.exercises || []).some(e => e.name === sel && e.groupId === g.id && e.custom);
+      const isInPlan = sel && gexs.some(e => e.name === sel);
+      if (!(isCustomSel || isInPlan)) sel = (gexs.find(e => e.default) || gexs[0]).name;
+      currentSel[g.id] = sel;
+    });
+    const selNames = Object.keys(currentSel).map(k => currentSel[k]);
+    const doneNames = [], todoNames = [];
+    const seen = {};
+    (record.exercises || []).forEach(e => {
+      if (!e || !e.name || seen[e.name]) return;
+      const inSel = (e.groupId != null && currentSel[e.groupId] === e.name) || selNames.indexOf(e.name) !== -1;
+      if (!inSel) return;
+      seen[e.name] = 1;
+      if (e.skipped) return;
+      if (e.completed) doneNames.push(e.name); else todoNames.push(e.name);
+    });
+    if (doneNames.length) lines.push('今日已完成：' + doneNames.map(n => n + '✅').join('、'));
+    if (todoNames.length) lines.push('今日未完成：' + todoNames.join('、'));
+  }
+
+  // 【动作历史】主组动作最近一条（重量/次数）
+  const histLines = coachHistoryLines(plan, records);
+  if (histLines.length) {
+    lines.push('【动作历史】');
+    histLines.forEach(l => lines.push(l));
+  }
+
+  // 【我的情况】体态 / 伤病
+  const postureTags = (bp && Array.isArray(bp.postureTags)) ? bp.postureTags : [];
+  const issues = (settings.userInfo && settings.userInfo.issues) || '';
+  if (postureTags.length || issues) {
+    let me = '【我的情况】';
+    if (postureTags.length) me += '体态：' + postureTags.join('、');
+    if (postureTags.length && issues) me += ' ｜ ';
+    if (issues) me += '伤病：' + issues;
+    lines.push(me);
+  }
+
+  return lines.filter(l => l && String(l).trim()).join('\n');
+}
+
+// ===== 🏋️ 选择器「AI 描述 → 替换动作」（V2.0 阶段4，纯函数可单测）=====
+// 构建 prompt：用户描述 + 训练场景 + 候选池（前 20 个），约束 AI 只从池内选
+function buildPickerAIPrompt(desc, ctx, cands) {
+  ctx = ctx || {};
+  const pool = Array.isArray(cands) ? cands : [];
+  const descText = String(desc == null ? '' : desc).trim() || '（空）';
+  const lines = [
+    '你是健身动作选择助手。用户想用自然语言描述需求，你从下方候选动作中推荐 1-3 个最合适的。',
+    '【用户描述】' + descText,
+  ];
+  const scene = [];
+  if (ctx.region) scene.push('部位：' + ctx.region);
+  if (ctx.phase) scene.push('阶段：' + ctx.phase);
+  if (ctx.eqPref) scene.push('器械条件：' + ctx.eqPref);
+  if (scene.length) lines.push('【训练场景】' + scene.join(' ｜ '));
+  const names = pool.slice(0, 20).map((ex, i) => (i + 1) + '. ' + ((ex && ex.name) || '')).filter(l => l.trim());
+  if (names.length) {
+    lines.push('【候选动作】');
+    names.forEach(l => lines.push(l));
+  }
+  lines.push('要求：只从候选动作中选，输出动作名，每行一个，不要编号、不要解释、不要推荐候选之外的任何动作。');
+  return lines.join('\n');
+}
+
+// 解析 AI 推荐回复 → 候选池内的动作名数组（安全核心：任何池外名字一律进不来）
+function parsePickerAINames(text, cands) {
+  const pool = Array.isArray(cands) ? cands : [];
+  if (text == null || pool.length === 0) return [];
+  const result = [];
+  const pushName = (name) => {
+    if (!name || result.length >= 3 || result.indexOf(name) !== -1) return;
+    result.push(name);
+  };
+  const raw = String(text).trim();
+  const normL = (s) => normalizeParens(String(s == null ? '' : s)).trim().toLowerCase();
+
+  // 1. JSON：去掉 ```json ``` 代码块后，按数组或 {names:[...]} 解析
+  let jsonArr = null;
+  const blockMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const jsonCandidate = blockMatch ? blockMatch[1] : raw;
+  if (jsonCandidate.trim().charAt(0) === '[') {
+    try {
+      const arr = JSON.parse(jsonCandidate.trim());
+      if (Array.isArray(arr)) jsonArr = arr.filter(x => typeof x === 'string' && x.trim());
+    } catch (e) { jsonArr = null; }
+  } else {
+    try {
+      const obj = JSON.parse(jsonCandidate.trim());
+      if (obj && Array.isArray(obj.names)) jsonArr = obj.names.filter(x => typeof x === 'string' && x.trim());
+    } catch (e) { jsonArr = null; }
+  }
+
+  // 2. 子串扫描（最长优先）：回复含某候选名即采纳，天然只在池内
+  const normText = normL(raw);
+  const byLen = pool.slice().sort((a, b) => normL(b.name).length - normL(a.name).length);
+  for (const ex of byLen) {
+    if (result.length >= 3) break;
+    const n = normL(ex.name);
+    if (!n || !normText.includes(n)) continue;
+    if (result.some(r => normL(r).includes(n))) continue; // 已采纳更长名已涵盖，跳过子串名
+    pushName(ex.name);
+  }
+
+  // 3. 兜底：子串扫描 0 命中时，用 JSON 数组或按分隔符切 token 做池内精确/归一/模糊匹配
+  if (result.length === 0) {
+    const tokens = jsonArr || raw.split(/[\n\r;；，,、。]+/).filter(Boolean);
+    for (const tok of tokens) {
+      if (result.length >= 3) break;
+      const cleaned = stripPickerToken(tok);
+      if (!cleaned) continue;
+      const exact = pool.find(p => normL(p.name) === normL(cleaned));
+      if (exact) { pushName(exact.name); continue; }
+      const fuzzy = fuzzySearchExercises(cleaned, pool);
+      if (fuzzy[0]) pushName(fuzzy[0].name);
+    }
+  }
+
+  return result;
+}
+
+// 剥离编号/圆点/末尾括号注释，用于兜底 token 的池内匹配
+function stripPickerToken(tok) {
+  let t = String(tok == null ? '' : tok).trim();
+  t = normalizeParens(t);
+  t = t.replace(/^[\s\-•·*]*(?:\d+)?[\.、)）．]?\s*/, '');
+  t = t.replace(/[\s]*[（(][^()（）]*[)）][\s]*$/, '');
+  return t.trim();
+}
+
+// vm 单测环境（仅加载 exercises+utils+ai）无 getAllGroups 时的容错实现
+function localPlanGroups(plan) {
+  if (!plan) return [];
+  if (Array.isArray(plan.sections)) {
+    const gs = [];
+    plan.sections.forEach(s => { if (s.groups) s.groups.forEach(g => gs.push(g)); });
+    return gs;
+  }
+  if (Array.isArray(plan.groups)) return plan.groups;
+  return [];
+}
+
+// 与 training.js isGroupCompleted 同口径；容错无 groupId 的注入记录（单测）
+function localGroupCompleted(group, record) {
+  const gexs = group.exercises || [];
+  const customExs = (record.exercises || []).filter(e => e.groupId === group.id && e.custom && !gexs.some(x => x.name === e.name));
+  const exs = gexs.concat(customExs);
+  if (exs.length === 0) return false;
+  const recEx = (name, gid) => {
+    const all = record.exercises || [];
+    const hit = all.find(e => e.name === name && e.groupId === gid);
+    if (hit) return hit;
+    return all.find(e => e.name === name && (e.groupId === undefined || e.groupId === null || e.groupId === ''));
+  };
+  const skipped = exs.filter(ex => { const r = recEx(ex.name, group.id); return r && r.skipped; }).length;
+  if (skipped >= exs.length) return false;
+  const completed = exs.filter(ex => { const r = recEx(ex.name, group.id); return r && r.completed; }).length;
+  const active = exs.length - skipped;
+  let threshold = 1;
+  if (group.pickHint) {
+    const rangeMatch = group.pickHint.match(/(\d+)选(\d+)-(\d+)/);
+    if (rangeMatch) threshold = parseInt(rangeMatch[2], 10);
+    else {
+      const singleMatch = group.pickHint.match(/(\d+)选(\d+)/);
+      if (singleMatch) threshold = parseInt(singleMatch[2], 10);
+    }
+  }
+  return completed >= Math.min(threshold, active);
+}
+
+// 主组动作的历史行：每动作取最近一条有重量/次数的已完成记录
+function coachHistoryLines(plan, records) {
+  if (!Array.isArray(records)) return [];
+  const names = [];
+  const seenNames = {};
+  const mainSections = (plan && plan.sections)
+    ? plan.sections.filter(s => !s.type || s.type === 'main')
+    : (plan && Array.isArray(plan.groups) ? [{ groups: plan.groups }] : []);
+  mainSections.forEach(s => (s.groups || []).forEach(g => (g.exercises || []).forEach(ex => {
+    if (ex && ex.name && !seenNames[ex.name]) { seenNames[ex.name] = 1; names.push(ex.name); }
+  })));
+  if (names.length === 0) return [];
+  const sorted = records.filter(r => r && r.completed && Array.isArray(r.exercises)).slice()
+    .sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
+  const lines = [];
+  names.forEach(name => {
+    let lastEx = null, lastDate = '';
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      const r = sorted[i];
+      const ex = r.exercises.find(e => e && e.name === name);
+      if (ex && (ex.weight || ex.reps)) { lastEx = ex; lastDate = r.date || ''; break; }
+    }
+    if (lastEx) {
+      let wt = '';
+      if (lastEx.weight) wt += lastEx.weight + 'kg';
+      if (lastEx.reps) wt += '×' + lastEx.reps + '次';
+      if (wt) lines.push(name + '：' + lastDate + ' ' + wt);
+    }
+  });
+  return lines;
+}
+
+// ── 浮层开关与交互 ──
+function openAICoach() {
+  const existing = document.getElementById('ai-coach-overlay');
+  if (existing) { renderCoachChat(); return; }
+  const overlay = document.createElement('div');
+  overlay.id = 'ai-coach-overlay';
+  overlay.className = 'coach-overlay';
+  overlay.innerHTML =
+    '<div class="coach-backdrop" onclick="closeAICoach()"></div>' +
+    '<div class="coach-sheet sheet-fadeUp">' +
+      '<div class="coach-header"><span class="coach-title">🤖 AI 教练</span><button class="coach-close" onclick="closeAICoach()" aria-label="关闭">✕</button></div>' +
+      '<div class="chat-box" id="coach-chat-box"></div>' +
+      '<div class="chat-input-row">' +
+        '<input type="text" class="chat-input" id="coach-input" placeholder="问问 AI 教练..." maxlength="300" autocomplete="off" onkeydown="if(event.key===\'Enter\')sendCoachMessage()">' +
+        '<button class="chat-send-btn" id="coach-send-btn" onclick="sendCoachMessage()">➤</button>' +
+      '</div>' +
+    '</div>';
+  document.getElementById('app').appendChild(overlay);
+  if (aiCoachMessages.length === 0) {
+    aiCoachMessages.push({ role: 'ai', content: '嗨！我是你的 AI 教练 🤖\n我能看到你当前的训练方案、完成度和历史记录。有什么想问的？' });
+  }
+  renderCoachChat();
+  setTimeout(() => { const input = document.getElementById('coach-input'); if (input) input.focus(); }, 200);
+}
+
+function closeAICoach() {
+  const overlay = document.getElementById('ai-coach-overlay');
+  if (overlay) overlay.remove();
+}
+
+function renderCoachChat() {
+  const box = document.getElementById('coach-chat-box');
+  if (!box) return;
+  let h = '';
+  aiCoachMessages.forEach(msg => {
+    const roleCls = msg.role === 'user' ? 'user' : 'ai';
+    h += '<div class="chat-msg ' + roleCls + '"><div class="chat-bubble">' + aiAnswerHtml(msg.content) +
+      (msg.role === 'ai-error' ? '<br><button class="coach-retry-btn" onclick="retryCoachMessage()">🔄 重试</button>' : '') +
+      '</div></div>';
+  });
+  if (aiCoachLoading) {
+    h += '<div class="chat-msg ai"><div class="chat-bubble typing-dots"><span></span><span></span><span></span></div></div>';
+  }
+  box.innerHTML = h;
+  box.scrollTop = box.scrollHeight;
+  const btn = document.getElementById('coach-send-btn');
+  if (btn) btn.disabled = aiCoachLoading;
+}
+
+async function sendCoachMessage() {
+  const input = document.getElementById('coach-input');
+  const text = (input && input.value ? input.value : '').trim();
+  if (!text || aiCoachLoading) return;
+  input.value = '';
+  aiCoachMessages.push({ role: 'user', content: text });
+  aiCoachPendingContent = buildCoachContext() + '\n\n' + text;
+  await doCoachAsk();
+}
+
+async function doCoachAsk() {
+  aiCoachLoading = true;
+  renderCoachChat();
+  try {
+    const resp = await aiFetch('/api/ask', { password: getAIPassword(), deviceId: getDeviceId(), content: aiCoachPendingContent });
+    const data = await resp.json();
+    if (data && data.success) {
+      aiCoachMessages.push({ role: 'ai', content: data.answer });
+    } else {
+      aiCoachMessages.push({ role: 'ai-error', content: '⚠️ ' + ((data && data.error) || '请求失败') });
+    }
+  } catch (e) {
+    aiCoachMessages.push({ role: 'ai-error', content: '⚠️ 无法连接 AI 服务，请确认后端已启动' });
+  }
+  aiCoachLoading = false;
+  renderCoachChat();
+}
+
+function retryCoachMessage() {
+  if (aiCoachLoading || !aiCoachPendingContent) return;
+  if (aiCoachMessages.length && aiCoachMessages[aiCoachMessages.length - 1].role === 'ai-error') aiCoachMessages.pop();
+  doCoachAsk();
+}
