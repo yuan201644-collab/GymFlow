@@ -64,7 +64,7 @@ const { chromium } = require(pwPath);
     } catch (e) { return { error: e.message, tried }; }
     finally { window.fetch = orig; window.Capacitor = undefined; }
   });
-  console.log('5. APK 仅云端(不回退本地):', JSON.stringify(r5.tried), (r5.tried && r5.tried.length === 1 && r5.tried[0] === 'cloud') ? '✅ 只试云端' : '❌ ' + JSON.stringify(r5));
+  console.log('5. APK 仅云端(不回退本地):', JSON.stringify(r5.tried), (r5.tried && r5.tried.length >= 1 && r5.tried.every(u => u === 'cloud')) ? '✅ 全部云端(未回退本地)' : '❌ ' + JSON.stringify(r5));
 
   // 6. 我的页地址显示
   await page.evaluate(() => window.renderMePage());

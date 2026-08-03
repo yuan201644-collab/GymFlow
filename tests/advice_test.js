@@ -17,6 +17,8 @@ const summary = vm.runInContext('buildAdviceSummary', c);
 const volEx = vm.runInContext('calcExerciseVolume', c);
 const volTotal = vm.runInContext('calcTrainingVolume', c);
 const fmtSetsReps = vm.runInContext('formatSetsReps', c);
+const detailFn = vm.runInContext('buildActionDetail', c);
+const warnFn = vm.runInContext('extractWarnFromTip', c);
 
 let pass = 0, fail = 0;
 function t(name, ok, detail) {
@@ -193,11 +195,73 @@ console.log('=== 7. getActionAdvice 建议重量含组×次数（V2.1 轮D）===
   const records = [{ date: '2026-07-01', completed: true, exercises: [{ name: bench.name, weight: 60 }] }];
   const r = advice({ name: bench.name }, {}, { ...eqCtx, db: DB, isAvailable: isAvail, records });
   t('旧数据只有重量 → 原格式「上次 60kg，建议 62.5kg」', r.weight.text === '上次 60kg，建议 62.5kg', r.weight.text);
+  t('旧数据只有重量 → 不抛错且 suggest 仍正确(62.5)', typeof r.weight.suggest === 'number' && r.weight.suggest === 62.5, JSON.stringify(r.weight));
 }
 {
   const records = [{ date: '2026-07-01', completed: true, exercises: [{ name: bench.name, sets: 3, reps: 12 }] }];
   const r = advice({ name: bench.name }, {}, { ...eqCtx, db: DB, isAvailable: isAvail, records });
   t('历史只有组次无重量 → 按无历史处理', r.weight.last === null && r.weight.text === '首次做，轻重量起步', JSON.stringify(r.weight));
+}
+
+console.log('=== 8. 动作详情组装（V2.2 轮A：要点 + 注意事项 + 全标签）===');
+{
+  const benchDb = DB.find(e => e.name === '杠铃平板卧推');   // risk:'中'
+  const hi = DB.find(e => e.name === '杠铃硬拉');            // risk:'高'
+  const d = detailFn({ name: benchDb.name, tip: '肩胛收紧，杠贴近胸骨' }, benchDb);
+  t('有 tip → points 用 tip 全文(非截断)', d.points === '肩胛收紧，杠贴近胸骨', JSON.stringify(d.points));
+}
+{
+  const d = detailFn({ name: '杠铃平板卧推' }, null);
+  t('无 tip 有库 → points 含「为主」「难度」', d.points.includes('为主') && d.points.includes('难度'), JSON.stringify(d.points));
+}
+{
+  const d = detailFn({ name: '完全不存在的神秘动作' }, null);
+  t('无 tip 无库 → points 含「标准姿势」', d.points.includes('标准姿势'), JSON.stringify(d.points));
+}
+{
+  const hi = DB.find(e => e.name === '杠铃硬拉');
+  const d = detailFn({ name: '杠铃硬拉' }, hi);
+  t('高风险 → warnings 含「高风险动作」', d.warnings.some(w => w.includes('高风险动作')), JSON.stringify(d.warnings));
+}
+{
+  const d = detailFn({ name: 'X', tip: '手肘略低于肩（避免肩峰撞击⚠️），缓慢前倾' }, null);
+  t('⚠️ 句尾 → 提取「避免肩峰撞击」', d.warnings.some(w => w.includes('避免肩峰撞击')), JSON.stringify(d.warnings));
+}
+{
+  const d = detailFn({ name: 'X', tip: '⚠️用轻重量！手肘微内收' }, null);
+  t('⚠️ 句首 → 提取「用轻重量」', d.warnings.some(w => w.includes('用轻重量')), JSON.stringify(d.warnings));
+}
+{
+  const d = detailFn({ name: '标准俯卧撑' }, null);   // risk:'低'，无 tip
+  t('无 ⚠️ 且 risk 低 → warnings 为空', d.warnings.length === 0, JSON.stringify(d.warnings));
+}
+{
+  const benchDb = DB.find(e => e.name === '杠铃平板卧推');
+  const d = detailFn({ name: benchDb.name }, benchDb);
+  const ok = d.tags.length === 6
+    && d.tags.some(t => t.label === '难度' && t.value === '中级')
+    && d.tags.some(t => t.label === '器械' && t.value === '杠铃+平板凳')
+    && d.tags.some(t => t.label === '力学' && t.value === '推')
+    && d.tags.some(t => t.label === '类型' && t.value === '复合')
+    && d.tags.some(t => t.label === '姿态' && t.value === '卧')
+    && d.tags.some(t => t.label === '侧重' && t.value === '肌肥大');
+  t('标签 6 维齐全(难度/器械/力学/类型/姿态/侧重)', ok, JSON.stringify(d.tags));
+}
+{
+  const d = detailFn({ name: 'X' }, { difficulty: '初级' });
+  t('缺失省略 → 只有「难度」一项', d.tags.length === 1 && d.tags[0].label === '难度' && d.tags[0].value === '初级', JSON.stringify(d.tags));
+}
+{
+  const d = detailFn({ name: 'X' }, { mechanics: '拉', focus: '力量', difficulty: '高级' });
+  t('dbEx 注入 → 标签用注入值(纯函数不依赖全局)', d.tags.length === 3 && d.tags.some(t => t.label === '力学' && t.value === '拉') && d.tags.some(t => t.label === '侧重' && t.value === '力量'), JSON.stringify(d.tags));
+}
+{
+  const d = detailFn({ name: 'X', tip: '避免肩峰撞击⚠️。避免肩峰撞击⚠️。' }, null);
+  t('多段 ⚠️ 相同 → 去重后仅一条', d.warnings.length === 1 && d.warnings[0] === '避免肩峰撞击', JSON.stringify(d.warnings));
+}
+{
+  t('extractWarnFromTip 句中 ⚠️ 也能提取', warnFn('避免肩峰撞击⚠️；③推法').some(w => w.includes('避免肩峰撞击')), JSON.stringify(warnFn('避免肩峰撞击⚠️；③推法')));
+  t('extractWarnFromTip 无 ⚠️ → 空数组', warnFn('正常提示文本').length === 0, JSON.stringify(warnFn('正常提示文本')));
 }
 
 console.log('');

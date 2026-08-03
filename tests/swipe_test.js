@@ -77,9 +77,9 @@ const { chromium } = require(pwPath);
 
   console.log('=== swipe 测试开始 ===');
 
-  // 0. 测试挂钩存在
-  const hooks = await page.evaluate(() => { const h = window.__swipeHooks; return h ? [typeof h.isOverlayOpen, typeof h.isInsideHScroll, typeof h.isInTopBar].join(',') : 'missing'; });
-  t('0. __swipeHooks 挂钩存在', hooks === 'function,function,function', hooks);
+  // 0. 测试挂钩存在（V2.2 轮C 增加 isInsideCoachFab）
+  const hooks = await page.evaluate(() => { const h = window.__swipeHooks; return h ? [typeof h.isOverlayOpen, typeof h.isInsideHScroll, typeof h.isInTopBar, typeof h.isInsideCoachFab].join(',') : 'missing'; });
+  t('0. __swipeHooks 挂钩存在', hooks === 'function,function,function,function', hooks);
 
   // 1. 初始状态
   t('1. 初始在训练页', (await cur()) === 'training' && (await active()) === 'training');
@@ -208,6 +208,31 @@ const { chromium } = require(pwPath);
   await page.click('.top-tab[data-page="features"]');
   await wait(400);
   t('17b. 顶栏 tab 点击仍正常', (await cur()) === 'features', 'cur=' + await cur());
+
+  // 17c-17e. AI 教练球拖动不触发页面切换（V2.2 轮C：拖拽与滑屏互斥）
+  await go('training'); await wait(300);
+  const fabC = await page.evaluate(() => {
+    localStorage.removeItem('fitness_coach_pos');
+    const fab = document.getElementById('ai-coach-fab');
+    const r = fab.getBoundingClientRect();
+    return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, left: Math.round(r.left), top: Math.round(r.top) };
+  });
+  await page.mouse.move(fabC.cx, fabC.cy);
+  await page.mouse.down();
+  for (let i = 1; i <= 10; i++) await page.mouse.move(fabC.cx - 120 * i / 10, fabC.cy + 60 * i / 10);
+  await page.mouse.up();
+  await wait(300);
+  const fabCAfter = await page.evaluate(() => {
+    const fab = document.getElementById('ai-coach-fab');
+    const r = fab.getBoundingClientRect();
+    return { left: Math.round(r.left), top: Math.round(r.top), cur: typeof currentPage !== 'undefined' ? currentPage : '?', pos: localStorage.getItem('fitness_coach_pos') };
+  });
+  t('17c. FAB 拖动不触发页面切换', fabCAfter.cur === 'training', 'cur=' + fabCAfter.cur);
+  t('17d. FAB 拖动后位置变化(>30px)', Math.abs(fabCAfter.left - fabC.left) > 30, JSON.stringify(fabCAfter));
+  t('17e. FAB 拖动后记入 localStorage', !!(fabCAfter.pos && fabCAfter.pos.includes('"x"')), fabCAfter.pos || 'none');
+  // 恢复 FAB 默认位置，避免干扰后续拖拽测试；同时恢复页面到 features（18 步前置）
+  await page.evaluate(() => { localStorage.removeItem('fitness_coach_pos'); window.renderTrainingPage(); });
+  await go('features'); await wait(300);
 
   // 18. 真实 page.mouse 拖拽（桌面可测性）：左拖 next、右拖 prev
   await page.mouse.move(385, 200);

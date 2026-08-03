@@ -203,6 +203,49 @@ function matchDbExercise(name) {
 }
 
 // ============================================
+// 动作详情卡数据组装（V2.2 轮A：详细要点 + 注意事项 + 全标签），纯函数便于单测
+// ============================================
+// action: {name, tip}  dbEx: 动作库条目（可注入；缺省时 matchDbExercise(action.name)）
+// 返回 { points, warnings: string[], tags: {label,value}[] }
+function buildActionDetail(action, dbEx) {
+  const db = dbEx || matchDbExercise(action && action.name);
+  const tip = (action && action.tip) || '';
+  let points = tip;
+  if (!points && db) points = db.mechanics + '为主 · ' + db.difficulty + '难度 · ' + (db.risk === '高' ? '注意⚠️高风险' : '标准动作');
+  if (!points) points = '保持标准姿势，感受目标肌群发力，全程控制节奏';
+
+  const warnings = [];
+  if (db && db.risk === '高') warnings.push('高风险动作，注意动作规范');
+  extractWarnFromTip(tip).forEach(w => warnings.push(w));
+  const uniq = warnings.filter((w, i) => warnings.indexOf(w) === i);   // 去重
+
+  const tags = [];
+  [['difficulty', '难度'], ['equipment', '器械'], ['mechanics', '力学'], ['type', '类型'], ['posture', '姿态'], ['focus', '侧重']]
+    .forEach(([k, label]) => { const v = db && db[k]; if (v) tags.push({ label, value: String(v) }); });
+
+  return { points, warnings: uniq, tags };
+}
+
+// 从动作 tip 提取 ⚠️ 注意事项（与位置无关：句首/句中/句尾均可，多段 ⚠️ 各取各的）
+function extractWarnFromTip(tip) {
+  const text = String(tip || ''); const out = [];
+  if (text.indexOf('⚠') < 0) return out;
+  const B = /[。！？；;\n，,、（）()]/;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] !== '⚠') continue;
+    let j = i + 1; if (text[j] === '️') j++;
+    let s = i - 1; while (s >= 0 && !B.test(text[s])) s--;
+    let e = j; while (e < text.length && !B.test(text[e])) e++;
+    const before = text.slice(s + 1, i).replace(/[（(【\s]+$/g, '').trim();
+    const after = text.slice(j, e).replace(/^[）)\]】\s]+/g, '').trim();
+    let cand = (before + after).replace(/^[①②③④⑤⑥⑦⑧⑨⑩\d\.\s\-—:：]*/, '').trim();
+    if (cand) out.push(cand);
+    i = Math.max(i, e - 1);
+  }
+  return out;
+}
+
+// ============================================
 // 训练量计算（V2.1 轮D，纯函数，供 AI 复盘与历史显示复用）
 // ============================================
 // 单动作训练量 = 重量×组数×每组次数（任一缺失/非正 → 0）

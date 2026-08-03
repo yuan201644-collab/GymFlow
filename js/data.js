@@ -396,4 +396,4 @@ function deletePlan(id) {
 
 // ========== 版本管理 ==========
 
-const APP_VERSION = '2.1';
+const APP_VERSION = '2.2.0';

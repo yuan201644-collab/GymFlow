@@ -17,14 +17,19 @@ const { chromium } = require(pwPath);
   console.log('1. AI 导航:', navAI);
   t('导航 AI 用字母徽章无🤖', navAI.includes('nav-ai') && navAI.includes('>AI<') && !navAI.includes('🤖'), navAI);
 
-  // 2. 页面 🤖 均来自功能按钮（问AI按钮），无游离残留
-  //   V2.1 轮C：FAB 换为 AI 字母徽章（不含 🤖），故只计 .advice-ai-btn
+  // 2. 页面 🤖 均来自合法 AI 容器（问AI按钮/卡片AI按钮/建议卡标题），无游离残留
+  //   V2.1 轮C：FAB 换为 AI 字母徽章（不含 🤖）；轮A 起卡片 AI 按钮与建议卡标题用 🤖
   const robotInfo = await page.evaluate(() => {
+    const legitSel = '.advice-ai-btn, button[title="本地AI建议"], .advice-title';
+    const legit = [...document.querySelectorAll(legitSel)];
+    const legitCount = legit.reduce((n, el) => n + ((el.textContent.match(/🤖/g) || []).length), 0);
+    const clone = document.body.cloneNode(true);
+    clone.querySelectorAll(legitSel).forEach(el => el.remove());
+    const stray = (clone.textContent.match(/🤖/g) || []).length;
     const all = document.body.textContent.split('🤖').length - 1;
-    const feature = document.querySelectorAll('.advice-ai-btn').length;
-    return { all, feature };
+    return { all, legit: legitCount, stray };
   });
-  t('页面 🤖 均在功能按钮内（无游离残留）', robotInfo.all > 0 && robotInfo.all === robotInfo.feature, JSON.stringify(robotInfo));
+  t('页面 🤖 均在合法 AI 容器内（无游离残留）', robotInfo.all > 0 && robotInfo.stray === 0 && robotInfo.all === robotInfo.legit, JSON.stringify(robotInfo));
 
   // 3. 默认方案日图标：推/拉/腿 各异
   const dayEmojis = await page.evaluate(() => {

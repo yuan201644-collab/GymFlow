@@ -85,7 +85,7 @@ function initSwipeNavigation() {
     if (lastLock && Date.now() - lastLock < LOCK_MS) { ignored = true; return; }
     if (isOverlayOpen()) { ignored = true; return; }
     const target = e.target;
-    ignored = !!(target && target.closest && (isInsideHScroll(target) || isInTopBar(target)));
+    ignored = !!(target && target.closest && (isInsideHScroll(target) || isInTopBar(target) || isInsideCoachFab(target)));
   }, { passive: true });
 
   app.addEventListener('touchmove', function (e) {
@@ -111,12 +111,18 @@ function initSwipeNavigation() {
   // ==== 鼠标拖拽（桌面可测）====
   app.addEventListener('mousedown', function (e) {
     if (e.button !== 0) return;
+    // 非交互区域按下 preventDefault：阻止原生文本选择拖拽吞掉后续 mousemove（桌面滑屏可靠性）；
+    // 交互元素（输入/按钮/链接等）不拦截，保留原生 focus/点击
+    const mdTarget = e.target;
+    if (mdTarget && mdTarget.closest && !mdTarget.closest('input, textarea, select, button, a, [contenteditable]')) {
+      e.preventDefault();
+    }
     startX = e.clientX; startY = e.clientY;
     dragX = 0; dragging = true; swallowed = false;
     if (lastLock && Date.now() - lastLock < LOCK_MS) { ignored = true; return; }
     if (isOverlayOpen()) { ignored = true; return; }
     const target = e.target;
-    ignored = !!(target && target.closest && (isInsideHScroll(target) || isInTopBar(target)));
+    ignored = !!(target && target.closest && (isInsideHScroll(target) || isInTopBar(target) || isInsideCoachFab(target)));
   });
 
   window.addEventListener('mousemove', function (e) {
@@ -152,7 +158,145 @@ function initSwipeNavigation() {
   });
 
   // 测试挂钩：供 E2E evaluate 断言判定函数
-  window.__swipeHooks = { isOverlayOpen: isOverlayOpen, isInsideHScroll: isInsideHScroll, isInTopBar: isInTopBar };
+  window.__swipeHooks = { isOverlayOpen: isOverlayOpen, isInsideHScroll: isInsideHScroll, isInTopBar: isInTopBar, isInsideCoachFab: isInsideCoachFab };
+}
+
+// ==== AI 教练悬浮球拖拽（V2.2 轮C）：可拖动 + localStorage 记位置 ====
+const COACH_DRAG_THRESHOLD = 30; // 位移超过此值判为拖动（< 滑屏阈值 60px，FAB 手势已从滑屏整体排除）
+const COACH_EDGE_PAD = 8;        // 拖动/恢复时距视口边缘的最小边距
+
+// 判定目标是否位于 AI 教练悬浮球内（供滑屏排除 + 测试断言复用）
+function isInsideCoachFab(el) {
+  return !!(el && el.closest && el.closest('.ai-coach-fab'));
+}
+
+// clamp 到视口内（边距 8px），返回 {x,y} 为 left/top
+function clampCoachFab(fab, x, y) {
+  const fabW = fab.offsetWidth || 52;
+  const fabH = fab.offsetHeight || 52;
+  const maxX = window.innerWidth - fabW - COACH_EDGE_PAD;
+  const maxY = window.innerHeight - fabH - COACH_EDGE_PAD;
+  return {
+    x: Math.max(COACH_EDGE_PAD, Math.min(x, maxX)),
+    y: Math.max(COACH_EDGE_PAD, Math.min(y, maxY))
+  };
+}
+
+// 拖拽结束落盘：clamp 后写 localStorage.fitness_coach_pos
+function saveCoachFabPos(fab) {
+  try {
+    const x = parseInt(fab.style.left || '0', 10) || 0;
+    const y = parseInt(fab.style.top || '0', 10) || 0;
+    const p = clampCoachFab(fab, x, y);
+    localStorage.setItem('fitness_coach_pos', JSON.stringify({ x: Math.round(p.x), y: Math.round(p.y) }));
+  } catch (e) { /* 存储不可用时静默，位置保留本次会话 */ }
+}
+
+// 拖拽后的残余 click 拦截（参照 swipe.js mouseup 的 once 写法；加超时兜底，防 touch 场景无 click 时误吞下一次点击）
+function swallowCoachFabClick() {
+  let used = false;
+  function once(ev) {
+    used = true;
+    ev.stopPropagation();
+    ev.preventDefault();
+    document.removeEventListener('click', once, true);
+  }
+  document.addEventListener('click', once, true);
+  setTimeout(function () {
+    if (!used) document.removeEventListener('click', once, true);
+  }, 300);
+}
+
+// 初始化 AI 教练悬浮球拖拽：恢复上次位置 + touch/mouse 拖拽状态机
+function initCoachFabDrag(fab) {
+  if (!fab || fab.__coachDragInit) return;
+  fab.__coachDragInit = true;
+
+  // 恢复上次位置（无/解析失败 → 保持 CSS 默认 right/bottom 定位）
+  try {
+    const saved = JSON.parse(localStorage.getItem('fitness_coach_pos') || 'null');
+    if (saved && typeof saved.x === 'number' && typeof saved.y === 'number' &&
+        isFinite(saved.x) && isFinite(saved.y)) {
+      const p = clampCoachFab(fab, saved.x, saved.y);
+      fab.style.right = 'auto';
+      fab.style.bottom = 'auto';
+      fab.style.left = p.x + 'px';
+      fab.style.top = p.y + 'px';
+    }
+  } catch (e) { /* 解析失败保持默认位 */ }
+
+  let active = false;   // 本次输入是否从 FAB 上发起
+  let startX = 0, startY = 0, startLeft = 0, startTop = 0;
+  let dragged = false;  // 位移超过阈值判为拖动
+
+  function dragStart(cx, cy) {
+    active = true;
+    dragged = false;
+    startX = cx; startY = cy;
+    // 取当前真实像素位（FAB 可能仍处于 CSS 默认 right/bottom 定位，无 inline left/top）
+    const rect = fab.getBoundingClientRect();
+    startLeft = rect.left;
+    startTop = rect.top;
+  }
+
+  function dragMove(cx, cy) {
+    if (!active) return;
+    const dx = cx - startX, dy = cy - startY;
+    if (!dragged && (Math.abs(dx) > COACH_DRAG_THRESHOLD || Math.abs(dy) > COACH_DRAG_THRESHOLD)) {
+      dragged = true;
+      // 进入拖动态：切换为 left/top 定位，避免与 CSS 默认 right/bottom 冲突
+      fab.style.right = 'auto';
+      fab.style.bottom = 'auto';
+    }
+    if (dragged) {
+      const p = clampCoachFab(fab, startLeft + dx, startTop + dy);
+      fab.style.left = p.x + 'px';
+      fab.style.top = p.y + 'px';
+    }
+  }
+
+  function dragEnd() {
+    active = false;
+    if (dragged) {
+      saveCoachFabPos(fab);
+      swallowCoachFabClick();
+    }
+  }
+
+  // touch 拖拽（passive:false，dragged 时 preventDefault 防页面滚动）
+  fab.addEventListener('touchstart', function (e) {
+    const t = e.touches[0];
+    if (!t) return;
+    dragStart(t.clientX, t.clientY);
+  }, { passive: false });
+
+  fab.addEventListener('touchmove', function (e) {
+    if (!active) return;
+    const t = e.touches[0];
+    if (!t) return;
+    dragMove(t.clientX, t.clientY);
+    if (dragged) e.preventDefault();
+  }, { passive: false });
+
+  fab.addEventListener('touchend', function () {
+    dragEnd();
+  }, { passive: false });
+
+  // mouse 拖拽（mousemove/mouseup 挂 window：拖拽中光标会离开 FAB，与 swipe.js 同款）
+  fab.addEventListener('mousedown', function (e) {
+    if (e.button !== 0) return;
+    dragStart(e.clientX, e.clientY);
+  });
+
+  window.addEventListener('mousemove', function (e) {
+    if (!active) return;
+    dragMove(e.clientX, e.clientY);
+    if (dragged) e.preventDefault(); // 防文本选中
+  });
+
+  window.addEventListener('mouseup', function () {
+    dragEnd();
+  });
 }
 
 document.addEventListener('DOMContentLoaded', initSwipeNavigation);

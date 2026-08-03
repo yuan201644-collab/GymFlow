@@ -56,7 +56,7 @@ const { chromium } = require(pwPath);
   t('标题为「本地建议」', (toggle.title || '').includes('本地建议'));
   t('再次点击收起', toggle.visibleClose === true);
 
-  // 3. 展开后 4 项内容（要点/重量/休息/替换）
+  // 3. 展开后内容（V2.2 轮A：要点已上移详情区，.advice-label 只剩 重量/休息）
   const content = await page.evaluate(async () => {
     const sum = document.querySelector('.advice-summary');
     if (!sum) return { err: '无折叠摘要' };
@@ -70,12 +70,15 @@ const { chromium } = require(pwPath);
       const lb = it.querySelector('.advice-label').textContent;
       items[lb] = it.textContent.replace(lb, '').trim();
     });
+    const detail = card.querySelector('.advice-detail');
+    const points = detail ? detail.querySelector('.advice-detail-points').textContent.trim() : '';
     sum.click();
     await new Promise(r => setTimeout(r, 200));
-    return { labels, items };
+    return { labels, items, detailExists: !!detail, points };
   });
   console.log('3. 建议内容:', JSON.stringify(content.items));
-  t('有 要点 项', content.labels.includes('要点') && content.items['要点'].length > 0);
+  t('详情区存在(动作详情)', content.detailExists === true, 'detail=' + content.detailExists);
+  t('详情区要点非空', content.points.length > 0, 'len=' + content.points.length);
   t('有 重量 项', content.labels.includes('重量') && content.items['重量'].length > 0);
   t('有 休息 项', content.labels.includes('休息') && content.items['休息'].length > 0);
   t('重量项无 undefined', !/undefined|null|NaN/.test(content.items['重量'] || ''));
@@ -129,7 +132,7 @@ const { chromium } = require(pwPath);
     if (again) again.click();
     await new Promise(r => setTimeout(r, 300));
     const closed = card && card.style.display === 'none';
-    return { text, visible, openVisible, labels, closed, tipCount: document.querySelectorAll('.card-tip').length, sumCount: summaries.length };
+    return { text, visible, openVisible, labels, closed, tipCount: document.querySelectorAll('.card-tip').length, sumCount: summaries.length, hasDetail: !!(card && card.querySelector('.advice-detail')) };
   });
   console.log('6b. 折叠摘要:', JSON.stringify(sumTest));
   t('默认显示折叠摘要行(可见)', sumTest.visible === true, JSON.stringify(sumTest));
@@ -137,24 +140,96 @@ const { chromium } = require(pwPath);
   t('摘要重量段为 建议Xkg 或 轻重量起步', /建议\d+(\.\d+)?kg|轻重量起步/.test(sumTest.text || ''), sumTest.text);
   t('摘要含「休息Xs」段', /休息\d+s/.test(sumTest.text || ''), sumTest.text);
   t('点击摘要展开本地建议卡', sumTest.openVisible === true, JSON.stringify(sumTest));
-  t('展开卡含 要点/重量/休息 项', ['要点', '重量', '休息'].every(x => sumTest.labels.includes(x)), JSON.stringify(sumTest.labels));
+  t('展开卡含 重量/休息 项', ['重量', '休息'].every(x => sumTest.labels.includes(x)), JSON.stringify(sumTest.labels));
+  t('展开卡含动作详情区', sumTest.hasDetail === true, 'hasDetail=' + sumTest.hasDetail);
   t('再点摘要收起', sumTest.closed === true, JSON.stringify(sumTest));
   t('卡片底部无 card-tip 行', sumTest.tipCount === 0, 'tipCount=' + sumTest.tipCount);
   t('push 日折叠摘要数 > 0', sumTest.sumCount > 0, 'sumCount=' + sumTest.sumCount);
 
+  // ===== V2.2 轮A — 动作详情卡（详细要点 + 注意事项 + 全标签）=====
+  // A1. 详情区数据（DOM 已渲染，无需展开）：要点完整 + 标签 chips + ⚠️ 注意事项
+  const detailData = await page.evaluate(() => {
+    const details = [...document.querySelectorAll('.advice-detail')];
+    const nonEmpty = d => (d.querySelector('.advice-detail-points') || {}).textContent ? d.querySelector('.advice-detail-points').textContent.trim().length > 0 : false;
+    const anyChips = details.filter(d => d.querySelectorAll('.advice-chip').length >= 1).length;
+    const anyWarn = details.filter(d => d.querySelectorAll('.advice-detail-warn').length >= 1).length;
+    const warnStartsOk = details.every(d => [...d.querySelectorAll('.advice-detail-warn')].every(w => w.textContent.trim().startsWith('⚠️')));
+    return { total: details.length, withPoints: details.filter(d => nonEmpty(d)).length, anyChips, anyWarn, warnStartsOk };
+  });
+  console.log('A1. 详情区数据:', JSON.stringify(detailData));
+  t('所有卡详情区要点完整(非空)', detailData.total > 0 && detailData.withPoints === detailData.total, JSON.stringify(detailData));
+  t('至少一张卡有标签 chips', detailData.anyChips >= 1, 'chips=' + detailData.anyChips);
+  t('至少一张卡有 ⚠️ 注意事项', detailData.anyWarn >= 1, 'warn=' + detailData.anyWarn);
+  t('⚠️ 注意事项文本均以 ⚠️ 开头', detailData.warnStartsOk === true, JSON.stringify(detailData));
+
+  // A2. 展开首卡 → 详情区可见（视觉验证）+ 390px 无横向溢出
+  const detailVisible = await page.evaluate(async () => {
+    const sum = document.querySelector('.advice-summary');
+    if (!sum) return { err: '无折叠摘要' };
+    sum.click();
+    await new Promise(r => setTimeout(r, 300));
+    const uid = sum.id.replace('as-', '');
+    const card = document.getElementById('advice-' + uid);
+    const detail = card.querySelector('.advice-detail');
+    const points = detail.querySelector('.advice-detail-points');
+    const out = {
+      visible: detail.offsetHeight > 0,
+      pointsLen: points.textContent.trim().length,
+      body: document.body.scrollWidth, vw: window.innerWidth,
+    };
+    sum.click();
+    await new Promise(r => setTimeout(r, 200));
+    return out;
+  });
+  console.log('A2. 详情卡展开:', JSON.stringify(detailVisible));
+  t('展开首卡详情区可见', detailVisible.visible === true, JSON.stringify(detailVisible));
+  t('展开详情卡 390px 无横向溢出', detailVisible.body <= detailVisible.vw, JSON.stringify(detailVisible));
+
+  // A3. 高风险动作 → ⚠️ 注意事项（注入自定义「杠铃硬拉」→ 展开 → 断言 → 清理）
+  const hiRisk = await page.evaluate(async () => {
+    const card = [...document.querySelectorAll('.group-exercise-card[data-ex][data-phase="main"]')][0];
+    const gid = card.dataset.groupid;
+    const rec = window.getTodayRecord();
+    rec.exercises.push({ name: '杠铃硬拉', groupId: gid, custom: true, weight: 0, completed: false });
+    window.saveTodayRecord(rec);
+    window.renderTrainingPage();
+    await new Promise(r => setTimeout(r, 250));
+    const dlCard = [...document.querySelectorAll('.group-exercise-card[data-ex="杠铃硬拉"]')][0];
+    if (!dlCard) return { err: '注入卡未渲染', cleaned: true };
+    const sum = dlCard.querySelector('.advice-summary');
+    if (sum) sum.click();
+    await new Promise(r => setTimeout(r, 250));
+    const uid = dlCard.id.replace('card-', '');
+    const adviceCard = document.getElementById('advice-' + uid);
+    const warns = adviceCard ? [...adviceCard.querySelectorAll('.advice-detail-warn')].map(w => w.textContent.trim()) : [];
+    const points = adviceCard ? adviceCard.querySelector('.advice-detail-points').textContent.trim() : '';
+    if (sum) sum.click();
+    // 清理：移除注入动作 + 重渲染，避免污染后续断言
+    rec.exercises = rec.exercises.filter(e => !(e.name === '杠铃硬拉' && e.custom));
+    window.saveTodayRecord(rec);
+    window.renderTrainingPage();
+    await new Promise(r => setTimeout(r, 200));
+    return { warns, points, err: null };
+  });
+  console.log('A3. 高风险:', JSON.stringify(hiRisk));
+  t('高风险动作卡显示 ⚠️ 注意事项(高风险动作)', hiRisk.err === null && hiRisk.warns.some(w => w.startsWith('⚠️') && w.includes('高风险动作')), JSON.stringify(hiRisk));
+  t('高风险动作卡要点含「注意⚠️高风险」', (hiRisk.points || '').includes('高风险'), hiRisk.points);
+
   // ===== V2.1 轮B — 卡片表面精简 + 长按菜单 + 弹出动画 =====
-  // B1. 表面精简：无 ⏭/➕/重量输入行；保留 💡/☆
+  // B1. 表面精简：无 ⏭/➕；保留 💡/☆。V2.2 轮B 起重量/组数/次数常驻卡片底部(.card-record-row)，长按菜单内录入行(.card-menu-weight)移除
   const surface = await page.evaluate(() => ({
     skipBtns: document.querySelectorAll('.skip-btn').length,
     plusBtns: document.querySelectorAll('button[title="替换/新增动作"]').length,
-    weightRows: document.querySelectorAll('.weight-row').length,
+    recordRows: document.querySelectorAll('.card-record-row').length,
+    menuWeightRows: document.querySelectorAll('.card-menu-weight').length,
     adviceBtns: document.querySelectorAll('button[title="本地AI建议"]').length,
     favBtns: document.querySelectorAll('.group-exercise-card .icon-btn').length,
   }));
   console.log('B1. 表面精简:', JSON.stringify(surface));
   t('表面无 ⏭ 跳过按钮', surface.skipBtns === 0, 'skip=' + surface.skipBtns);
   t('表面无 ➕ 替换按钮', surface.plusBtns === 0, 'plus=' + surface.plusBtns);
-  t('表面无重量/次数输入行', surface.weightRows === 0, 'weightRow=' + surface.weightRows);
+  t('卡片底部有常驻录入行(.card-record-row)', surface.recordRows > 0, 'rows=' + surface.recordRows);
+  t('长按菜单内无重量/组数/次数录入行(.card-menu-weight)', surface.menuWeightRows === 0, 'menuWeight=' + surface.menuWeightRows);
   t('表面保留 💡 按钮', surface.adviceBtns > 0, 'adv=' + surface.adviceBtns);
   t('表面保留 ☆ 收藏按钮', surface.favBtns > 0, 'fav=' + surface.favBtns);
 
@@ -175,9 +250,9 @@ const { chromium } = require(pwPath);
     await page.mouse.up();
     await page.waitForTimeout(120);
   }
-  // 长按卡片「空白区」：避开 checkbox-wrapper/按钮/输入/建议行。
-  // 注意：V2.1 轮B 当前实现把整个 checkbox-wrapper（含标题/器械/meta）排除在长按之外，
-  // 故用卡片 padding/空白网格点触发（见 B2a 对标题长按的 P1 断言）。
+  // 长按卡片「空白区」：避开可交互元素（勾选框图标/按钮/输入/建议行/录入行）。
+  // 注意：onLpStart 只排除 .checkbox-custom（勾选框图标），标题/器械/meta 所在的
+  // .checkbox-wrapper 仍可长按弹菜单；故 ignore 用 .checkbox-custom 而非整行。
   async function longPressCard(idx) {
     const pos = await page.evaluate((i) => {
       const cards = [...document.querySelectorAll('.group-exercise-card[data-ex]')];
@@ -185,7 +260,7 @@ const { chromium } = require(pwPath);
       if (!card) return { err: 'no-card', count: cards.length };
       card.scrollIntoView({ block: 'center' });
       const r = card.getBoundingClientRect();
-      const ignore = '.checkbox-wrapper, button, input, .advice-summary, .advice-card';
+      const ignore = '.checkbox-custom, button, input, .advice-summary, .advice-card, .weight-row';
       for (let fy = 0.9; fy >= 0.2; fy -= 0.2) {
         for (let fx = 0.15; fx <= 0.85; fx += 0.2) {
           const x = r.left + r.width * fx;
@@ -218,7 +293,7 @@ const { chromium } = require(pwPath);
     return pos;
   }
 
-  // B2. 长按动作卡 → 卡片弹出动画 + 菜单（4 项）
+  // B2. 长按动作卡 → 卡片弹出动画 + 菜单（V2.2 轮B：仅 今日删除/永久删除/替换动作 三项，重量/组数/次数已移至卡片底部常驻）
   let lp = await longPressCard(0);
   const menuOpen = await page.evaluate(() => ({
     overlay: !!document.getElementById('card-menu-overlay'),
@@ -229,7 +304,8 @@ const { chromium } = require(pwPath);
   console.log('B2. 长按菜单:', JSON.stringify(menuOpen));
   t('长按弹出菜单(overlay)', menuOpen.overlay === true, JSON.stringify(menuOpen));
   t('卡片有弹出动画类 card-menu-open', menuOpen.anim === true, JSON.stringify(menuOpen));
-  t('菜单含 今日删除/永久删除/替换动作/重量·组数·次数 四项', ['今日删除', '永久删除', '替换动作', '组数'].every(k => (menuOpen.items || []).some(i => i.includes(k))), JSON.stringify(menuOpen.items));
+  t('菜单含 今日删除/永久删除/替换动作 三项', ['今日删除', '永久删除', '替换动作'].every(k => (menuOpen.items || []).some(i => i.includes(k))), JSON.stringify(menuOpen.items));
+  t('菜单无 重量/组数/次数 录入项', !(menuOpen.items || []).some(i => i.includes('组数') || i.includes('重量')), JSON.stringify(menuOpen.items));
   t('菜单用 sheet-fadeUp 弹层样式', menuOpen.sheet === true, JSON.stringify(menuOpen));
   await page.evaluate(() => window.closeCardMenu());
   await page.waitForTimeout(150);
@@ -289,17 +365,17 @@ const { chromium } = require(pwPath);
   t('点今日恢复 → skipped=false', restoreTest.skipped === false, JSON.stringify(restoreTest));
   t('卡片恢复正常(无 exercise-skipped)', restoreTest.skippedCards === 0, 'cards=' + restoreTest.skippedCards);
 
-  // B6. 重量/组数/次数：菜单内展开输入 → 录入写记录（V2.1 轮D：三输入 ⚖️重量/组数/🔁次数）
-  lp = await longPressCard(0);
+  // B6. 卡片底部常驻录入行：重量/组数/次数 三输入 → 录入写当日记录（V2.2 轮B：替代原长按菜单内录入；轮E：仅主组卡有行 + 文字标签）
+  const firstExName = await page.evaluate(() => {
+    const card = document.querySelector('.group-exercise-card[data-ex][data-phase="main"]');
+    return card ? card.dataset.ex : '';
+  });
   const weightTest = await page.evaluate(async (exName) => {
-    const items = [...document.querySelectorAll('#card-menu-overlay .card-menu-item')];
-    const w = items.find(i => i.textContent.includes('组数'));
-    if (w) w.click();
-    await new Promise(r => setTimeout(r, 150));
-    const row = document.querySelector('.card-menu-weight');
-    const visible = row && getComputedStyle(row).display !== 'none';
+    const card = [...document.querySelectorAll('.group-exercise-card[data-ex]')].find(c => c.dataset.ex === exName);
+    const row = card ? card.querySelector('.card-record-row') : null;
     const inputs = row ? row.querySelectorAll('.weight-input-sm') : [];
     const labels = row ? row.querySelectorAll('.weight-label') : [];
+    const visible = row && row.offsetHeight > 0;
     if (visible && inputs.length >= 3) {
       inputs[0].value = '42.5';
       inputs[0].dispatchEvent(new Event('change', { bubbles: true }));
@@ -311,22 +387,62 @@ const { chromium } = require(pwPath);
     await new Promise(r => setTimeout(r, 200));
     const rec = window.getTodayRecord();
     const e = rec.exercises.find(x => x.name === exName);
-    window.closeCardMenu();
     return {
       visible,
       inputCount: inputs.length,
-      hasScale: [...labels].some(l => l.textContent === '⚖️'),
-      hasRepeat: [...labels].some(l => l.textContent === '🔁'),
-      hasGroupLabel: row ? row.textContent.includes('组数') : false,
+      hasWeightLabel: [...labels].some(l => l.textContent === '重量'),
+      hasSetsLabel: [...labels].some(l => l.textContent === '组数'),
+      hasRepsLabel: [...labels].some(l => l.textContent === '次数'),
+      hasIconOnly: [...labels].some(l => l.textContent === '⚖️' || l.textContent === '🔁'),
       weight: e ? e.weight : null, sets: e ? e.sets : null, reps: e ? e.reps : null,
     };
-  }, lp.ex);
-  console.log('B6. 重量/组数/次数:', JSON.stringify(weightTest));
-  t('点重量/次数 → 输入行展开', weightTest.visible === true, JSON.stringify(weightTest));
-  t('重量行含 3 个输入(重量/组数/次数)', weightTest.inputCount === 3, 'n=' + weightTest.inputCount);
-  t('标签含 ⚖️ 与 🔁 双图标', weightTest.hasScale === true && weightTest.hasRepeat === true, JSON.stringify(weightTest));
-  t('含「组数」文字标签', weightTest.hasGroupLabel === true, JSON.stringify(weightTest));
+  }, firstExName);
+  console.log('B6. 常驻录入行:', JSON.stringify(weightTest));
+  t('卡片底部常驻录入行可见', weightTest.visible === true, JSON.stringify(weightTest));
+  t('常驻行含 3 个输入(重量/组数/次数)', weightTest.inputCount === 3, 'n=' + weightTest.inputCount);
+  t('记录行含 重量/组数/次数 文字标签', weightTest.hasWeightLabel === true && weightTest.hasSetsLabel === true && weightTest.hasRepsLabel === true, JSON.stringify(weightTest));
+  t('记录行不再用 ⚖️/🔁 图标当标签', weightTest.hasIconOnly === false, JSON.stringify(weightTest));
   t('录入 重量/组数/次数 写入当日记录', weightTest.weight === 42.5 && weightTest.sets === 3 && weightTest.reps === 12, JSON.stringify(weightTest));
+
+  // B6b. 阶段过滤（V2.2 轮E）：仅主组卡有录入行，热身/拉伸卡无
+  const phaseRows = await page.evaluate(() => {
+    const out = {};
+    ['warmup', 'main', 'stretch'].forEach(p => {
+      const cards = [...document.querySelectorAll('.group-exercise-card[data-ex][data-phase="' + p + '"]')];
+      out[p] = { cards: cards.length, rows: cards.filter(c => c.querySelector('.card-record-row')).length };
+    });
+    return out;
+  });
+  console.log('B6b. 阶段-录入行:', JSON.stringify(phaseRows));
+  t('主组卡有常驻录入行', phaseRows.main && phaseRows.main.cards > 0 && phaseRows.main.rows === phaseRows.main.cards, JSON.stringify(phaseRows));
+  t('热身卡无常驻录入行', phaseRows.warmup && phaseRows.warmup.cards > 0 && phaseRows.warmup.rows === 0, JSON.stringify(phaseRows));
+  t('拉伸卡无常驻录入行', phaseRows.stretch && phaseRows.stretch.cards > 0 && phaseRows.stretch.rows === 0, JSON.stringify(phaseRows));
+
+  // B6c. 折叠摘要可点暗示（V2.2 轮E）：::after「展开」提示 + 无重复 kg 占位
+  const afford = await page.evaluate(async () => {
+    const sum = document.querySelector('.advice-summary');
+    if (!sum) return { err: '无折叠摘要' };
+    const closedAfter = getComputedStyle(sum, '::after').content;   // 收起态先读
+    const chipBg = getComputedStyle(sum).backgroundColor;
+    sum.click();
+    await new Promise(r => setTimeout(r, 200));
+    const hasOpenCls = sum.classList.contains('open');
+    const openAfter = getComputedStyle(sum, '::after').content;
+    sum.click();
+    await new Promise(r => setTimeout(r, 200));
+    const mainCard = document.querySelector('.group-exercise-card[data-ex][data-phase="main"]');
+    const row = mainCard ? mainCard.querySelector('.card-record-row') : null;
+    const wInput = row ? row.querySelector('.weight-input-sm') : null;
+    return {
+      chipBg, closedAfter, hasOpenCls, openAfter,
+      placeholder: wInput ? wInput.getAttribute('placeholder') : 'no-input',
+    };
+  });
+  console.log('B6c. 摘要可点暗示:', JSON.stringify(afford));
+  t('摘要收起态 ::after 含「展开」提示', afford.err === undefined && afford.closedAfter && afford.closedAfter.includes('展开'), JSON.stringify(afford));
+  t('摘要为 chip 样式(非透明背景)', afford.err === undefined && afford.chipBg && afford.chipBg !== 'rgba(0, 0, 0, 0)' && afford.chipBg !== 'transparent', JSON.stringify(afford));
+  t('展开态加 open 类且 ::after 变「收起」', afford.err === undefined && afford.hasOpenCls === true && afford.openAfter && afford.openAfter.includes('收起'), JSON.stringify(afford));
+  t('重量输入框无 placeholder="kg" 重复单位', afford.err === undefined && !afford.placeholder, JSON.stringify(afford));
 
   // B7. 永久删除 → 内联确认 → 取消：不写 userDislike
   lp = await longPressCard(1);
@@ -342,7 +458,7 @@ const { chromium } = require(pwPath);
     await new Promise(r => setTimeout(r, 150));
     const s = window.getSettings();
     const inDislike = (s.userDislike || []).includes(exName);
-    const backToMenu = document.querySelectorAll('#card-menu-overlay .card-menu-item').length === 4;
+    const backToMenu = document.querySelectorAll('#card-menu-overlay .card-menu-item').length === 3; // V2.2 轮B：菜单仅 3 项（重量/组数/次数已移至卡片底部常驻）
     window.closeCardMenu();
     return { confirmShown, inDislike, backToMenu };
   }, lp.ex);
@@ -415,6 +531,42 @@ const { chromium } = require(pwPath);
   t('长按菜单打开 390px 无横向溢出', menuOverflow.body <= menuOverflow.vw && menuOverflow.doc <= menuOverflow.vw, JSON.stringify(menuOverflow));
   await page.evaluate(() => window.closeCardMenu());
   await page.waitForTimeout(150);
+
+  // B11. 点建议卡「建议重量」→ 填入卡片底部重量输入框 + 写当日记录（V2.2 轮B 修重量推荐 bug）
+  const adviceW = await page.evaluate(async () => {
+    // 轮E 起仅主组卡有底部录入行，故取主组卡验证「点建议重量→填输入框」（热身/拉伸卡无录入行，非本用例场景）
+    const mainCard = document.querySelector('.group-exercise-card[data-ex][data-phase="main"]');
+    if (!mainCard) return { err: '无主组动作卡' };
+    const exName = mainCard.dataset.ex || '';
+    const recs = window.getRecords();
+    recs.push({ date: '2026-07-01', completed: true, type: 'push', exercises: [{ name: exName, weight: 60, sets: 3, reps: 12 }] });
+    window.saveRecords(recs);
+    window.renderTrainingPage();
+    await new Promise(r => setTimeout(r, 300));
+    const mc = document.querySelector('.group-exercise-card[data-ex][data-phase="main"]');
+    const el = mc ? mc.querySelector('.advice-weight.clickable') : null;
+    if (!el) return { err: '无可点击建议重量', exName };
+    const uid = el.closest('.advice-card').id.replace('advice-', '');
+    const card = document.getElementById('advice-' + uid);
+    const sum = document.getElementById('as-' + uid);
+    if (sum && card && card.style.display === 'none') { sum.click(); await new Promise(r => setTimeout(r, 250)); }
+    const before = el.textContent;
+    el.click();
+    await new Promise(r => setTimeout(r, 250));
+    const rec = window.getTodayRecord();
+    const e = rec.exercises.find(x => x.name === exName);
+    const input = document.querySelector('#rec-' + uid + ' .weight-input-sm');
+    const inputVal = input ? input.value : '';
+    const toast = document.body.textContent.includes('已填入建议重量');
+    // 清理：移除注入历史，避免污染后续建议
+    window.saveRecords(window.getRecords().filter(r => r.date !== '2026-07-01'));
+    return { exName, before, afterWeight: e ? e.weight : null, inputVal, toast };
+  });
+  console.log('B11. 点建议重量:', JSON.stringify(adviceW));
+  t('有历史时建议重量可点击', adviceW.err === undefined && /建议/.test(adviceW.before || ''), JSON.stringify(adviceW));
+  t('点建议重量 → 重量输入框填入建议值(62.5)', adviceW.err === undefined && adviceW.inputVal === '62.5', JSON.stringify(adviceW));
+  t('点建议重量 → 写入当日记录 weight(62.5)', adviceW.err === undefined && adviceW.afterWeight === 62.5, JSON.stringify(adviceW));
+  t('点建议重量 → toast 提示「已填入建议重量」', adviceW.err === undefined && adviceW.toast === true, JSON.stringify(adviceW));
 
   // B2a. 【P1】长按标题区域（checkbox-wrapper 内）→ 应弹出菜单。
   // 当前实现把整个 .checkbox-wrapper（含标题/器械/meta）排除在长按外，
@@ -661,7 +813,7 @@ const { chromium } = require(pwPath);
     if (sum) { sum.click(); await new Promise(r => setTimeout(r, 200)); }
     const card = document.querySelector('.group-exercise-card[data-ex]');
     const btns = card ? [...card.querySelectorAll('.icon-btn')] : [];
-    const aiBtn = btns.find(b => b.textContent === '💡');
+    const aiBtn = btns.find(b => b.textContent === '🤖'); // V2.2 轮C：AI 建议按钮由 💡 换为 🤖
     const favBtn = btns.find(b => b.textContent === '☆' || b.textContent === '⭐');
     const cb = card ? card.querySelector('.checkbox-custom') : null;
     const cw = card ? card.querySelector('.checkbox-wrapper') : null;
@@ -681,8 +833,8 @@ const { chromium } = require(pwPath);
   });
   console.log('I. 图标:', JSON.stringify(iconInfo));
   t('主卡 icon-btn ≥ 2（收藏+AI）', iconInfo.iconCount >= 2, 'n=' + iconInfo.iconCount);
-  t('AI💡 字号 ≥ 28px', iconInfo.aiFont >= 28, 'font=' + iconInfo.aiFont);
-  t('AI💡 触控区 ≥ 44px', iconInfo.aiRect.w >= 44 && iconInfo.aiRect.h >= 44, JSON.stringify(iconInfo.aiRect));
+  t('AI🤖 字号 ≥ 28px', iconInfo.aiFont >= 28, 'font=' + iconInfo.aiFont);
+  t('AI🤖 触控区 ≥ 44px', iconInfo.aiRect.w >= 44 && iconInfo.aiRect.h >= 44, JSON.stringify(iconInfo.aiRect));
   t('☆ 字号 ≥ 28px', iconInfo.favFont >= 28, 'font=' + iconInfo.favFont);
   t('☆ 触控区 ≥ 44px', iconInfo.favRect.w >= 44 && iconInfo.favRect.h >= 44, JSON.stringify(iconInfo.favRect));
   t('勾选框 22-24px', iconInfo.cbW >= 22 && iconInfo.cbW <= 24, 'cbW=' + iconInfo.cbW);
@@ -1009,10 +1161,10 @@ const { chromium } = require(pwPath);
   });
   await page.waitForTimeout(300);
 
-  // D1. 旧数据兼容：历史只有 weight/reps 无 sets → 长按菜单组数输入为空、不报错
+  // D1. 旧数据兼容：历史只有 weight/reps 无 sets → 卡片底部常驻行组数输入为空、不报错（V2.2 轮B：录入行已移至卡片底部 .card-record-row）
   await page.evaluate(() => {
-    // 与 longPressCard(0) 一致：取第一张任意卡（可能为热身/拉伸卡），确保 recEx 能匹配
-    const card = [...document.querySelectorAll('.group-exercise-card[data-ex]')][0];
+    // 与 longPressCard(0) 一致：取第一张主组卡（V2.2 轮E 起只有主组卡有常驻录入行），确保 recEx 能匹配
+    const card = [...document.querySelectorAll('.group-exercise-card[data-ex][data-phase="main"]')][0];
     const gid = card.dataset.groupid, exName = card.dataset.ex;
     const rec = window.getTodayRecord();
     rec.exercises = [{ name: exName, groupId: gid, weight: 60, reps: 12 }]; // 无 sets 的旧数据
@@ -1022,28 +1174,22 @@ const { chromium } = require(pwPath);
     return { ex: rec.exercises[0] };
   });
   await page.waitForTimeout(300);
-  lp = await longPressCard(0);
-  const d1 = await page.evaluate(async () => {
-    const items = [...document.querySelectorAll('#card-menu-overlay .card-menu-item')];
-    const w = items.find(i => i.textContent.includes('组数'));
-    if (w) w.click();
-    await new Promise(r => setTimeout(r, 150));
-    const row = document.querySelector('.card-menu-weight');
+  const d1 = await page.evaluate(() => {
+    const card = [...document.querySelectorAll('.group-exercise-card[data-ex][data-phase="main"]')][0];
+    const row = card ? card.querySelector('.card-record-row') : null;
     const inputs = row ? row.querySelectorAll('.weight-input-sm') : [];
-    const setsInput = inputs.length >= 2 ? inputs[1] : null;
-    const repsInput = inputs.length >= 3 ? inputs[2] : null;
     const out = {
+      rowExists: !!row,
       inputCount: inputs.length,
-      setsVal: setsInput ? setsInput.value : 'n/a',
-      repsVal: repsInput ? repsInput.value : 'n/a',
       weightVal: inputs[0] ? inputs[0].value : 'n/a',
+      setsVal: inputs[1] ? inputs[1].value : 'n/a',
+      repsVal: inputs[2] ? inputs[2].value : 'n/a',
       jsError: false,
     };
-    window.closeCardMenu();
     return out;
   });
   console.log('D1. 旧数据兼容:', JSON.stringify(d1));
-  t('旧数据(无sets)长按菜单不报错、组数输入为空', d1.inputCount === 3 && d1.setsVal === '' && d1.weightVal === '60', JSON.stringify(d1));
+  t('旧数据(无sets)常驻行不报错、组数输入为空', d1.rowExists === true && d1.inputCount === 3 && d1.weightVal === '60' && d1.setsVal === '' && d1.repsVal === '12', JSON.stringify(d1));
 
   // D2. AI 复盘 report：有 weight/sets/reps → 「kg × N组×N次」+ 今日总训练量
   const d2 = await page.evaluate(async () => {
@@ -1105,6 +1251,98 @@ const { chromium } = require(pwPath);
   console.log('D4. 历史详情含组次:', d4content.includes('3组×12次'), '| 含重量:', d4content.includes('60kg'));
   t('历史详情动作行带「3组×12次」', d4content.includes('3组×12次'), d4content.slice(0, 200));
   t('历史详情含重量 60kg', d4content.includes('60kg'), d4content.slice(0, 200));
+
+  // ===== V2.2 轮C — AI 教练球可拖动 + localStorage 记位置 =====
+  // 清理此前拖拽痕迹，回到 CSS 默认右下定位
+  await page.evaluate(() => {
+    localStorage.removeItem('fitness_coach_pos');
+    window.renderTrainingPage();
+  });
+  await page.waitForTimeout(300);
+
+  // C1. FAB 初始为 CSS 默认定位（bottom/right），无 inline left/top
+  const fabC1 = await page.evaluate(() => {
+    const fab = document.getElementById('ai-coach-fab');
+    if (!fab) return null;
+    const r = fab.getBoundingClientRect();
+    return {
+      hasClass: fab.classList.contains('ai-coach-fab'),
+      inlineLeft: fab.style.left, inlineTop: fab.style.top,
+      left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top),
+      w: Math.round(r.width), h: Math.round(r.height),
+      pos: localStorage.getItem('fitness_coach_pos'),
+    };
+  });
+  console.log('C1. FAB初始:', JSON.stringify(fabC1));
+  t('C1. FAB 带 ai-coach-fab 类', fabC1 && fabC1.hasClass === true, JSON.stringify(fabC1));
+  t('C1b. FAB 初始无 inline left(右下默认)', fabC1 && fabC1.inlineLeft === '' && fabC1.right > 300 && fabC1.pos === null, JSON.stringify(fabC1));
+  t('C1c. FAB 尺寸 52px 徽章(≥44 触控)', fabC1 && fabC1.w >= 44 && fabC1.h >= 44, JSON.stringify(fabC1));
+
+  // C2. mouse 拖拽 FAB（左移120/下移40，避开边缘 clamp）→ 位置变化 + 写入 localStorage
+  if (fabC1) {
+    await page.mouse.move(fabC1.left + fabC1.w / 2, fabC1.top + fabC1.h / 2);
+    await page.mouse.down();
+    for (let i = 1; i <= 10; i++) await page.mouse.move(fabC1.left + fabC1.w / 2 - 120 * i / 10, fabC1.top + fabC1.h / 2 + 40 * i / 10);
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+  }
+  const fabC2 = await page.evaluate(() => {
+    const fab = document.getElementById('ai-coach-fab');
+    const r = fab.getBoundingClientRect();
+    return {
+      left: Math.round(r.left), top: Math.round(r.top),
+      inlineLeft: fab.style.left, inlineTop: fab.style.top,
+      pos: localStorage.getItem('fitness_coach_pos'),
+    };
+  });
+  console.log('C2. FAB拖后:', JSON.stringify(fabC2));
+  t('C2. 拖拽后 FAB 位置变化(Δ>30px)', fabC2 && (Math.abs(fabC2.left - fabC1.left) > 30 || Math.abs(fabC2.top - fabC1.top) > 30), JSON.stringify(fabC2));
+  t('C2b. 拖拽写入 inline left/top', fabC2 && fabC2.inlineLeft !== '' && fabC2.inlineTop !== '', JSON.stringify(fabC2));
+  t('C3. localStorage.fitness_coach_pos 已写入', fabC2 && fabC2.pos && fabC2.pos.includes('"x"') && fabC2.pos.includes('"y"'), fabC2 && fabC2.pos);
+
+  // C4. 重新渲染 → FAB 恢复拖拽位置（localStorage 生效）
+  await page.evaluate(() => { window.renderTrainingPage(); });
+  await page.waitForTimeout(300);
+  const fabC4 = await page.evaluate(() => {
+    const fab = document.getElementById('ai-coach-fab');
+    const r = fab.getBoundingClientRect();
+    return { left: Math.round(r.left), top: Math.round(r.top) };
+  });
+  console.log('C4. FAB恢复:', JSON.stringify(fabC4));
+  t('C4. 重渲染后恢复拖拽位置(±8px)', fabC4 && Math.abs(fabC4.left - fabC2.left) <= 8 && Math.abs(fabC4.top - fabC2.top) <= 8, JSON.stringify(fabC4));
+
+  // C5. 单击（原位 down+up）→ 打开 AI 教练浮层
+  await page.mouse.move(fabC4.left + 26, fabC4.top + 26);
+  await page.mouse.down();
+  await page.mouse.up();
+  await page.waitForTimeout(250);
+  const fabC5 = await page.evaluate(() => ({ overlay: !!document.getElementById('ai-coach-overlay') }));
+  console.log('C5. FAB单击:', JSON.stringify(fabC5));
+  t('C5. 单击 FAB 打开浮层', fabC5.overlay === true, JSON.stringify(fabC5));
+  await page.evaluate(() => { try { window.closeAICoach(); } catch (e) {} });
+  await page.waitForTimeout(200);
+
+  // C6. 再次拖拽（大幅移动）→ 不误开浮层（拖拽后 click 被吞）
+  const fabC6 = await page.evaluate(() => {
+    const fab = document.getElementById('ai-coach-fab');
+    const r = fab.getBoundingClientRect();
+    return { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+  });
+  await page.mouse.move(fabC6.cx, fabC6.cy);
+  await page.mouse.down();
+  for (let i = 1; i <= 10; i++) await page.mouse.move(fabC6.cx - 80 * i / 10, fabC6.cy - 40 * i / 10);
+  await page.mouse.up();
+  await page.waitForTimeout(250);
+  const fabC6r = await page.evaluate(() => ({ overlay: !!document.getElementById('ai-coach-overlay') }));
+  console.log('C6. 拖后不误开浮层:', JSON.stringify(fabC6r));
+  t('C6. 拖拽不触发浮层打开', fabC6r.overlay === false, JSON.stringify(fabC6r));
+
+  // 清理拖拽痕迹，避免影响其他套件
+  await page.evaluate(() => {
+    localStorage.removeItem('fitness_coach_pos');
+    window.renderTrainingPage();
+  });
+  await page.waitForTimeout(200);
 
   console.log('=== 控制台错误:', errs.length ? errs.join('\n') : '无');
   console.log(`\n结果: ${pass} 通过 / ${fail} 失败`);

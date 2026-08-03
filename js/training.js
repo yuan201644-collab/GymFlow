@@ -886,6 +886,8 @@ function renderTrainingPage() {
 
         // 本地 AI 建议预生成（V2.0 阶段1）：纯本地计算，渲染时一次算好展开无闪烁
         const advice = getActionAdvice(ex, record, Object.assign({ phase: section.type, region: group.region || '' }, adviceCtx));
+        // V2.2 轮A：动作详情卡数据（详细要点 + 注意事项 + 全标签），渲染时一并算好
+        const detail = (typeof buildActionDetail === 'function') ? buildActionDetail(ex) : null;
         const isRestDay = record.type === 'rest';
 
         html += `<div class="card group-exercise-card ${exDone?'completed':''} ${exSkipped?'exercise-skipped':''}" style="margin-bottom:6px;${!isSelected?'opacity:0.55;':''}" id="card-${uid}" data-sec="${secIdx}" data-grp="${grpIdx}" data-groupid="${escAttr(groupId)}" data-ex="${escAttr(ex.name)}" data-phase="${section.type}" data-region="${escAttr(group.region || '')}">`;
@@ -894,13 +896,19 @@ function renderTrainingPage() {
         html += `<div style="flex:1;"><div class="card-title" style="font-size:14px;${exDone?'text-decoration:line-through;color:var(--accent);':''}${exSkipped?'text-decoration:line-through;color:var(--muted);':''}">${ex.name}${exSkipped?'<span class="card-default-tag" style="background:var(--border);color:var(--muted);">已跳过</span>':''}${ex.default?'<span class="card-default-tag">推荐</span>':''}</div>`;
         if(ex.equipment) html += `<span class="card-equipment">${ex.equipment}</span>`;
         html += `<div class="card-meta">${ex.sets}</div>`;
-        html += `</div><div style="display:flex;align-items:center;gap:2px;">${isRestDay?'':`<button class="icon-btn btn-pop" id="ab-${uid}" onclick="event.stopPropagation();openAIActionAsk('${uid}','${escAttr(ex.name)}','${escAttr(ex.tip || '')}')" title="本地AI建议">💡</button>`}<button class="icon-btn" data-ex="${escAttr(ex.name)}" onclick="event.stopPropagation();var el=this;try{toggleFavorite(this.getAttribute('data-ex'));el.textContent=isFavorite(this.getAttribute('data-ex'))?'⭐':'☆';el.classList.add('pop');setTimeout(function(){el.classList.remove('pop')},500)}catch(e){}">☆</button></div></div></div>`;
+        html += `</div><div style="display:flex;align-items:center;gap:2px;">${isRestDay?'':`<button class="icon-btn btn-pop" id="ab-${uid}" onclick="event.stopPropagation();openAIActionAsk('${uid}','${escAttr(ex.name)}','${escAttr(ex.tip || '')}')" title="本地AI建议">🤖</button>`}<button class="icon-btn" data-ex="${escAttr(ex.name)}" onclick="event.stopPropagation();var el=this;try{toggleFavorite(this.getAttribute('data-ex'));el.textContent=isFavorite(this.getAttribute('data-ex'))?'⭐':'☆';el.classList.add('pop');setTimeout(function(){el.classList.remove('pop')},500)}catch(e){}">☆</button></div></div></div>`;
         if(!isRestDay) html += `<div class="advice-summary" id="as-${uid}" onclick="event.stopPropagation();toggleAdvice('${uid}')">${buildAdviceSummary(advice)}</div>`;
         if(!isRestDay){
           html += `<div class="advice-card" id="advice-${uid}" style="display:none;">`;
-          html += `<div class="advice-title">💡 本地建议</div>`;
-          html += `<div class="advice-item"><span class="advice-label">要点</span><span>${escapeHtml(advice.points)}</span></div>`;
-          html += `<div class="advice-item"><span class="advice-label">重量</span><span>${advice.weight.text}</span></div>`;
+          html += `<div class="advice-title">🤖 本地建议</div>`;
+          // V2.2 轮A：详情区置顶（详细要点 + 注意事项高亮 + 标签 chips）
+          html += `<div class="advice-detail">
+            <div class="advice-detail-label">📋 动作详情</div>
+            <div class="advice-detail-points">${detail ? escapeHtml(detail.points) : escapeHtml(advice.points)}</div>
+            ${detail && detail.warnings.length ? detail.warnings.map(w => `<div class="advice-detail-warn">⚠️ ${escapeHtml(w)}</div>`).join('') : ''}
+            ${detail && detail.tags.length ? `<div class="advice-tags">${detail.tags.map(t => `<span class="advice-chip">${escapeHtml(t.label)}：${escapeHtml(t.value)}</span>`).join('')}</div>` : ''}
+          </div>`;
+          html += `<div class="advice-item"><span class="advice-label">重量</span><span class="advice-weight${advice.weight.suggest != null ? ' clickable' : ''}"${advice.weight.suggest != null ? ` onclick="applyAdviceWeight('${uid}','${escAttr(groupId)}','${escAttr(ex.name)}',${advice.weight.suggest})" title="点按填入重量输入框"` : ''}>${advice.weight.text}</span></div>`;
           html += `<div class="advice-item"><span class="advice-label">休息</span><span>${advice.rest.text}</span></div>`;
           if (advice.replacements.length) {
             html += `<div class="advice-item"><span class="advice-label">替换</span><span>${advice.replacements.map(r => `<span class="advice-repl">${escapeHtml(r.name)}</span>`).join('')}</span></div>`;
@@ -909,6 +917,21 @@ function renderTrainingPage() {
             <button class="advice-ai-btn" id="aai-btn-${uid}" onclick="event.stopPropagation();openAIActionAsk('${uid}','${escAttr(ex.name)}','${escAttr(ex.tip || '')}')">🤖 问 AI</button>
           </div>`;
           html += `</div>`;
+        }
+        // V2.2 轮B：卡片底部常驻录入行（重量/组数/次数，替代长按菜单内录入）；仅主组需要重量×组数×次数记录（V2.2 轮E）
+        if (section.type === 'main') {
+          const exW = exRec && exRec.weight ? exRec.weight : '';
+          const exS = exRec && exRec.sets ? exRec.sets : '';
+          const exR = exRec && exRec.reps ? exRec.reps : '';
+          html += `<div class="weight-row card-record-row" id="rec-${uid}" onclick="event.stopPropagation()">
+            <span class="weight-label">重量</span>
+            <input type="number" class="weight-input-sm" value="${exW}" onchange="updateExerciseWeight('${escAttr(groupId)}','${escAttr(ex.name)}',this.value)" onfocus="this.select()" step="5" min="0" max="500" style="width:62px;">
+            <span class="weight-unit">kg</span>
+            <span class="weight-label">组数</span>
+            <input type="number" class="weight-input-sm" value="${exS}" onchange="updateExerciseSets('${escAttr(groupId)}','${escAttr(ex.name)}',this.value)" onfocus="this.select()" step="1" min="0" max="20" style="width:44px;">
+            <span class="weight-label">次数</span>
+            <input type="number" class="weight-input-sm" value="${exR}" onchange="updateExerciseReps('${escAttr(groupId)}','${escAttr(ex.name)}',this.value)" onfocus="this.select()" step="1" min="0" max="60" style="width:48px;">
+          </div>`;
         }
         html += `</div>`;
       });
@@ -978,6 +1001,8 @@ function renderBottomBar(completedGroups, totalGroups) {
     fab.textContent = 'AI';
     document.getElementById('app').appendChild(fab);
   }
+  // V2.2 轮C：可拖动悬浮球（幂等，内部有 __coachDragInit 防重复绑定；仅首次初始化时恢复 localStorage 位置）
+  if (typeof initCoachFabDrag === 'function') initCoachFabDrag(fab);
 }
 
 function toggleGroup(uid) {
@@ -1133,6 +1158,16 @@ function updateExerciseSets(groupId, exName, value) {
   saveTodayRecord(record);
 }
 
+// 点建议卡「建议重量」→ 填入卡片底部重量输入框并写当日记录（V2.2 轮B）
+function applyAdviceWeight(uid, groupId, exName, suggest) {
+  if (suggest == null || isNaN(suggest)) { showToast('暂无建议重量'); return; }
+  updateExerciseWeight(groupId, exName, suggest);
+  const row = document.getElementById('rec-' + uid);
+  const input = row && row.querySelector('.weight-input-sm');
+  if (input) input.value = suggest;
+  showToast('已填入建议重量 ' + suggest + 'kg', 'success');
+}
+
 // 建议重量提示：该动作最近一次历史重量（15.6）
 function getLastWeightHint(exName) {
   const records = getRecords().filter(r => r.completed && r.exercises && r.exercises.some(e => e.name === exName && e.weight));
@@ -1147,8 +1182,11 @@ function toggleAdvice(uid) {
   const btn = document.getElementById('ab-' + uid);
   if (!el) return;
   const open = el.style.display !== 'none';
-  el.style.display = open ? 'none' : 'block';
-  if (btn) btn.style.opacity = open ? '' : '1';
+  const willOpen = !open;                        // 本次点击后的新状态
+  el.style.display = willOpen ? 'block' : 'none';
+  if (btn) btn.style.opacity = willOpen ? '1' : '';
+  const s = document.getElementById('as-' + uid);
+  if (s) s.classList.toggle('open', willOpen);
 }
 
 // 动作级跳过（15.3）：保留为置位辅助宿主（V2.1 轮B 起表面不再引用，入口移至长按菜单）
@@ -1203,7 +1241,7 @@ function onLpStart(e) {
   // 可交互元素上的按下不触发长按（勾选框图标/按钮/输入/建议行）。
   // P1：忽略列表用 .checkbox-custom（仅勾选框图标）而非 .checkbox-wrapper，
   // 因标题/器械/meta 都渲染在 .checkbox-wrapper 内，整块排除会让主体区域长按失效。
-  if (target.closest('.checkbox-custom, button, input, .advice-summary, .advice-card')) return;
+  if (target.closest('.checkbox-custom, button, input, .advice-summary, .advice-card, .weight-row')) return;
   const card = target.closest('.group-exercise-card');
   // 历史详情/编辑卡也复用 .group-exercise-card 类，但无 data-* 长按上下文，不触发菜单
   if (!card || !card.dataset.ex) return;
@@ -1264,8 +1302,7 @@ function openCardMenu(card) {
   _menuOpenAt = Date.now();
 }
 
-// 渲染菜单项（今日删除/恢复、永久删除、替换动作、重量/次数）
-// 设计注：重量/次数行对所有卡可用（含休息/无器械），比旧 main+有器械 条件略放宽，行为更一致
+// 渲染菜单项（今日删除/恢复、永久删除、替换动作）——V2.2 轮B 起重量/组数/次数录入移至卡片底部常驻行
 function renderCardMenuItems(sheet, card) {
   const sec = card.dataset.sec;
   const grp = card.dataset.grp;
@@ -1276,10 +1313,6 @@ function renderCardMenuItems(sheet, card) {
   const skipped = card.classList.contains('exercise-skipped');
   const rec = getTodayRecord();
   const recEx = rec.exercises.find(e => e.name === exName && e.groupId === groupId);
-  const exWeight = recEx && recEx.weight ? recEx.weight : '';
-  const exSets = recEx && recEx.sets ? recEx.sets : '';
-  const exReps = recEx && recEx.reps ? recEx.reps : '';
-  const hint = getLastWeightHint(exName);
   sheet.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border);">
       <b style="font-size:15px;flex:1;">${escapeHtml(exName)}</b>
@@ -1288,25 +1321,7 @@ function renderCardMenuItems(sheet, card) {
     <button class="card-menu-item" onclick="closeCardMenu();${skipped ? 'restoreToday' : 'skipToday'}('${sec}','${grp}','${escAttr(groupId)}','${escAttr(exName)}')">${skipped ? '↩️ 今日恢复' : '⏭ 今日删除'}</button>
     <button class="card-menu-item" onclick="confirmDislike('${escAttr(exName)}')">🗑 永久删除</button>
     <button class="card-menu-item" onclick="closeCardMenu();openExercisePicker('${sec}','${grp}','${escAttr(groupId)}','${escAttr(region)}','${phase}')">➕ 替换动作</button>
-    <button class="card-menu-item" onclick="toggleCardMenuWeight(this)">⚖️ 重量 · 组数 · 次数</button>
-    <div class="card-menu-weight" style="display:none;">
-      <span class="weight-label">⚖️</span>
-      <input type="number" class="weight-input-sm" value="${exWeight}" onchange="updateExerciseWeight('${escAttr(groupId)}','${escAttr(exName)}',this.value)" onfocus="this.select()" step="5" min="0" max="500" placeholder="${hint}">
-      <span class="weight-unit">kg</span>
-      <span class="weight-label">组数</span>
-      <input type="number" class="weight-input-sm" value="${exSets}" onchange="updateExerciseSets('${escAttr(groupId)}','${escAttr(exName)}',this.value)" onfocus="this.select()" step="1" min="0" max="20" style="width:44px;">
-      <span class="weight-label">🔁</span>
-      <input type="number" class="weight-input-sm" value="${exReps}" onchange="updateExerciseReps('${escAttr(groupId)}','${escAttr(exName)}',this.value)" onfocus="this.select()" step="1" min="0" max="60" style="width:48px;">
-    </div>
   `;
-}
-
-// 菜单内重量/次数输入行展开/收起
-function toggleCardMenuWeight(btn) {
-  const row = btn.nextElementSibling;
-  if (row && row.classList.contains('card-menu-weight')) {
-    row.style.display = row.style.display === 'none' ? 'flex' : 'none';
-  }
 }
 
 // 关闭长按菜单：移除弹层 + 去掉卡片弹出动画

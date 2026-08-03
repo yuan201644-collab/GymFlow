@@ -12,3 +12,10 @@ server/.wrangler/
 
 # Agent 工作流日志（瞬态）
 .agent-workflow/logs/
+
+# 工作流内部文件（本地管理，不 push；bin/、docs/ 为 junction 指向本地仓库）
+.agent-workflow/
+bin/
+docs/
+.claude/
+tools/
